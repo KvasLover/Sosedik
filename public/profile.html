@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Профиль - Соседик</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .profile-container { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+    .form-group { margin: 10px 0; }
+    label { display: block; margin-bottom: 5px; }
+    input { width: 100%; padding: 8px; box-sizing: border-box; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    .result { margin: 20px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; }
+    .error { background: #ffe6e6; border: 1px solid #ff9999; }
+    .success { background: #e6ffe6; border: 1px solid #99ff99; }
+    .hidden { display: none; }
+    .user-info { background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Мой профиль</h1>
+
+  <div id="auth-check" class="result error">
+    Вы не авторизованы. <a href="/">Вернуться на главную</a>
+  </div>
+
+  <div id="profile-content" class="hidden">
+    <div id="user-info" class="user-info">
+      <h2>Информация о пользователе</h2>
+      <p><strong>Телефон:</strong> <span id="user-phone"></span></p>
+      <p><strong>Уровень доступа:</strong> <span id="user-level"></span></p>
+      <p><strong>Баллы:</strong> <span id="user-points"></span></p>
+      <p><strong>Дата регистрации:</strong> <span id="user-created"></span></p>
+    </div>
+
+    <div class="profile-container">
+      <h2>Редактировать профиль</h2>
+      <div class="form-group">
+        <label for="user-name">Имя:</label>
+        <input type="text" id="user-name" placeholder="Ваше имя">
+      </div>
+      <div class="form-group">
+        <label for="user-apartment">Квартира:</label>
+        <input type="text" id="user-apartment" placeholder="Например: 12 подъезд, 5 этаж">
+      </div>
+      <button onclick="saveProfile()">Сохранить изменения</button>
+    </div>
+
+    <div id="result-message" class="result hidden"></div>
+
+    <div class="profile-container">
+      <button onclick="goToMain()">Вернуться на главную</button>
+      <button onclick="logout()" style="background: #ff4444; color: white;">Выйти из аккаунта</button>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    // Profile-specific functions
+    async function loadProfile() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) {
+        document.getElementById('auth-check').classList.remove('hidden');
+        document.getElementById('profile-content').classList.add('hidden');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/users/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const user = await response.json();
+          document.getElementById('user-phone').textContent = user.phone;
+          document.getElementById('user-level').textContent = getLevelName(user.level);
+          document.getElementById('user-points').textContent = user.points;
+          document.getElementById('user-created').textContent = new Date(user.created_at).toLocaleDateString();
+          document.getElementById('user-name').value = user.name || '';
+          document.getElementById('user-apartment').value = user.apartment || '';
+
+          document.getElementById('auth-check').classList.add('hidden');
+          document.getElementById('profile-content').classList.remove('hidden');
+        } else {
+          throw new Error('Не удалось загрузить профиль');
+        }
+      } catch (error) {
+        showResult('Ошибка загрузки профиля: ' + error.message, false);
+      }
+    }
+
+    async function saveProfile() {
+      const token = localStorage.getItem('sosedik_token');
+      const name = document.getElementById('user-name').value;
+      const apartment = document.getElementById('user-apartment').value;
+
+      try {
+        const response = await fetch('/api/users/me', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ name, apartment })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showResult('Профиль обновлен успешно!', true);
+        } else {
+          showResult(data.message || 'Ошибка обновления профиля', false);
+        }
+      } catch (error) {
+        showResult('Ошибка сети: ' + error.message, false);
+      }
+    }
+
+    function getLevelName(level) {
+      const levels = {
+        0: 'Гость',
+        1: 'Зарегистрированный жилец',
+        2: 'Верифицированный жилец',
+        3: 'Модератор сообщества',
+        4: 'Администратор'
+      };
+      return levels[level] || 'Неизвестный уровень';
+    }
+
+    function showResult(message, isSuccess) {
+      const resultDiv = document.getElementById('result-message');
+      resultDiv.textContent = message;
+      resultDiv.className = 'result ' + (isSuccess ? 'success' : 'error');
+      resultDiv.classList.remove('hidden');
+      setTimeout(() => resultDiv.classList.add('hidden'), 5000);
+    }
+
+    function goToMain() {
+      window.location.href = '/';
+    }
+
+    // Load profile on page load
+    document.addEventListener('DOMContentLoaded', loadProfile);
+  </script>
+</body>
+</html>

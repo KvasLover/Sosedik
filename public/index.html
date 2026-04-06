@@ -4,10 +4,69 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Соседик - Приложение для соседей</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .form-container { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+    .form-group { margin: 10px 0; }
+    label { display: block; margin-bottom: 5px; }
+    input { width: 100%; padding: 8px; box-sizing: border-box; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    .result { margin: 20px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; }
+    .error { background: #ffe6e6; border: 1px solid #ff9999; }
+    .success { background: #e6ffe6; border: 1px solid #99ff99; }
+    .hidden { display: none; }
+    .nav { margin: 20px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; }
+    .nav a { margin: 0 10px; text-decoration: none; color: #0066cc; }
+    .nav a:hover { text-decoration: underline; }
+  </style>
 </head>
 <body>
   <h1>Добро пожаловать в Соседик</h1>
   <p>Приложение для организации взаимодействия жителей многоквартирных домов.</p>
+
+  <div id="nav" class="nav hidden">
+    <a href="/">Главная</a>
+    <a href="/profile.html">Мой профиль</a>
+    <span id="logout-link" style="cursor: pointer; color: #cc0000;" onclick="logout()">Выйти</span>
+  </div>
+
+  <div id="auth-status" class="result hidden">
+    <p id="status-text"></p>
+    <button id="logout-btn" class="hidden">Выйти</button>
+  </div>
+
+  <div id="login-form" class="form-container">
+    <h2>Вход</h2>
+    <div class="form-group">
+      <label for="login-phone">Телефон:</label>
+      <input type="tel" id="login-phone" placeholder="+375XXXXXXXXX" required>
+    </div>
+    <div class="form-group">
+      <label for="login-password">Пароль:</label>
+      <input type="password" id="login-password" required>
+    </div>
+    <button onclick="login()">Войти</button>
+  </div>
+
+  <div id="register-form" class="form-container">
+    <h2>Регистрация</h2>
+    <div class="form-group">
+      <label for="register-phone">Телефон:</label>
+      <input type="tel" id="register-phone" placeholder="+375XXXXXXXXX" required>
+    </div>
+    <div class="form-group">
+      <label for="register-password">Пароль:</label>
+      <input type="password" id="register-password" required>
+    </div>
+    <button onclick="register()">Зарегистрироваться</button>
+  </div>
+
+  <div id="ads-section" class="hidden">
+    <h2>Объявления</h2>
+    <button onclick="loadAds()">Загрузить объявления</button>
+    <div id="ads-list"></div>
+  </div>
+
   <script src="js/app.js"></script>
 </body>
 </html>
