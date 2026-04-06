@@ -135,6 +135,13 @@
         </div>
       </div>
 
+      <!-- Account Deletion Section -->
+      <div class="profile-container" style="margin-top: 20px; border: 2px solid #ff4444; background: #ffeaea;">
+        <h3 style="color: #ff4444;">Удаление аккаунта</h3>
+        <p style="color: #666; margin-bottom: 15px;">Внимание! Это действие необратимо. Все ваши данные, объявления и история активности будут удалены.</p>
+        <button onclick="deleteAccount()" style="background: #ff4444; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Удалить аккаунт</button>
+      </div>
+
       <div class="profile-container" style="margin-top: 20px;">
         <button onclick="goToMain()">Вернуться на главную</button>
         <button onclick="logout()" style="background: #ff4444; color: white;">Выйти из аккаунта</button>
@@ -399,6 +406,87 @@
       resultDiv.className = 'result ' + (isSuccess ? 'success' : 'error');
       resultDiv.classList.remove('hidden');
       setTimeout(() => resultDiv.classList.add('hidden'), 5000);
+    }
+
+    async function deleteAccount() {
+      console.log('Delete account function called');
+
+      if (!confirm('Вы уверены, что хотите удалить аккаунт? Это действие необратимо!')) {
+        console.log('User cancelled deletion');
+        return;
+      }
+
+      console.log('User confirmed deletion');
+
+      const token = localStorage.getItem('sosedik_token');
+      console.log('Token from localStorage:', token ? 'EXISTS' : 'NOT FOUND');
+
+      if (!token) {
+        showResult('Вы не авторизованы', false);
+        return;
+      }
+
+      // Проверим токен
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('Token payload:', payload);
+        console.log('Token expires:', new Date(payload.exp * 1000));
+        console.log('Current time:', new Date());
+
+        if (payload.exp * 1000 < Date.now()) {
+          showResult('Сессия истекла. Пожалуйста, войдите снова.', false);
+          localStorage.removeItem('sosedik_token');
+          setTimeout(() => window.location.href = '/login.html', 2000);
+          return;
+        }
+      } catch (e) {
+        console.error('Token parse error:', e);
+        showResult('Ошибка авторизации', false);
+        return;
+      }
+
+      console.log('Starting account deletion...');
+
+      try {
+        console.log('Sending DELETE request to /api/users/me');
+        const response = await fetch('/api/users/me', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+
+        if (response.ok) {
+          console.log('Account deleted successfully');
+          localStorage.removeItem('sosedik_token');
+          if (currentUserId) {
+            localStorage.removeItem(`sosedik_photo_${currentUserId}`);
+          }
+          showResult('Аккаунт успешно удален', true);
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          let errorMessage = 'Ошибка удаления аккаунта';
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            // Ignore parse error
+          }
+          console.error('Delete failed:', errorMessage);
+          showResult('Ошибка: ' + errorMessage, false);
+        }
+      } catch (error) {
+        console.error('Network error:', error);
+        showResult('Ошибка сети: ' + error.message, false);
+      }
     }
 
     function goToMain() {

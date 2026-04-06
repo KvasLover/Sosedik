@@ -82,6 +82,20 @@ const addPoints = async (id, points) => {
   }
 };
 
+// Delete user
+const deleteUser = async (id) => {
+  try {
+    // First delete all user's ads
+    await pool.query('DELETE FROM ads WHERE user_id = $1', [id]);
+
+    // Then delete the user
+    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+    return result.rows[0];
+  } catch (err) {
+    throw err;
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
@@ -89,5 +103,6 @@ module.exports = {
   createUser,
   updateUserLevel,
   updateUserProfile,
-  addPoints
+  addPoints,
+  deleteUser
 };
