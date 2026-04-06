@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход - Соседик</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="/">Соседик</a></div>
+      <nav>
+        <a href="/">Главная</a>
+        <a href="/login.html">Войти</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div id="login-page">
+      <div class="form-container">
+        <h2>Вход</h2>
+        <div class="form-group">
+          <label for="login-phone">Телефон:</label>
+          <input type="tel" id="login-phone" placeholder="+375XXXXXXXXX" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Пароль:</label>
+          <input type="password" id="login-password" required>
+        </div>
+        <button onclick="login()">Войти</button>
+      </div>
+
+      <div class="form-container">
+        <h2>Регистрация</h2>
+        <div class="form-group">
+          <label for="register-phone">Телефон:</label>
+          <input type="tel" id="register-phone" placeholder="+375XXXXXXXXX" required>
+        </div>
+        <div class="form-group">
+          <label for="register-password">Пароль:</label>
+          <input type="password" id="register-password" required>
+        </div>
+        <button onclick="register()">Зарегистрироваться</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2026 Соседик. Все права защищены.</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

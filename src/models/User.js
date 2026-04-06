@@ -13,7 +13,7 @@ const getUsers = async () => {
 // Get user by ID
 const getUserById = async (id) => {
   try {
-    const result = await pool.query('SELECT id, phone, level, name, apartment, points, created_at FROM users WHERE id = $1', [id]);
+    const result = await pool.query('SELECT id, phone, level, name, apartment, show_apartment, points, created_at FROM users WHERE id = $1', [id]);
     return result.rows[0];
   } catch (err) {
     throw err;
@@ -57,11 +57,11 @@ const updateUserLevel = async (id, level) => {
 };
 
 // Update user profile
-const updateUserProfile = async (id, name, apartment) => {
+const updateUserProfile = async (id, name, apartment, showApartment = false) => {
   try {
     const result = await pool.query(
-      'UPDATE users SET name = $1, apartment = $2 WHERE id = $3 RETURNING id, name, apartment',
-      [name, apartment, id]
+      'UPDATE users SET name = $1, apartment = $2, show_apartment = $3 WHERE id = $4 RETURNING id, name, apartment, show_apartment',
+      [name, apartment, showApartment, id]
     );
     return result.rows[0];
   } catch (err) {

@@ -2,7 +2,7 @@ const pool = require('../database');
 
 // Get all active ads
 const getAds = async (filters = {}) => {
-  let query = 'SELECT id, user_id, type, category, title, description, urgency, location, created_at, active FROM ads WHERE active = true';
+  let query = 'SELECT id, user_id, category, title, description, price, contact, created_at, active FROM ads WHERE active = true';
   const values = [];
 
   if (filters.category) {
@@ -36,11 +36,11 @@ const getAdById = async (id) => {
 };
 
 // Create new ad
-const createAd = async (userId, type, category, title, description, urgency = false, location = null) => {
+const createAd = async (userId, category, title, description, price = null, contact = null) => {
   try {
     const result = await pool.query(
-      'INSERT INTO ads (user_id, type, category, title, description, urgency, location) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [userId, type, category, title, description, urgency, location]
+      'INSERT INTO ads (user_id, category, title, description, price, contact) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [userId, category, title, description, price, contact]
     );
     return result.rows[0];
   } catch (err) {

@@ -8,6 +8,7 @@ CREATE TABLE users (
   level INTEGER DEFAULT 0, -- 0: guest, 1: registered, 2: verified, 3: moderator, 4: admin
   name VARCHAR(100),
   apartment VARCHAR(50),
+  show_apartment BOOLEAN DEFAULT FALSE,
   verification_photo TEXT, -- URL or path to photo
   points INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

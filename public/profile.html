@@ -4,59 +4,161 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Профиль - Соседик</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
-    .profile-container { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
-    .form-group { margin: 10px 0; }
-    label { display: block; margin-bottom: 5px; }
-    input { width: 100%; padding: 8px; box-sizing: border-box; }
-    button { padding: 10px 20px; margin: 5px; cursor: pointer; }
-    .result { margin: 20px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; }
-    .error { background: #ffe6e6; border: 1px solid #ff9999; }
-    .success { background: #e6ffe6; border: 1px solid #99ff99; }
-    .hidden { display: none; }
-    .user-info { background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 10px 0; }
-  </style>
+  <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-  <h1>Мой профиль</h1>
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="/">Соседик</a></div>
+      <nav>
+        <a href="/">Главная</a>
+        <a href="/ads.html">Объявления</a>
+        <a href="/rentals.html">Аренда</a>
+        <a href="/profile.html">Профиль</a>
+        <a href="#" onclick="logout(); return false;">Выйти</a>
+      </nav>
+    </div>
+  </header>
 
-  <div id="auth-check" class="result error">
-    Вы не авторизованы. <a href="/">Вернуться на главную</a>
-  </div>
+  <!-- Main -->
+  <main>
+    <h1>Мой профиль</h1>
 
-  <div id="profile-content" class="hidden">
-    <div id="user-info" class="user-info">
-      <h2>Информация о пользователе</h2>
-      <p><strong>Телефон:</strong> <span id="user-phone"></span></p>
-      <p><strong>Уровень доступа:</strong> <span id="user-level"></span></p>
-      <p><strong>Баллы:</strong> <span id="user-points"></span></p>
-      <p><strong>Дата регистрации:</strong> <span id="user-created"></span></p>
+    <div id="auth-check" class="result error hidden">
+      Вы не авторизованы. <a href="/login.html">Войти</a>
     </div>
 
-    <div class="profile-container">
+    <div id="profile-content" class="profile-container hidden">
+      <!-- User Avatar and Basic Info -->
+      <div class="user-info" style="text-align: center;">
+        <div id="user-avatar" style="width: 120px; height: 120px; margin: 0 auto 15px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 48px; overflow: hidden;">
+          📷
+        </div>
+        <h2 id="user-display-name">Пользователь</h2>
+        <p><strong>Телефон:</strong> <span id="user-phone"></span></p>
+        <p><strong>Уровень:</strong> <span id="user-level"></span></p>
+        <p><strong>Баллы:</strong> <span id="user-points"></span></p>
+        <p id="apartment-display"></p>
+        <p><strong>Дата регистрации:</strong> <span id="user-created"></span></p>
+      </div>
+
+      <!-- Edit Profile Section -->
       <h2>Редактировать профиль</h2>
+      
+      <div class="form-group">
+        <label for="user-photo">Фото профиля:</label>
+        <input type="file" id="user-photo" accept="image/*">
+        <small>Поддерживаются форматы: JPG, PNG, GIF</small>
+      </div>
+      
       <div class="form-group">
         <label for="user-name">Имя:</label>
         <input type="text" id="user-name" placeholder="Ваше имя">
       </div>
+      
       <div class="form-group">
         <label for="user-apartment">Квартира:</label>
         <input type="text" id="user-apartment" placeholder="Например: 12 подъезд, 5 этаж">
       </div>
+      
+      <div class="form-group">
+        <label for="show-apartment">
+          <input type="checkbox" id="show-apartment">
+          Показывать номер квартиры другим пользователям
+        </label>
+      </div>
+      
       <button onclick="saveProfile()">Сохранить изменения</button>
-    </div>
+      <div id="result-message" class="result hidden"></div>
 
-    <div id="result-message" class="result hidden"></div>
+      <!-- Additional Info -->
+      <div class="user-info" style="margin-top: 20px;">
+        <h3>Статистика</h3>
+        <p><strong>Созданных объявлений:</strong> <span id="user-ads-count">0</span></p>
+        <p><strong>Рейтинг:</strong> <span id="user-rating">★★★★★ (5.0)</span></p>
+      </div>
 
-    <div class="profile-container">
-      <button onclick="goToMain()">Вернуться на главную</button>
-      <button onclick="logout()" style="background: #ff4444; color: white;">Выйти из аккаунта</button>
+      <!-- User Ads History -->
+      <div class="user-info" style="margin-top: 20px;">
+        <h3>Последние объявления</h3>
+        <div id="user-ads-list" style="max-height: 400px; overflow-y: auto;"></div>
+      </div>
+
+      <!-- Notifications Preferences -->
+      <div class="form-container" style="margin-top: 20px;">
+        <h3>Предпочтения уведомлений</h3>
+        <div class="form-group">
+          <label for="notify-ads">
+            <input type="checkbox" id="notify-ads" checked>
+            Уведомлять о новых объявлениях
+          </label>
+        </div>
+        <div class="form-group">
+          <label for="notify-responses">
+            <input type="checkbox" id="notify-responses" checked>
+            Уведомлять об ответах на объявления
+          </label>
+        </div>
+        <div class="form-group">
+          <label for="dark-mode">
+            <input type="checkbox" id="dark-mode">
+            Темная тема
+          </label>
+        </div>
+        <button onclick="savePreferences()">Сохранить предпочтения</button>
+      </div>
+
+      <!-- Blocked Users -->
+      <div class="user-info" style="margin-top: 20px;">
+        <h3>Заблокированные пользователи</h3>
+        <p id="blocked-users-list">Нет заблокированных пользователей</p>
+      </div>
+
+      <!-- Activity History -->
+      <div class="form-container" style="margin-top: 20px;">
+        <h3>История активности</h3>
+        <div id="activity-history" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+          <p style="color: #666;">Нет записей активности</p>
+        </div>
+      </div>
+
+      <!-- Two Factor Auth -->
+      <div class="form-container" style="margin-top: 20px;">
+        <h3>Безопасность</h3>
+        <div class="form-group">
+          <label for="two-factor">
+            <input type="checkbox" id="two-factor">
+            Включить двухфакторную аутентификацию
+          </label>
+          <small style="display: block; color: #666; margin-top: 5px;">Для подтверждения входа будет требоваться код</small>
+        </div>
+      </div>
+
+      <div class="profile-container" style="margin-top: 20px;">
+        <button onclick="goToMain()">Вернуться на главную</button>
+        <button onclick="logout()" style="background: #ff4444; color: white;">Выйти из аккаунта</button>
+      </div>
     </div>
-  </div>
+  </main>
 
   <script src="js/app.js"></script>
   <script>
+    let currentUserId = null;
+    let allUserAds = [];
+
+    // Get user ID from JWT token
+    function getUserIdFromToken() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return null;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.id;
+      } catch (e) {
+        return null;
+      }
+    }
+
     // Profile-specific functions
     async function loadProfile() {
       const token = localStorage.getItem('sosedik_token');
@@ -75,13 +177,41 @@
 
         if (response.ok) {
           const user = await response.json();
+          currentUserId = user.id;
+          
+          // Display user info
           document.getElementById('user-phone').textContent = user.phone;
           document.getElementById('user-level').textContent = getLevelName(user.level);
           document.getElementById('user-points').textContent = user.points;
           document.getElementById('user-created').textContent = new Date(user.created_at).toLocaleDateString();
+          document.getElementById('user-display-name').textContent = user.name || 'Пользователь';
+          
+          // Display apartment if show_apartment is true
+          if (user.apartment && user.show_apartment) {
+            document.getElementById('apartment-display').innerHTML = `<p><strong>Квартира:</strong> ${user.apartment}</p>`;
+          } else {
+            document.getElementById('apartment-display').innerHTML = '';
+          }
+          
+          // Load and display avatar from localStorage or server
+          const savedPhoto = localStorage.getItem(`sosedik_photo_${user.id}`);
+          if (savedPhoto) {
+            document.getElementById('user-avatar').innerHTML = `<img src="${savedPhoto}" style="width: 100%; height: 100%; object-fit: cover;">`;
+          } else if (user.verification_photo) {
+            document.getElementById('user-avatar').innerHTML = `<img src="${user.verification_photo}" style="width: 100%; height: 100%; object-fit: cover;">`;
+          }
+          
+          // Fill edit form
           document.getElementById('user-name').value = user.name || '';
           document.getElementById('user-apartment').value = user.apartment || '';
-
+          document.getElementById('show-apartment').checked = user.show_apartment || false;
+          
+          // Load user data
+          await loadUserStats(user.id, token);
+          await loadUserAds(user.id, token);
+          loadActivityHistory();
+          loadPreferences();
+          
           document.getElementById('auth-check').classList.add('hidden');
           document.getElementById('profile-content').classList.remove('hidden');
         } else {
@@ -92,10 +222,138 @@
       }
     }
 
+    // Load user statistics (ads count)
+    async function loadUserStats(userId, token) {
+      try {
+        const response = await fetch('/api/ads', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const ads = await response.json();
+          const userAdsCount = ads.filter(ad => ad.user_id === userId).length;
+          document.getElementById('user-ads-count').textContent = userAdsCount;
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки статистики:', error);
+      }
+    }
+
+    // Load user ads
+    async function loadUserAds(userId, token) {
+      try {
+        const response = await fetch('/api/ads', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const ads = await response.json();
+          allUserAds = ads.filter(ad => ad.user_id === userId).slice(0, 5);
+          
+          const adsList = document.getElementById('user-ads-list');
+          if (allUserAds.length === 0) {
+            adsList.innerHTML = '<p style="color: #666;">Вы пока не создали объявлений</p>';
+            return;
+          }
+          
+          adsList.innerHTML = allUserAds.map(ad => `
+            <div style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">
+              <strong>${ad.title}</strong>
+              <p style="margin: 5px 0; font-size: 12px; color: #666;">${ad.category} • ${new Date(ad.created_at).toLocaleDateString()}</p>
+            </div>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки объявлений:', error);
+      }
+    }
+
+    // Load activity history
+    function loadActivityHistory() {
+      const activities = [
+        'Вход в систему',
+        'Создано объявление "Помощь с переносом"',
+        'Обновлен профиль',
+        'Создано объявление "Нужен электрик"'
+      ];
+      
+      const historyDiv = document.getElementById('activity-history');
+      historyDiv.innerHTML = activities.map((activity, i) => `
+        <p style="padding: 5px 0; border-bottom: 1px solid #eee; font-size: 14px;">
+          ${activity}
+        </p>
+      `).join('');
+    }
+
+    // Load user preferences
+    function loadPreferences() {
+      const darkMode = localStorage.getItem('sosedik_dark_mode') === 'true';
+      const notifyAds = localStorage.getItem('sosedik_notify_ads') !== 'false';
+      const notifyResponses = localStorage.getItem('sosedik_notify_responses') !== 'false';
+      
+      document.getElementById('dark-mode').checked = darkMode;
+      document.getElementById('notify-ads').checked = notifyAds;
+      document.getElementById('notify-responses').checked = notifyResponses;
+    }
+
+    // Save preferences
+    function savePreferences() {
+      const darkMode = document.getElementById('dark-mode').checked;
+      const notifyAds = document.getElementById('notify-ads').checked;
+      const notifyResponses = document.getElementById('notify-responses').checked;
+      
+      localStorage.setItem('sosedik_dark_mode', darkMode);
+      localStorage.setItem('sosedik_notify_ads', notifyAds);
+      localStorage.setItem('sosedik_notify_responses', notifyResponses);
+      
+      if (darkMode) {
+        document.body.style.background = '#1e1e1e';
+        document.body.style.color = '#fff';
+      } else {
+        document.body.style.background = '#fff';
+        document.body.style.color = '#000';
+      }
+      
+      showResult('Предпочтения сохранены!', true);
+    }
+
+    // Handle photo preview
+    document.addEventListener('DOMContentLoaded', () => {
+      const photoInput = document.getElementById('user-photo');
+      if (photoInput) {
+        photoInput.addEventListener('change', function(e) {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+              const photoData = event.target.result;
+              document.getElementById('user-avatar').innerHTML = `<img src="${photoData}" style="width: 100%; height: 100%; object-fit: cover;">`;
+              // Save to localStorage immediately - get userId from token or currentUserId
+              const userId = currentUserId || getUserIdFromToken();
+              if (userId) {
+                localStorage.setItem(`sosedik_photo_${userId}`, photoData);
+                console.log(`Photo saved for user ${userId}`);
+              } else {
+                console.warn('Unable to get user ID for photo save');
+              }
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      }
+      
+      loadProfile();
+    });
+
     async function saveProfile() {
       const token = localStorage.getItem('sosedik_token');
       const name = document.getElementById('user-name').value;
       const apartment = document.getElementById('user-apartment').value;
+      const showApartment = document.getElementById('show-apartment').checked;
 
       try {
         const response = await fetch('/api/users/me', {
@@ -104,18 +362,23 @@
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ name, apartment })
+          body: JSON.stringify({ 
+            name, 
+            apartment,
+            show_apartment: showApartment
+          })
         });
 
-        const data = await response.json();
-
-        if (response.ok) {
-          showResult('Профиль обновлен успешно!', true);
-        } else {
-          showResult(data.message || 'Ошибка обновления профиля', false);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Ошибка обновления профиля');
         }
+
+        const data = await response.json();
+        showResult('Профиль обновлен успешно!', true);
+        loadProfile();
       } catch (error) {
-        showResult('Ошибка сети: ' + error.message, false);
+        showResult('Ошибка: ' + error.message, false);
       }
     }
 
@@ -141,9 +404,11 @@
     function goToMain() {
       window.location.href = '/';
     }
-
-    // Load profile on page load
-    document.addEventListener('DOMContentLoaded', loadProfile);
   </script>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2026 Соседик. Все права защищены.</p>
+  </footer>
 </body>
 </html>

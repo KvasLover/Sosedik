@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Объявления - Соседик</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="/">Соседик</a></div>
+      <nav>
+        <a href="/">Главная</a>
+        <a href="/ads.html">Объявления</a>
+        <a href="/rentals.html">Аренда</a>
+        <a href="/profile.html">Профиль</a>
+        <a href="#" onclick="logout(); return false;">Выйти</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <h1>Объявления</h1>
+
+    <div id="auth-check" class="hidden">
+      <p>Вы не авторизованы. <a href="/login.html">Войти</a></p>
+    </div>
+
+    <div id="ads-content">
+      <!-- Button to open create ad form -->
+      <div style="margin-bottom: 20px;">
+        <button onclick="toggleCreateForm()" style="background: #27ae60;">+ Создать объявление</button>
+      </div>
+
+      <!-- Form to create new ad (hidden by default) -->
+      <div id="create-form" class="form-container hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2>Создать объявление</h2>
+          <button onclick="toggleCreateForm()" style="background: #95a5a6; padding: 5px 10px;">✕</button>
+        </div>
+        <div class="form-group">
+          <label for="ad-category">Категория:</label>
+          <select id="ad-category" required>
+            <option value="">Выберите категорию</option>
+            <option value="продажа">Продажа</option>
+            <option value="покупка">Покупка</option>
+            <option value="услуга">Услуга</option>
+            <option value="help">Помощь</option>
+            <option value="other">Прочее</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="ad-title">Название:</label>
+          <input type="text" id="ad-title" placeholder="Название объявления" required>
+        </div>
+        <div class="form-group">
+          <label for="ad-description">Описание:</label>
+          <textarea id="ad-description" placeholder="Описание объявления" rows="4" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="ad-price">Цена (опционально):</label>
+          <input type="number" id="ad-price" placeholder="Цена в рублях">
+        </div>
+        <div class="form-group">
+          <label for="ad-contact">Контактная информация:</label>
+          <input type="text" id="ad-contact" placeholder="Телефон или email">
+        </div>
+        <button onclick="createAd()">Создать</button>
+        <div id="create-message" class="result hidden"></div>
+      </div>
+
+      <!-- Search and filters -->
+      <div class="form-container" style="background: #f0f0f0;">
+        <h2>Поиск и фильтры</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div class="form-group">
+            <label for="search-query">Поиск:</label>
+            <input type="text" id="search-query" placeholder="Введите поисковый запрос">
+          </div>
+          <div class="form-group">
+            <label for="filter-category">Категория:</label>
+            <select id="filter-category">
+              <option value="">Все категории</option>
+              <option value="продажа">Продажа</option>
+              <option value="покупка">Покупка</option>
+              <option value="услуга">Услуга</option>
+              <option value="help">Помощь</option>
+              <option value="other">Прочее</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label for="filter-my-ads">
+            <input type="checkbox" id="filter-my-ads" onchange="applyFilters()">
+            Только мои объявления
+          </label>
+        </div>
+        <button onclick="applyFilters()">Применить фильтры</button>
+      </div>
+
+      <!-- Ads List -->
+      <div class="form-container">
+        <h2>Объявления</h2>
+        <div class="ads-container" id="ads-list">
+          <!-- Ads будут загружены сюда -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2026 Соседик. Все права защищены.</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    let allAds = []; // Store all ads for filtering
+    let currentUserId = null; // Store current user ID
+
+    // Проверить авторизацию и загрузить объявления при загрузке страницы
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) {
+        document.getElementById('auth-check').classList.remove('hidden');
+        document.getElementById('ads-content').classList.add('hidden');
+      } else {
+        // Get current user ID and load ads
+        getCurrentUserId().then(() => loadAds());
+      }
+    });
+
+    // Get current user ID
+    async function getCurrentUserId() {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch('/api/users/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const user = await response.json();
+          currentUserId = user.id;
+        }
+      } catch (error) {
+        console.error('Ошибка получения профиля:', error.message);
+      }
+    }
+
+    // Открыть/закрыть форму создания объявления
+    function toggleCreateForm() {
+      const form = document.getElementById('create-form');
+      form.classList.toggle('hidden');
+    }
+
+    // Загрузить объявления
+    async function loadAds() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/ads', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          allAds = await response.json();
+          displayAds(allAds);
+        }
+      } catch (error) {
+        alert('Ошибка загрузки объявлений: ' + error.message);
+      }
+    }
+
+    // Display ads with optional filtering
+    function displayAds(ads) {
+      const adsList = document.getElementById('ads-list');
+      adsList.innerHTML = '';
+
+      if (ads.length === 0) {
+        adsList.innerHTML = '<p>Нет объявлений</p>';
+        return;
+      }
+
+      ads.forEach(ad => {
+        const adDiv = document.createElement('div');
+        adDiv.className = 'ad-item';
+        adDiv.innerHTML = `
+          <h3>${ad.title}</h3>
+          <p><strong>Категория:</strong> ${ad.category}</p>
+          <p>${ad.description}</p>
+          ${ad.price ? `<p><strong>Цена:</strong> ${ad.price} руб.</p>` : ''}
+          ${ad.contact ? `<p><strong>Контакт:</strong> ${ad.contact}</p>` : ''}
+          <p><small>Создано: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
+        `;
+        adsList.appendChild(adDiv);
+      });
+    }
+
+    // Применить фильтры
+    function applyFilters() {
+      const searchQuery = document.getElementById('search-query').value.toLowerCase();
+      const filterType = document.getElementById('filter-type').value;
+      const filterCategory = document.getElementById('filter-category').value;
+      const filterMyAds = document.getElementById('filter-my-ads').checked;
+
+      let filteredAds = allAds;
+
+      // Filter by category
+      if (filterCategory) {
+        filteredAds = filteredAds.filter(ad => ad.category === filterCategory);
+      }
+
+      // Filter by current user only
+      if (filterMyAds) {
+        filteredAds = filteredAds.filter(ad => ad.user_id === currentUserId);
+      }
+
+      // Filter by search query
+      if (searchQuery) {
+        filteredAds = filteredAds.filter(ad => 
+          ad.title.toLowerCase().includes(searchQuery) || 
+          ad.description.toLowerCase().includes(searchQuery)
+        );
+      }
+
+      displayAds(filteredAds);
+    }
+
+    // Создать объявление
+    async function createAd() {
+      const token = localStorage.getItem('sosedik_token');
+      const category = document.getElementById('ad-category').value;
+      const title = document.getElementById('ad-title').value;
+      const description = document.getElementById('ad-description').value;
+      const price = document.getElementById('ad-price').value;
+      const contact = document.getElementById('ad-contact').value;
+
+      if (!category || !title || !description) {
+        alert('Заполните все обязательные поля');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/ads', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            category, 
+            title, 
+            description,
+            price: price || null,
+            contact: contact || null
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showCreateMessage('Объявление создано успешно!', true);
+          document.getElementById('ad-category').value = '';
+          document.getElementById('ad-title').value = '';
+          document.getElementById('ad-description').value = '';
+          document.getElementById('ad-price').value = '';
+          document.getElementById('ad-contact').value = '';
+          toggleCreateForm(); // Закрыть форму
+          loadAds();
+        } else {
+          showCreateMessage(data.message || 'Ошибка создания объявления', false);
+        }
+      } catch (error) {
+        showCreateMessage('Ошибка: ' + error.message, false);
+      }
+    }
+
+    function showCreateMessage(message, isSuccess) {
+      const messageDiv = document.getElementById('create-message');
+      messageDiv.textContent = message;
+      messageDiv.className = 'result ' + (isSuccess ? 'success' : 'error');
+      messageDiv.classList.remove('hidden');
+      setTimeout(() => messageDiv.classList.add('hidden'), 5000);
+    }
+
+  </script>
+</body>
+</html>

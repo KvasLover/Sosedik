@@ -30,20 +30,19 @@ router.get('/:id', async (req, res) => {
 // Create ad (level 1+)
 router.post('/', verifyToken, checkLevel(1), async (req, res) => {
   try {
-    const { type, category, title, description, urgency, location } = req.body;
+    const { category, title, description, price, contact } = req.body;
 
-    if (!type || !category || !title || !description) {
-      return res.status(400).json({ message: 'Type, category, title, description required' });
+    if (!category || !title || !description) {
+      return res.status(400).json({ message: 'Category, title, description required' });
     }
 
     const newAd = await Ad.createAd(
       req.user.id,
-      type,
       category,
       title,
       description,
-      urgency || false,
-      location
+      price,
+      contact
     );
 
     res.status(201).json({ message: 'Ad created', ad: newAd });

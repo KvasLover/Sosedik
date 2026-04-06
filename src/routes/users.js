@@ -19,8 +19,8 @@ router.get('/me', verifyToken, async (req, res) => {
 // Update user profile
 router.put('/me', verifyToken, async (req, res) => {
   try {
-    const { name, apartment } = req.body;
-    const updatedUser = await User.updateUserProfile(req.user.id, name, apartment);
+    const { name, apartment, show_apartment } = req.body;
+    const updatedUser = await User.updateUserProfile(req.user.id, name, apartment, show_apartment || false);
     res.json({ message: 'Profile updated', user: updatedUser });
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Аренда - Соседик</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="/">Соседик</a></div>
+      <nav>
+        <a href="/">Главная</a>
+        <a href="/ads.html">Объявления</a>
+        <a href="/rentals.html">Аренда</a>
+        <a href="/profile.html">Профиль</a>
+        <a href="#" onclick="logout(); return false;">Выйти</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <h1>Аренда вещей</h1>
+
+    <div id="auth-check" class="hidden">
+      <p>Вы не авторизованы. <a href="/login.html">Войти</a></p>
+    </div>
+
+    <div id="rentals-content" class="coming-soon">
+      <h2>Раздел находится в разработке</h2>
+      <p>Здесь скоро появится возможность сдавать вещи в аренду соседям</p>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2026 Соседик. Все права защищены.</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    // Проверить авторизацию при загрузке
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) {
+        document.getElementById('auth-check').classList.remove('hidden');
+        document.getElementById('rentals-content').classList.add('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
