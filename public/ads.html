@@ -121,6 +121,18 @@
     let allAds = []; // Store all ads for filtering
     let currentUserId = null; // Store current user ID
 
+    // Get user ID from JWT token
+    function getUserIdFromToken() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return null;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.id;
+      } catch (e) {
+        return null;
+      }
+    }
+
     // Проверить авторизацию и загрузить объявления при загрузке страницы
     document.addEventListener('DOMContentLoaded', () => {
       const token = localStorage.getItem('sosedik_token');
@@ -206,7 +218,6 @@
     // Применить фильтры
     function applyFilters() {
       const searchQuery = document.getElementById('search-query').value.toLowerCase();
-      const filterType = document.getElementById('filter-type').value;
       const filterCategory = document.getElementById('filter-category').value;
       const filterMyAds = document.getElementById('filter-my-ads').checked;
 
@@ -219,7 +230,13 @@
 
       // Filter by current user only
       if (filterMyAds) {
-        filteredAds = filteredAds.filter(ad => ad.user_id === currentUserId);
+        const userId = currentUserId || getUserIdFromToken();
+        if (userId) {
+          filteredAds = filteredAds.filter(ad => ad.user_id === userId);
+        } else {
+          console.warn('Unable to get user ID for filtering');
+          // If no user ID, don't filter (show all ads)
+        }
       }
 
       // Filter by search query
