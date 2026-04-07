@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Детали объявления - Соседик</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="/">Соседик</a></div>
+      <nav>
+        <a href="/">Главная</a>
+        <a href="/ads.html">Объявления</a>
+        <a href="/rentals.html">Аренда</a>
+        <a href="/profile.html">Профиль</a>
+        <a href="#" onclick="logout(); return false;">Выйти</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <div id="ad-details">
+      <button onclick="history.back()" style="margin-bottom: 20px;">← Назад</button>
+      <div id="ad-content">
+        <h1 id="ad-title">Загрузка...</h1>
+        <p><strong>Категория:</strong> <span id="ad-category"></span></p>
+        <p><strong>Тип:</strong> <span id="ad-type"></span></p>
+        <p id="ad-description"></p>
+        <p id="ad-price" style="display: none;"><strong>Цена:</strong> <span id="price-value"></span> руб.</p>
+        <p id="ad-urgency" style="display: none;"><strong>Срочность:</strong> <span id="urgency-value"></span></p>
+        <p id="ad-location" style="display: none;"><strong>Местоположение:</strong> <span id="location-value"></span></p>
+        <p><strong>Автор:</strong> <span id="ad-author"></span></p>
+        <p><small>Создано: <span id="ad-created"></span></small></p>
+
+        <div id="ad-actions" style="margin-top: 20px;">
+        </div>
+      </div>
+    </div>
+
+    <div id="auth-check" class="hidden">
+      <p>Вы не авторизованы. <a href="/login.html">Войти</a></p>
+    </div>
+  </main>
+
+  <script>
+    // Получить ID объявления из URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const adId = urlParams.get('id');
+
+    if (!adId) {
+      document.getElementById('ad-content').innerHTML = '<p>Объявление не найдено</p>';
+    }
+
+    // Получить ID пользователя из токена
+    function getUserIdFromToken() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return null;
+
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.id;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Загрузить детали объявления
+    async function loadAdDetails() {
+      try {
+        const response = await fetch(`/api/ads/${adId}`);
+        const ad = await response.json();
+
+        if (response.ok) {
+          const currentUserId = getUserIdFromToken();
+          const isOwner = currentUserId && parseInt(ad.user_id) === parseInt(currentUserId);
+
+          console.log('Current user ID:', currentUserId);
+          console.log('Ad user ID:', ad.user_id);
+          console.log('Is owner:', isOwner);
+
+          document.getElementById('ad-title').textContent = ad.title + (isOwner ? ' (Ваше объявление)' : '');
+          document.getElementById('ad-category').textContent = ad.category;
+          document.getElementById('ad-type').textContent = ad.type === 'offer' ? 'Предложение' : 'Запрос';
+          document.getElementById('ad-description').textContent = ad.description;
+
+          if (ad.price) {
+            document.getElementById('ad-price').style.display = 'block';
+            document.getElementById('price-value').textContent = ad.price;
+          }
+
+          if (ad.urgency) {
+            document.getElementById('ad-urgency').style.display = 'block';
+            document.getElementById('urgency-value').textContent = ad.urgency ? 'Срочно' : 'Не срочно';
+          }
+
+          if (ad.location) {
+            document.getElementById('ad-location').style.display = 'block';
+            document.getElementById('location-value').textContent = ad.location;
+          }
+
+          document.getElementById('ad-author').textContent = `Пользователь ${ad.user_id}`;
+          document.getElementById('ad-created').textContent = new Date(ad.created_at).toLocaleString();
+
+          // Настроить кнопки действий
+          const actionsDiv = document.getElementById('ad-actions');
+          actionsDiv.innerHTML = ''; // Очистить существующие кнопки
+
+          // Кнопки для чужих объявлений
+          if (!isOwner) {
+            // Кнопка "Принять объявление"
+            const acceptBtn = document.createElement('button');
+            acceptBtn.textContent = 'Принять объявление';
+            acceptBtn.style.background = '#27ae60';
+            acceptBtn.style.color = 'white';
+            acceptBtn.style.border = 'none';
+            acceptBtn.style.padding = '10px 15px';
+            acceptBtn.style.marginRight = '10px';
+            acceptBtn.style.cursor = 'pointer';
+            acceptBtn.onclick = acceptAd;
+            actionsDiv.appendChild(acceptBtn);
+
+            // Кнопка "Связаться с автором"
+            const contactBtn = document.createElement('button');
+            contactBtn.textContent = 'Связаться с автором';
+            contactBtn.style.background = '#3498db';
+            contactBtn.style.color = 'white';
+            contactBtn.style.border = 'none';
+            contactBtn.style.padding = '10px 15px';
+            contactBtn.style.cursor = 'pointer';
+            contactBtn.onclick = contactAuthor;
+            actionsDiv.appendChild(contactBtn);
+          }
+
+          // Кнопка "Удалить объявление" только если владелец
+          if (isOwner) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Удалить объявление';
+            deleteBtn.style.background = '#e74c3c';
+            deleteBtn.style.color = 'white';
+            deleteBtn.style.border = 'none';
+            deleteBtn.style.padding = '10px 15px';
+            deleteBtn.style.cursor = 'pointer';
+            deleteBtn.onclick = () => deleteAd(adId);
+            actionsDiv.appendChild(deleteBtn);
+          }
+        } else {
+          document.getElementById('ad-content').innerHTML = '<p>Объявление не найдено</p>';
+        }
+      } catch (error) {
+        document.getElementById('ad-content').innerHTML = '<p>Ошибка загрузки: ' + error.message + '</p>';
+      }
+    }
+
+    // Принять объявление
+    function acceptAd() {
+      alert('Функция "Принять объявление" пока не реализована');
+    }
+
+    // Связаться с автором
+    function contactAuthor() {
+      alert('Функция "Связаться с автором" пока не реализована');
+    }
+
+    // Удалить объявление
+    async function deleteAd(adId) {
+      if (!confirm('Вы уверены, что хотите удалить это объявление?')) {
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/${adId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          alert('Объявление удалено');
+          window.location.href = '/ads.html';
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось удалить объявление'));
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Выход
+    function logout() {
+      localStorage.removeItem('sosedik_token');
+      window.location.href = '/login.html';
+    }
+
+    // Проверить авторизацию
+    const token = localStorage.getItem('sosedik_token');
+    if (!token) {
+      document.getElementById('auth-check').classList.remove('hidden');
+      document.getElementById('ad-details').classList.add('hidden');
+    } else {
+      loadAdDetails();
+    }
+  </script>
+</body>
+</html>

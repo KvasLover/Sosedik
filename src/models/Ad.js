@@ -74,10 +74,10 @@ const archiveOldAds = async (daysOld = 60) => {
   }
 };
 
-// Delete ad (archive)
+// Delete ad
 const deleteAd = async (id) => {
   try {
-    const result = await pool.query('UPDATE ads SET active = false WHERE id = $1 RETURNING *', [id]);
+    const result = await pool.query('DELETE FROM ads WHERE id = $1 RETURNING *', [id]);
     return result.rows[0];
   } catch (err) {
     throw err;

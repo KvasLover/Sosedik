@@ -271,6 +271,7 @@
             <div style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">
               <strong>${ad.title}</strong>
               <p style="margin: 5px 0; font-size: 12px; color: #666;">${ad.category} • ${new Date(ad.created_at).toLocaleDateString()}</p>
+              <button onclick="deleteUserAd(${ad.id})" style="background: #e74c3c; color: white; border: none; padding: 3px 8px; font-size: 12px; margin-top: 5px;">Удалить</button>
             </div>
           `).join('');
         }
@@ -486,6 +487,34 @@
       } catch (error) {
         console.error('Network error:', error);
         showResult('Ошибка сети: ' + error.message, false);
+      }
+    }
+
+    // Удалить объявление пользователя
+    async function deleteUserAd(adId) {
+      if (!confirm('Вы уверены, что хотите удалить это объявление?')) {
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/${adId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          alert('Объявление удалено');
+          // Перезагрузить профиль для обновления списка
+          loadProfile();
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось удалить объявление'));
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
       }
     }
 

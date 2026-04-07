@@ -200,16 +200,30 @@
         return;
       }
 
+      const currentUserId = getUserIdFromToken();
+
       ads.forEach(ad => {
         const adDiv = document.createElement('div');
         adDiv.className = 'ad-item';
+        adDiv.style.cursor = 'pointer';
+        adDiv.onclick = () => window.location.href = `/ad-details.html?id=${ad.id}`;
+
+        let deleteButton = '';
+        if (currentUserId && parseInt(ad.user_id) === parseInt(currentUserId)) {
+          deleteButton = `<button onclick="event.stopPropagation(); deleteAd(${ad.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; margin-top: 10px;">Удалить</button>`;
+        }
+
+        const isOwner = currentUserId && ad.user_id === currentUserId;
+        const titleWithBadge = isOwner ? `${ad.title} <span style="color: #27ae60; font-size: 12px;">(Ваше)</span>` : ad.title;
+
         adDiv.innerHTML = `
-          <h3>${ad.title}</h3>
+          <h3>${titleWithBadge}</h3>
           <p><strong>Категория:</strong> ${ad.category}</p>
           <p>${ad.description}</p>
-          ${ad.price ? `<p><strong>Цена:</strong> ${ad.price} руб.</p>` : ''}
+          ${ad.price ? `<p><strong>Цена:</strong> ${ad.price} руб.</p>` : ''}  
           ${ad.contact ? `<p><strong>Контакт:</strong> ${ad.contact}</p>` : ''}
           <p><small>Создано: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
+          ${deleteButton}
         `;
         adsList.appendChild(adDiv);
       });
@@ -305,6 +319,33 @@
       messageDiv.className = 'result ' + (isSuccess ? 'success' : 'error');
       messageDiv.classList.remove('hidden');
       setTimeout(() => messageDiv.classList.add('hidden'), 5000);
+    }
+
+    // Удалить объявление
+    async function deleteAd(adId) {
+      if (!confirm('Вы уверены, что хотите удалить это объявление?')) {
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/${adId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          alert('Объявление удалено');
+          loadAds();
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось удалить объявление'));
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
     }
 
   </script>
