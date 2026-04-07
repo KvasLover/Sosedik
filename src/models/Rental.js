@@ -53,9 +53,20 @@ const getRentalsByOwner = async (ownerId) => {
   }
 };
 
+// Delete rental
+const deleteRental = async (id, ownerId) => {
+  try {
+    const result = await pool.query('DELETE FROM rentals WHERE id = $1 AND owner_id = $2 RETURNING *', [id, ownerId]);
+    return result.rows[0];
+  } catch (err) {
+    throw err;
+  }
+};
+
 module.exports = {
   getRentals,
   getRentalById,
   createRental,
-  getRentalsByOwner
+  getRentalsByOwner,
+  deleteRental
 };

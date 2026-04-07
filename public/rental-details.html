@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Детали аренды - Соседик</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="/">Соседик</a></div>
+      <nav>
+        <a href="/">Главная</a>
+        <a href="/ads.html">Объявления</a>
+        <a href="/rentals.html">Аренда</a>
+        <a href="/chats.html">Чаты</a>
+        <a href="/profile.html">Профиль</a>
+        <a href="#" onclick="logout(); return false;">Выйти</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <div id="rental-details">
+      <button onclick="history.back()" style="margin-bottom: 20px;">← Назад</button>
+      <div id="rental-content">
+        <h1 id="rental-title">Загрузка...</h1>
+        <p><strong>Категория:</strong> <span id="rental-category"></span></p>
+        <p><strong>Ценность вещи:</strong> <span id="rental-value"></span></p>
+        <p id="rental-terms"></p>
+        <p><strong>Владелец:</strong> <span id="rental-owner"></span></p>
+        <p><small>Создано: <span id="rental-created"></span></small></p>
+
+        <div id="rental-photos" style="margin: 20px 0;">
+          <!-- Photos will be displayed here -->
+        </div>
+
+        <div id="rental-actions" style="margin-top: 20px;">
+        </div>
+      </div>
+    </div>
+
+    <div id="auth-check" class="hidden">
+      <p>Вы не авторизованы. <a href="/login.html">Войти</a></p>
+    </div>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    let currentRental = null;
+    let currentUserId = null;
+
+    // Get user ID from JWT token
+    function getUserIdFromToken() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return null;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.id;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Load rental details
+    async function loadRentalDetails() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const rentalId = urlParams.get('id');
+
+      if (!rentalId) {
+        document.getElementById('rental-content').innerHTML = '<p>Ошибка: ID аренды не указан</p>';
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) {
+        document.getElementById('auth-check').classList.remove('hidden');
+        document.getElementById('rental-details').classList.add('hidden');
+        return;
+      }
+
+      try {
+        // Get user info
+        const userResponse = await fetch('/api/users/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (userResponse.ok) {
+          const user = await userResponse.json();
+          currentUserId = user.id;
+        }
+
+        // Get rental details
+        const rentalResponse = await fetch(`/api/rentals/${rentalId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (rentalResponse.ok) {
+          currentRental = await rentalResponse.json();
+          displayRentalDetails(currentRental);
+        } else {
+          document.getElementById('rental-content').innerHTML = '<p>Аренда не найдена</p>';
+        }
+      } catch (error) {
+        document.getElementById('rental-content').innerHTML = '<p>Ошибка загрузки: ' + error.message + '</p>';
+      }
+    }
+
+    // Display rental details
+    function displayRentalDetails(rental) {
+      document.getElementById('rental-title').textContent = rental.item_name;
+      document.getElementById('rental-category').textContent = rental.category;
+      document.getElementById('rental-value').textContent = getValueLabel(rental.value_category);
+      document.getElementById('rental-owner').textContent = 'Загрузка...';
+      document.getElementById('rental-created').textContent = new Date(rental.created_at).toLocaleDateString();
+
+      if (rental.rental_terms) {
+        document.getElementById('rental-terms').innerHTML = '<strong>Условия аренды:</strong><br>' + rental.rental_terms;
+      } else {
+        document.getElementById('rental-terms').innerHTML = '<strong>Условия аренды:</strong> Не указаны';
+      }
+
+      // Display photos
+      const photosDiv = document.getElementById('rental-photos');
+      if (rental.photos && rental.photos.length > 0) {
+        photosDiv.innerHTML = rental.photos.map(photo => 
+          `<img src="${photo}" style="max-width: 300px; margin: 10px; border-radius: 8px;">`
+        ).join('');
+      } else {
+        photosDiv.innerHTML = '<p>Фото отсутствуют</p>';
+      }
+
+      // Load owner info
+      loadOwnerInfo(rental.owner_id);
+
+      // Display actions
+      displayRentalActions(rental);
+    }
+
+    // Load owner information
+    async function loadOwnerInfo(ownerId) {
+      try {
+        const token = localStorage.getItem('sosedik_token');
+        const response = await fetch(`/api/users/${ownerId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const owner = await response.json();
+          document.getElementById('rental-owner').textContent = owner.name || 'Соседик без имени';
+        }
+      } catch (error) {
+        document.getElementById('rental-owner').textContent = 'Ошибка загрузки';
+      }
+    }
+
+    // Display rental actions
+    function displayRentalActions(rental) {
+      const actionsDiv = document.getElementById('rental-actions');
+      actionsDiv.innerHTML = '';
+
+      if (currentUserId === rental.owner_id) {
+        // Owner actions
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Удалить объявление об аренде';
+        deleteBtn.style.cssText = 'background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;';
+        deleteBtn.onclick = () => deleteRental(rental.id);
+        actionsDiv.appendChild(deleteBtn);
+      } else {
+        // Other user actions
+        const requestBtn = document.createElement('button');
+        requestBtn.textContent = 'Запросить аренду';
+        requestBtn.style.cssText = 'background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px;';
+        requestBtn.onclick = () => requestRental(rental.id);
+        actionsDiv.appendChild(requestBtn);
+
+        const contactBtn = document.createElement('button');
+        contactBtn.textContent = 'Связаться с автором';
+        contactBtn.style.cssText = 'background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;';
+        contactBtn.onclick = () => contactOwner(rental.owner_id);
+        actionsDiv.appendChild(contactBtn);
+      }
+    }
+
+    // Delete rental
+    async function deleteRental(rentalId) {
+      if (!confirm('Вы уверены, что хотите удалить это объявление об аренде?')) {
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/rentals/${rentalId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          alert('Объявление удалено');
+          window.location.href = '/rentals.html';
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + data.message);
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Request rental
+    function requestRental(rentalId) {
+      alert('Функция запроса аренды будет реализована позже');
+    }
+
+    // Contact owner
+    function contactOwner(ownerId) {
+      window.location.href = `/chat.html?with=${ownerId}`;
+    }
+
+    // Get value label
+    function getValueLabel(value) {
+      const labels = {
+        'low': 'Низкая (до 1000 руб)',
+        'medium': 'Средняя (1000-10000 руб)',
+        'high': 'Высокая (более 10000 руб)'
+      };
+      return labels[value] || value;
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', loadRentalDetails);
+  </script>
+</body>
+</html>

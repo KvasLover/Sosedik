@@ -61,4 +61,27 @@ router.get('/my', verifyToken, async (req, res) => {
   }
 });
 
+// Delete rental (owner only)
+router.delete('/:id', verifyToken, async (req, res) => {
+  try {
+    const rental = await Rental.getRentalById(req.params.id);
+    if (!rental) {
+      return res.status(404).json({ message: 'Rental not found' });
+    }
+
+    if (rental.owner_id !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to delete this rental' });
+    }
+
+    const deletedRental = await Rental.deleteRental(req.params.id, req.user.id);
+    if (deletedRental) {
+      res.json({ message: 'Rental deleted successfully' });
+    } else {
+      res.status(404).json({ message: 'Rental not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
