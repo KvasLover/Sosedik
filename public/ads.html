@@ -93,13 +93,15 @@
             </select>
           </div>
         </div>
-        <div style="margin-bottom: 1rem;">
-          <label for="filter-my-ads">
-            <input type="checkbox" id="filter-my-ads" onchange="applyFilters()">
-            Только мои объявления
-          </label>
-        </div>
         <button onclick="applyFilters()">Применить фильтры</button>
+      </div>
+
+      <!-- My ads filter -->
+      <div style="margin-bottom: 20px;">
+        <label for="filter-my-ads">
+          <input type="checkbox" id="filter-my-ads" onchange="applyFilters()">
+          Только мои объявления
+        </label>
       </div>
 
       <!-- Ads List -->
