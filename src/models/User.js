@@ -13,7 +13,7 @@ const getUsers = async () => {
 // Get user by ID
 const getUserById = async (id) => {
   try {
-    const result = await pool.query('SELECT id, phone, level, name, apartment, show_apartment, points, created_at FROM users WHERE id = $1', [id]);
+    const result = await pool.query('SELECT id, phone, level, name, apartment, show_apartment, verification_photo, points, created_at FROM users WHERE id = $1', [id]);
     return result.rows[0];
   } catch (err) {
     throw err;

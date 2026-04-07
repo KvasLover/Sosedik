@@ -18,7 +18,7 @@ router.get('/', verifyToken, async (req, res) => {
     }
 
     const conversation = await Message.getConversation(req.user.id, partnerId);
-    res.json({ partner: { id: user.id, name: user.name }, messages: conversation });
+    res.json({ partner: { id: user.id, name: user.name, photo: user.verification_photo }, messages: conversation });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -172,7 +172,16 @@
         const data = await response.json();
         partnerName = data.partner?.name?.trim() || 'Соседик без имени';
         document.getElementById('chat-partner').textContent = partnerName;
-        document.getElementById('chat-avatar').textContent = partnerName.charAt(0).toUpperCase();
+
+        const savedPhoto = localStorage.getItem(`sosedik_photo_${partnerId}`);
+        const avatarEl = document.getElementById('chat-avatar');
+        if (savedPhoto) {
+          avatarEl.innerHTML = `<img src="${savedPhoto}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        } else if (data.partner?.photo) {
+          avatarEl.innerHTML = `<img src="${data.partner.photo}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        } else {
+          avatarEl.textContent = partnerName.charAt(0).toUpperCase();
+        }
 
         renderMessages(data.messages);
       } catch (error) {
