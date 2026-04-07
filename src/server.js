@@ -5,6 +5,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const adsRoutes = require('./routes/ads');
 const usersRoutes = require('./routes/users');
+const messagesRoutes = require('./routes/messages');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -17,6 +18,7 @@ app.use(express.static('public'));
 app.use('/api/auth', authRoutes);
 app.use('/api/ads', adsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/messages', messagesRoutes);
 
 // Test database connection
 app.get('/api/health', async (req, res) => {

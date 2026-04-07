@@ -48,6 +48,18 @@ CREATE TABLE rental_requests (
   requester_id INTEGER REFERENCES users(id),
   status VARCHAR(20) DEFAULT 'pending', -- pending, approved, completed
   checklist_before TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Chat messages
+CREATE TABLE chat_messages (
+  id SERIAL PRIMARY KEY,
+  sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  receiver_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
   checklist_after TEXT,
   contract_url TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

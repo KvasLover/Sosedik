@@ -55,6 +55,8 @@
       document.getElementById('ad-content').innerHTML = '<p>Объявление не найдено</p>';
     }
 
+    let currentAdOwnerId = null;
+
     // Получить ID пользователя из токена
     function getUserIdFromToken() {
       const token = localStorage.getItem('sosedik_token');
@@ -104,6 +106,7 @@
 
           document.getElementById('ad-author').textContent = `Пользователь ${ad.user_id}`;
           document.getElementById('ad-created').textContent = new Date(ad.created_at).toLocaleString();
+          currentAdOwnerId = ad.user_id;
 
           // Настроить кнопки действий
           const actionsDiv = document.getElementById('ad-actions');
@@ -162,7 +165,11 @@
 
     // Связаться с автором
     function contactAuthor() {
-      alert('Функция "Связаться с автором" пока не реализована');
+      if (!currentAdOwnerId) {
+        alert('Ошибка: пользователь не найден');
+        return;
+      }
+      window.location.href = `/chat.html?with=${currentAdOwnerId}`;
     }
 
     // Удалить объявление
