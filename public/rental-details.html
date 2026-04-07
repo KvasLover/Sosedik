@@ -120,20 +120,24 @@
       document.getElementById('rental-owner').textContent = 'Загрузка...';
       document.getElementById('rental-created').textContent = new Date(rental.created_at).toLocaleDateString();
 
+      // Add "Your rental" label if owner
+      const isOwner = currentUserId === rental.owner_id;
+      const titleElement = document.getElementById('rental-title');
+      if (isOwner) {
+        titleElement.innerHTML += ' <span style="background: #3498db; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">Ваше объявление</span>';
+      }
+
       if (rental.rental_terms) {
         document.getElementById('rental-terms').innerHTML = '<strong>Условия аренды:</strong><br>' + rental.rental_terms;
       } else {
         document.getElementById('rental-terms').innerHTML = '<strong>Условия аренды:</strong> Не указаны';
       }
 
-      // Display photos
+      // Display photos from localStorage
       const photosDiv = document.getElementById('rental-photos');
-      if (rental.photos && rental.photos.length > 0) {
-        photosDiv.innerHTML = rental.photos.map(photo => 
-          `<img src="${photo}" style="max-width: 300px; margin: 10px; border-radius: 8px;">`
-        ).join('');
-      } else {
-        photosDiv.innerHTML = '<p>Фото отсутствуют</p>';
+      const storedPhoto = localStorage.getItem(`sosedik_rental_photo_${rental.id}`);
+      if (storedPhoto) {
+        photosDiv.innerHTML = `<img src="${storedPhoto}" style="max-width: 400px; border-radius: 8px;">`;
       }
 
       // Load owner info
