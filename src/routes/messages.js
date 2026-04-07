@@ -24,6 +24,16 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
+// Get list of conversations for current user
+router.get('/conversations', verifyToken, async (req, res) => {
+  try {
+    const conversations = await Message.getConversations(req.user.id);
+    res.json({ conversations });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Send message to partner
 router.post('/', verifyToken, async (req, res) => {
   try {

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Чаты - Соседик</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="/">Соседик</a></div>
+      <nav>
+        <a href="/">Главная</a>
+        <a href="/ads.html">Объявления</a>
+        <a href="/rentals.html">Аренда</a>
+        <a href="/chats.html">Чаты</a>
+        <a href="/profile.html">Профиль</a>
+        <a href="#" onclick="logout(); return false;">Выйти</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <h1>Мои чаты</h1>
+
+    <div id="auth-check" class="hidden">
+      <p>Вы не авторизованы. <a href="/login.html">Войти</a></p>
+    </div>
+
+    <div id="chats-content">
+      <div id="chats-list">
+        <!-- Чаты будут загружены сюда -->
+      </div>
+    </div>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    let currentUserId = null;
+
+    // Get user ID from JWT token
+    function getUserIdFromToken() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return null;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.id;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Load chats
+    async function loadChats() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) {
+        document.getElementById('auth-check').classList.remove('hidden');
+        document.getElementById('chats-content').classList.add('hidden');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/messages/conversations', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          displayChats(data.conversations);
+        } else {
+          document.getElementById('chats-list').innerHTML = '<p>Ошибка загрузки чатов</p>';
+        }
+      } catch (error) {
+        document.getElementById('chats-list').innerHTML = '<p>Ошибка: ' + error.message + '</p>';
+      }
+    }
+
+    // Display chats
+    function displayChats(conversations) {
+      const chatsList = document.getElementById('chats-list');
+
+      if (conversations.length === 0) {
+        chatsList.innerHTML = '<p>У вас пока нет чатов</p>';
+        return;
+      }
+
+      chatsList.innerHTML = conversations.map(conv => {
+        const avatar = conv.partnerPhoto ?
+          `<img src="${conv.partnerPhoto}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">` :
+          `<div style="width: 50px; height: 50px; border-radius: 50%; background: #3498db; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;">${(conv.partnerName || 'С')[0].toUpperCase()}</div>`;
+
+        return `
+          <div class="chat-item" onclick="openChat(${conv.partnerId})" style="display: flex; align-items: center; padding: 15px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: background 0.2s;">
+            <div style="margin-right: 15px;">${avatar}</div>
+            <div style="flex: 1;">
+              <div style="font-weight: bold; font-size: 16px;">${conv.partnerName}</div>
+              <div style="color: #666; font-size: 14px; margin-top: 5px;">${conv.lastMessage}</div>
+            </div>
+            <div style="color: #999; font-size: 12px;">${new Date(conv.lastTime).toLocaleDateString()}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Open chat with partner
+    function openChat(partnerId) {
+      window.location.href = `/chat.html?with=${partnerId}`;
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      loadChats();
+    });
+  </script>
+</body>
+</html>
