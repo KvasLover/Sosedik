@@ -48,18 +48,6 @@ CREATE TABLE rental_requests (
   requester_id INTEGER REFERENCES users(id),
   status VARCHAR(20) DEFAULT 'pending', -- pending, approved, completed
   checklist_before TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Chat messages
-CREATE TABLE chat_messages (
-  id SERIAL PRIMARY KEY,
-  sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  receiver_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
   checklist_after TEXT,
   contract_url TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -76,6 +64,16 @@ CREATE TABLE moderation (
   moderator_id INTEGER REFERENCES users(id),
   resolution TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Favorites table
+CREATE TABLE favorites (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  item_type VARCHAR(20) NOT NULL, -- 'ad' or 'rental'
+  item_id INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, item_type, item_id)
 );
 
 -- Chat messages

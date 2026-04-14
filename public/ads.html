@@ -216,6 +216,11 @@
           deleteButton = `<button onclick="event.stopPropagation(); deleteAd(${ad.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; margin-top: 10px;">Удалить</button>`;
         }
 
+        let favoriteButton = '';
+        if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
+          favoriteButton = `<button onclick="event.stopPropagation(); toggleFavorite('ad', ${ad.id}, this)" class="favorite-btn" style="background: none; font-size: 20px; cursor: pointer; margin-top: 10px; float: right; padding: 2px 6px; border-radius: 3px;">♡</button>`;
+        }
+
         const isOwner = currentUserId && ad.user_id === currentUserId;
         const titleWithBadge = isOwner ? `${ad.title} <span style="color: #27ae60; font-size: 12px;">(Ваше)</span>` : ad.title;
 
@@ -228,6 +233,23 @@
           <p><small>Создано: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
           ${deleteButton}
         `;
+
+        // Добавить кнопку избранного после создания innerHTML
+        if (favoriteButton) {
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = favoriteButton;
+          const favBtn = tempDiv.firstElementChild;
+          adDiv.appendChild(favBtn);
+          
+          // Проверить статус избранного и обновить кнопку
+          checkFavoriteStatus('ad', ad.id).then(isFavorite => {
+            if (isFavorite) {
+              favBtn.classList.add('active');
+              favBtn.innerHTML = '♥';
+            }
+          });
+        }
+
         adsList.appendChild(adDiv);
       });
     }
@@ -345,6 +367,71 @@
         } else {
           const data = await response.json();
           alert('Ошибка: ' + (data.message || 'Не удалось удалить объявление'));
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Проверить статус избранного
+    async function checkFavoriteStatus(itemType, itemId) {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return false;
+
+      try {
+        const response = await fetch(`/api/favorites/${itemType}/${itemId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          return data.isFavorite;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Error checking favorite status:', error);
+        return false;
+      }
+    }
+
+    // Добавить/удалить из избранного
+    async function toggleFavorite(itemType, itemId, buttonElement) {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) {
+        alert('Необходимо войти в систему');
+        return;
+      }
+
+      const isFavorite = buttonElement.classList.contains('active');
+
+      try {
+        const method = isFavorite ? 'DELETE' : 'POST';
+        const url = isFavorite ? `/api/favorites/${itemType}/${itemId}` : '/api/favorites';
+        const response = await fetch(url, {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: isFavorite ? undefined : JSON.stringify({ itemType, itemId })
+        });
+
+        if (response.ok) {
+          buttonElement.classList.toggle('active');
+          buttonElement.innerHTML = isFavorite ? '♡' : '♥';
+        } else {
+          let errorMessage = 'Не удалось обновить избранное';
+          try {
+            const data = await response.json();
+            errorMessage = data.message || errorMessage;
+          } catch (e) {
+            // If response is not JSON, use status text
+            errorMessage = `Ошибка ${response.status}: ${response.statusText}`;
+          }
+          alert('Ошибка: ' + errorMessage);
         }
       } catch (error) {
         alert('Ошибка: ' + error.message);

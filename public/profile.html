@@ -88,7 +88,23 @@
         <!-- Favorites Tab -->
         <div id="favorites-tab" class="tab-content">
           <h2>Избранное</h2>
-          <p style="color: #666; text-align: center; padding: 2rem;">Функционал избранного скоро будет добавлен</p>
+          
+          <!-- Filter buttons -->
+          <div style="margin-bottom: 10px; text-align: center;">
+            <button onclick="loadFavorites()" class="filter-btn active" id="filter-all">Все</button>
+            <button onclick="loadFavorites('ad')" class="filter-btn" id="filter-ads">Только объявления</button>
+            <button onclick="loadFavorites('rental')" class="filter-btn" id="filter-rentals">Только аренда</button>
+          </div>
+          
+          <!-- Clear favorites button -->
+          <div style="margin-bottom: 20px; text-align: center;">
+            <button onclick="clearFavorites()" class="filter-btn danger" id="clear-all">Убрать все из избранного</button>
+          </div>
+          
+          <!-- Favorites list -->
+          <div id="favorites-list" style="display: grid; gap: 15px;">
+            <!-- Favorites will be loaded here -->
+          </div>
         </div>
 
         <!-- Settings Tab -->
@@ -563,6 +579,11 @@
       const selectedTab = document.getElementById(tabName + '-tab');
       if (selectedTab) {
         selectedTab.classList.add('active');
+        
+        // Load data for specific tabs
+        if (tabName === 'favorites') {
+          loadFavorites();
+        }
       }
 
       // Add active class to clicked button
@@ -582,6 +603,150 @@
       };
       return names[tabName] || tabName;
     }
+
+    // Refresh favorites list when returning via browser history
+    window.addEventListener('pageshow', () => {
+      const favoritesTab = document.getElementById('favorites-tab');
+      if (favoritesTab && favoritesTab.classList.contains('active')) {
+        const activeFilter = document.querySelector('.filter-btn.active');
+        const filterType = activeFilter ? (activeFilter.id === 'filter-ads' ? 'ad' : activeFilter.id === 'filter-rentals' ? 'rental' : null) : null;
+        loadFavorites(filterType);
+      }
+    });
+
+    // Load favorites
+    async function loadFavorites(type = null) {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      // Update filter button states
+      document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+      if (type === 'ad') {
+        document.getElementById('filter-ads').classList.add('active');
+      } else if (type === 'rental') {
+        document.getElementById('filter-rentals').classList.add('active');
+      } else {
+        document.getElementById('filter-all').classList.add('active');
+      }
+
+      try {
+        const url = type ? `/api/favorites?itemType=${type}` : '/api/favorites';
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const favorites = await response.json();
+          displayFavorites(favorites);
+        } else {
+          document.getElementById('favorites-list').innerHTML = '<p>Ошибка загрузки избранного</p>';
+        }
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+        document.getElementById('favorites-list').innerHTML = '<p>Ошибка загрузки избранного</p>';
+      }
+    }
+
+    // Remove all favorites
+    async function clearFavorites() {
+      if (!confirm('Вы действительно хотите убрать все элементы из избранного?')) return;
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/favorites/all', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          loadFavorites();
+        } else {
+          alert('Ошибка при очистке избранного');
+        }
+      } catch (error) {
+        console.error('Error clearing favorites:', error);
+        alert('Ошибка при очистке избранного');
+      }
+    }
+
+    // Display favorites
+    function displayFavorites(favorites) {
+      const favoritesList = document.getElementById('favorites-list');
+      
+      if (favorites.length === 0) {
+        favoritesList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">У вас нет избранных элементов</p>';
+        return;
+      }
+
+      favoritesList.innerHTML = favorites.map(fav => {
+        const item = fav.item;
+        const typeLabel = fav.item_type === 'ad' ? 'Объявление' : 'Аренда';
+        const link = fav.item_type === 'ad' ? `/ad-details.html?id=${item.id}` : `/rental-details.html?id=${item.id}`;
+        
+        let imageHtml = '';
+        if (fav.item_type === 'rental' && item.photo_url) {
+          imageHtml = `<img src="${item.photo_url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; margin-right: 15px;">`;
+        }
+
+        return `
+          <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #fff; display: flex; align-items: center;">
+            ${imageHtml}
+            <div style="flex: 1;">
+              <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                  <h4 style="margin: 0 0 5px 0; color: #333;">
+                    <span style="background: ${fav.item_type === 'ad' ? '#3498db' : '#e67e22'}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 10px;">${typeLabel}</span>
+                    ${item.title || item.item_name}
+                  </h4>
+                  <p style="margin: 5px 0; color: #666; font-size: 14px;">${item.description || item.rental_terms || ''}</p>
+                  <p style="margin: 5px 0; font-size: 12px; color: #999;">Добавлено в избранное: ${new Date(fav.created_at).toLocaleDateString()}</p>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                  <button onclick="window.location.href='${link}'" style="background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Просмотреть</button>
+                  <button onclick="removeFromFavorites('${fav.item_type}', ${item.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Удалить</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Remove from favorites
+    async function removeFromFavorites(itemType, itemId) {
+      if (!confirm('Удалить из избранного?')) return;
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(`/api/favorites/${itemType}/${itemId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          // Reload favorites
+          const activeFilter = document.querySelector('.filter-btn.active');
+          const filterType = activeFilter.id === 'filter-ads' ? 'ad' : activeFilter.id === 'filter-rentals' ? 'rental' : null;
+          loadFavorites(filterType);
+        } else {
+          alert('Ошибка удаления из избранного');
+        }
+      } catch (error) {
+        console.error('Error removing from favorites:', error);
+        alert('Ошибка удаления из избранного');
+      }
+    }
+
   </script>
 
   <!-- Footer -->
