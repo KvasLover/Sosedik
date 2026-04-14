@@ -31,119 +31,143 @@
     </div>
 
     <div id="profile-content" class="profile-container hidden">
-      <!-- User Avatar and Basic Info -->
-      <div class="user-info" style="text-align: center;">
-        <div id="user-avatar" style="width: 120px; height: 120px; margin: 0 auto 15px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 48px; overflow: hidden;">
+      <!-- User Info Block -->
+      <div class="profile-user-info">
+        <div id="user-avatar" class="profile-avatar">
           📷
         </div>
-        <h2 id="user-display-name">Пользователь</h2>
-        <p><strong>Телефон:</strong> <span id="user-phone"></span></p>
-        <p><strong>Уровень:</strong> <span id="user-level"></span></p>
-        <p><strong>Баллы:</strong> <span id="user-points"></span></p>
-        <p id="apartment-display"></p>
-        <p><strong>Дата регистрации:</strong> <span id="user-created"></span></p>
-      </div>
-
-      <!-- Edit Profile Section -->
-      <h2>Редактировать профиль</h2>
-      
-      <div class="form-group">
-        <label for="user-photo">Фото профиля:</label>
-        <input type="file" id="user-photo" accept="image/*">
-        <small>Поддерживаются форматы: JPG, PNG, GIF</small>
-      </div>
-      
-      <div class="form-group">
-        <label for="user-name">Имя:</label>
-        <input type="text" id="user-name" placeholder="Ваше имя">
-      </div>
-      
-      <div class="form-group">
-        <label for="user-apartment">Квартира:</label>
-        <input type="text" id="user-apartment" placeholder="Например: 12 подъезд, 5 этаж">
-      </div>
-      
-      <div class="form-group">
-        <label for="show-apartment">
-          <input type="checkbox" id="show-apartment">
-          Показывать номер квартиры другим пользователям
-        </label>
-      </div>
-      
-      <button onclick="saveProfile()">Сохранить изменения</button>
-      <div id="result-message" class="result hidden"></div>
-
-      <!-- Additional Info -->
-      <div class="user-info" style="margin-top: 20px;">
-        <h3>Статистика</h3>
-        <p><strong>Созданных объявлений:</strong> <span id="user-ads-count">0</span></p>
-        <p><strong>Рейтинг:</strong> <span id="user-rating">★★★★★ (5.0)</span></p>
-      </div>
-
-      <!-- User Ads History -->
-      <div class="user-info" style="margin-top: 20px;">
-        <h3>Последние объявления</h3>
-        <div id="user-ads-list" style="max-height: 400px; overflow-y: auto;"></div>
-      </div>
-
-      <!-- Notifications Preferences -->
-      <div class="form-container" style="margin-top: 20px;">
-        <h3>Предпочтения уведомлений</h3>
-        <div class="form-group">
-          <label for="notify-ads">
-            <input type="checkbox" id="notify-ads" checked>
-            Уведомлять о новых объявлениях
-          </label>
-        </div>
-        <div class="form-group">
-          <label for="notify-responses">
-            <input type="checkbox" id="notify-responses" checked>
-            Уведомлять об ответах на объявления
-          </label>
-        </div>
-        <div class="form-group">
-          <label for="dark-mode">
-            <input type="checkbox" id="dark-mode">
-            Темная тема
-          </label>
-        </div>
-        <button onclick="savePreferences()">Сохранить предпочтения</button>
-      </div>
-
-      <!-- Blocked Users -->
-      <div class="user-info" style="margin-top: 20px;">
-        <h3>Заблокированные пользователи</h3>
-        <p id="blocked-users-list">Нет заблокированных пользователей</p>
-      </div>
-
-      <!-- Activity History -->
-      <div class="form-container" style="margin-top: 20px;">
-        <h3>История активности</h3>
-        <div id="activity-history" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-          <p style="color: #666;">Нет записей активности</p>
+        <div class="profile-details">
+          <h2 id="user-display-name">Пользователь</h2>
+          <p><strong>Телефон:</strong> <span id="user-phone"></span></p>
+          <p><strong>Уровень:</strong> <span id="user-level"></span></p>
+          <p><strong>Баллы:</strong> <span id="user-points"></span></p>
+          <p id="apartment-display"></p>
+          <p><strong>Дата регистрации:</strong> <span id="user-created"></span></p>
         </div>
       </div>
 
-      <!-- Two Factor Auth -->
-      <div class="form-container" style="margin-top: 20px;">
-        <h3>Безопасность</h3>
-        <div class="form-group">
-          <label for="two-factor">
-            <input type="checkbox" id="two-factor">
-            Включить двухфакторную аутентификацию
-          </label>
-          <small style="display: block; color: #666; margin-top: 5px;">Для подтверждения входа будет требоваться код</small>
+      <!-- Profile Tabs -->
+      <div class="profile-tabs">
+        <div class="tab-buttons">
+          <button class="tab-button active" onclick="showTab('edit')">Редактировать профиль</button>
+          <button class="tab-button" onclick="showTab('favorites')">Избранное</button>
+          <button class="tab-button" onclick="showTab('settings')">Настройки</button>
+        </div>
+
+        <!-- Edit Profile Tab -->
+        <div id="edit-tab" class="tab-content active">
+          <h2>Редактировать профиль</h2>
+          
+          <div class="form-group">
+            <label for="user-photo">Фото профиля:</label>
+            <input type="file" id="user-photo" accept="image/*">
+            <small>Поддерживаются форматы: JPG, PNG, GIF</small>
+          </div>
+          
+          <div class="form-group">
+            <label for="user-name">Имя:</label>
+            <input type="text" id="user-name" placeholder="Ваше имя">
+          </div>
+          
+          <div class="form-group">
+            <label for="user-apartment">Квартира:</label>
+            <input type="text" id="user-apartment" placeholder="Например: 12 подъезд, 5 этаж">
+          </div>
+          
+          <div class="form-group">
+            <label for="show-apartment">
+              <input type="checkbox" id="show-apartment">
+              Показывать номер квартиры другим пользователям
+            </label>
+          </div>
+          
+          <button onclick="saveProfile()">Сохранить изменения</button>
+          <div id="result-message" class="result hidden"></div>
+        </div>
+
+        <!-- Favorites Tab -->
+        <div id="favorites-tab" class="tab-content">
+          <h2>Избранное</h2>
+          <p style="color: #666; text-align: center; padding: 2rem;">Функционал избранного скоро будет добавлен</p>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content">
+          <h2>Настройки</h2>
+
+          <!-- Additional Info -->
+          <div class="form-container" style="margin-bottom: 2rem;">
+            <h3>Статистика</h3>
+            <p><strong>Созданных объявлений:</strong> <span id="user-ads-count">0</span></p>
+            <p><strong>Рейтинг:</strong> <span id="user-rating">★★★★★ (5.0)</span></p>
+          </div>
+
+          <!-- User Ads History -->
+          <div class="form-container" style="margin-bottom: 2rem;">
+            <h3>Последние объявления</h3>
+            <div id="user-ads-list" style="max-height: 400px; overflow-y: auto;"></div>
+          </div>
+
+          <!-- Notifications Preferences -->
+          <div class="form-container" style="margin-bottom: 2rem;">
+            <h3>Предпочтения уведомлений</h3>
+            <div class="form-group">
+              <label for="notify-ads">
+                <input type="checkbox" id="notify-ads" checked>
+                Уведомлять о новых объявлениях
+              </label>
+            </div>
+            <div class="form-group">
+              <label for="notify-responses">
+                <input type="checkbox" id="notify-responses" checked>
+                Уведомлять об ответах на объявления
+              </label>
+            </div>
+            <div class="form-group">
+              <label for="dark-mode">
+                <input type="checkbox" id="dark-mode">
+                Темная тема
+              </label>
+            </div>
+            <button onclick="savePreferences()">Сохранить предпочтения</button>
+          </div>
+
+          <!-- Blocked Users -->
+          <div class="form-container" style="margin-bottom: 2rem;">
+            <h3>Заблокированные пользователи</h3>
+            <p id="blocked-users-list">Нет заблокированных пользователей</p>
+          </div>
+
+          <!-- Activity History -->
+          <div class="form-container" style="margin-bottom: 2rem;">
+            <h3>История активности</h3>
+            <div id="activity-history" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+              <p style="color: #666;">Нет записей активности</p>
+            </div>
+          </div>
+
+          <!-- Two Factor Auth -->
+          <div class="form-container" style="margin-bottom: 2rem;">
+            <h3>Безопасность</h3>
+            <div class="form-group">
+              <label for="two-factor">
+                <input type="checkbox" id="two-factor">
+                Включить двухфакторную аутентификацию
+              </label>
+              <small style="display: block; color: #666; margin-top: 5px;">Для подтверждения входа будет требоваться код</small>
+            </div>
+          </div>
+
+          <!-- Account Deletion Section -->
+          <div class="form-container" style="border: 2px solid #ff4444; background: #ffeaea;">
+            <h3 style="color: #ff4444;">Удаление аккаунта</h3>
+            <p style="color: #666; margin-bottom: 15px;">Внимание! Это действие необратимо. Все ваши данные, объявления и история активности будут удалены.</p>
+            <button onclick="deleteAccount()" style="background: #ff4444; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Удалить аккаунт</button>
+          </div>
         </div>
       </div>
 
-      <!-- Account Deletion Section -->
-      <div class="profile-container" style="margin-top: 20px; border: 2px solid #ff4444; background: #ffeaea;">
-        <h3 style="color: #ff4444;">Удаление аккаунта</h3>
-        <p style="color: #666; margin-bottom: 15px;">Внимание! Это действие необратимо. Все ваши данные, объявления и история активности будут удалены.</p>
-        <button onclick="deleteAccount()" style="background: #ff4444; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Удалить аккаунт</button>
-      </div>
-
-      <div class="profile-container" style="margin-top: 20px;">
+      <div class="profile-container" style="margin-top: 2rem;">
         <button onclick="goToMain()">Вернуться на главную</button>
         <button onclick="logout()" style="background: #ff4444; color: white;">Выйти из аккаунта</button>
       </div>
@@ -207,6 +231,8 @@
             document.getElementById('user-avatar').innerHTML = `<img src="${savedPhoto}" style="width: 100%; height: 100%; object-fit: cover;">`;
           } else if (user.verification_photo) {
             document.getElementById('user-avatar').innerHTML = `<img src="${user.verification_photo}" style="width: 100%; height: 100%; object-fit: cover;">`;
+          } else {
+            document.getElementById('user-avatar').innerHTML = '📷';
           }
           
           // Fill edit form
@@ -521,6 +547,40 @@
 
     function goToMain() {
       window.location.href = '/';
+    }
+
+    // Tab switching functionality
+    function showTab(tabName) {
+      // Hide all tab contents
+      const tabContents = document.querySelectorAll('.tab-content');
+      tabContents.forEach(content => content.classList.remove('active'));
+
+      // Remove active class from all tab buttons
+      const tabButtons = document.querySelectorAll('.tab-button');
+      tabButtons.forEach(button => button.classList.remove('active'));
+
+      // Show selected tab content
+      const selectedTab = document.getElementById(tabName + '-tab');
+      if (selectedTab) {
+        selectedTab.classList.add('active');
+      }
+
+      // Add active class to clicked button
+      const clickedButton = Array.from(tabButtons).find(button => 
+        button.textContent.trim() === getTabDisplayName(tabName)
+      );
+      if (clickedButton) {
+        clickedButton.classList.add('active');
+      }
+    }
+
+    function getTabDisplayName(tabName) {
+      const names = {
+        'edit': 'Редактировать профиль',
+        'favorites': 'Избранное',
+        'settings': 'Настройки'
+      };
+      return names[tabName] || tabName;
     }
   </script>
 
