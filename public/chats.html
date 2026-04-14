@@ -90,18 +90,25 @@
       }
 
       chatsList.innerHTML = conversations.map(conv => {
-        const avatar = conv.partnerPhoto ?
-          `<img src="${conv.partnerPhoto}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">` :
-          `<div style="width: 50px; height: 50px; border-radius: 50%; background: #3498db; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;">${(conv.partnerName || 'С')[0].toUpperCase()}</div>`;
+        const savedPhoto = localStorage.getItem(`sosedik_photo_${conv.partnerId}`);
+        let avatarHtml;
+
+        if (savedPhoto) {
+          avatarHtml = `<img src="${savedPhoto}" alt="${conv.partnerName}">`;
+        } else if (conv.partnerPhoto) {
+          avatarHtml = `<img src="${conv.partnerPhoto}" alt="${conv.partnerName}">`;
+        } else {
+          avatarHtml = `<span>${(conv.partnerName || 'С')[0].toUpperCase()}</span>`;
+        }
 
         return `
-          <div class="chat-item" onclick="openChat(${conv.partnerId})" style="display: flex; align-items: center; padding: 15px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: background 0.2s;">
-            <div style="margin-right: 15px;">${avatar}</div>
-            <div style="flex: 1;">
-              <div style="font-weight: bold; font-size: 16px;">${conv.partnerName}</div>
-              <div style="color: #666; font-size: 14px; margin-top: 5px;">${conv.lastMessage}</div>
+          <div class="chat-item" onclick="openChat(${conv.partnerId})">
+            <div class="chat-avatar">${avatarHtml}</div>
+            <div class="chat-info">
+              <h3>${conv.partnerName}</h3>
+              <p>${conv.lastMessage}</p>
             </div>
-            <div style="color: #999; font-size: 12px;">${new Date(conv.lastTime).toLocaleDateString()}</div>
+            <div class="chat-time">${new Date(conv.lastTime).toLocaleDateString()}</div>
           </div>
         `;
       }).join('');
