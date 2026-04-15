@@ -218,7 +218,7 @@
 
         let favoriteButton = '';
         if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
-          favoriteButton = `<button onclick="event.stopPropagation(); toggleFavorite('ad', ${ad.id}, this)" class="favorite-btn" style="background: none; font-size: 20px; cursor: pointer; margin-top: 10px; float: right; padding: 2px 6px; border-radius: 3px;">♡</button>`;
+          favoriteButton = `<button onclick="event.stopPropagation(); toggleFavorite('ad', ${ad.id}, this)" class="favorite-btn" style="background: rgba(255,255,255,0.95); box-shadow: 0 1px 8px rgba(0,0,0,0.08); color: #333; font-size: 20px; cursor: pointer; margin-top: 10px; float: right; padding: 6px 8px; border-radius: 8px; border: none;">♡</button>`;
         }
 
         const isOwner = currentUserId && ad.user_id === currentUserId;

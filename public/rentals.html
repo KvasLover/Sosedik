@@ -205,9 +205,11 @@
         const rentalDiv = document.createElement('div');
         rentalDiv.className = 'rental-item';
         rentalDiv.style.cssText = `
+          position: relative;
           border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px;
           background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;
           transition: background 0.2s;
+          overflow: hidden;
         `;
         rentalDiv.onclick = () => {
           window.location.href = `/rental-details.html?id=${rental.id}`;
@@ -225,34 +227,26 @@
         // Delete button for owner
         const deleteButton = isOwner ? `<button onclick="event.stopPropagation(); deleteRental(${rental.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; margin-top: 10px;">Удалить</button>` : '';
 
-        // Favorite button for non-owners
-        let favoriteButton = '';
-        if (!isOwner) {
-          favoriteButton = `<button onclick="event.stopPropagation(); toggleFavorite('rental', ${rental.id}, this)" class="favorite-btn" style="background: none; font-size: 20px; cursor: pointer; margin-top: 10px; float: right; padding: 2px 6px; border-radius: 3px;">♡</button>`;
-        }
-
         rentalDiv.innerHTML = `
-          <div style="display: flex;">
-            ${photosHtml}
-            <div style="flex: 1;">
-              <h3 style="margin: 0 0 10px 0;">${rental.item_name}${ownerLabel}</h3>
-              <p style="margin: 5px 0; color: #666;"><strong>Категория:</strong> ${rental.category}</p>
-              <p style="margin: 5px 0; color: #666;"><strong>Ценность:</strong> ${getValueLabel(rental.value_category)}</p>
-              ${rental.rental_terms ? `<p style="margin: 5px 0;"><strong>Условия:</strong> ${rental.rental_terms.substring(0, 100)}${rental.rental_terms.length > 100 ? '...' : ''}</p>` : ''}
-              <p style="margin: 5px 0; font-size: 12px; color: #999;">Добавлено: ${new Date(rental.created_at).toLocaleDateString()}</p>
-              ${deleteButton}
+          <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+            <div style="display: flex; flex: 1;">
+              ${photosHtml}
+              <div style="flex: 1;">
+                <h3 style="margin: 0 0 10px 0;">${rental.item_name}${ownerLabel}</h3>
+                <p style="margin: 5px 0; color: #666;"><strong>Категория:</strong> ${rental.category}</p>
+                <p style="margin: 5px 0; color: #666;"><strong>Ценность:</strong> ${getValueLabel(rental.value_category)}</p>
+                ${rental.rental_terms ? `<p style="margin: 5px 0;"><strong>Условия:</strong> ${rental.rental_terms.substring(0, 100)}${rental.rental_terms.length > 100 ? '...' : ''}</p>` : ''}
+                <p style="margin: 5px 0; font-size: 12px; color: #999;">Добавлено: ${new Date(rental.created_at).toLocaleDateString()}</p>
+                ${deleteButton}
+              </div>
             </div>
+            ${!isOwner ? `<button onclick="event.stopPropagation(); toggleFavorite('rental', ${rental.id}, this)" class="favorite-btn" style="background: rgba(255,255,255,0.95); box-shadow: 0 1px 8px rgba(0,0,0,0.08); color: #333; font-size: 20px; cursor: pointer; padding: 6px 8px; border-radius: 8px; border: none; width: auto; flex-shrink: 0; margin-left: 15px;">♡</button>` : ''}
           </div>
         `;
 
-        // Добавить кнопку избранного после создания innerHTML
-        if (favoriteButton) {
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = favoriteButton;
-          const favBtn = tempDiv.firstElementChild;
-          rentalDiv.querySelector('div > div').appendChild(favBtn);
-          
-          // Проверить статус избранного и обновить кнопку
+        // Проверить статус избранного и обновить кнопку
+        if (!isOwner) {
+          const favBtn = rentalDiv.querySelector('.favorite-btn');
           checkFavoriteStatus('rental', rental.id).then(isFavorite => {
             if (isFavorite) {
               favBtn.classList.add('active');

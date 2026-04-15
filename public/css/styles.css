@@ -226,29 +226,35 @@ button[style*="background: #95a5a6"] {
 /* Favorite Button Styles */
 .favorite-btn {
   transition: all 0.3s ease !important;
-  color: #ccc !important;
-  border: 1px solid #ddd !important;
-  background: white !important;
+  color: #3498db !important;
+  border: none !important;
+  background: rgba(52, 152, 219, 0.12) !important;
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.08) !important;
   display: inline-block !important;
   vertical-align: top !important;
   line-height: 1 !important;
   min-height: auto !important;
+  width: auto !important;
+  padding: 6px 10px !important;
+  border-radius: 10px !important;
 }
 
 .favorite-btn:hover {
-  border-color: #e74c3c !important;
-  color: #e74c3c !important;
+  background: rgba(52, 152, 219, 0.18) !important;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.14) !important;
+  color: #2980b9 !important;
   transform: none !important;
 }
 
 .favorite-btn.active {
-  color: #e74c3c !important;
-  border-color: #e74c3c !important;
+  color: white !important;
+  background: #e74c3c !important;
+  box-shadow: 0 2px 14px rgba(231, 76, 60, 0.24) !important;
 }
 
 .favorite-btn.active:hover {
-  color: #c0392b !important;
-  border-color: #c0392b !important;
+  background: #c0392b !important;
+  color: white !important;
 }
 
 /* Filter Buttons */
