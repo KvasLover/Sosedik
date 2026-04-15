@@ -47,7 +47,7 @@ const getAdById = async (id) => {
 const createAd = async (userId, category, title, description, price = null, contact = null) => {
   try {
     const result = await pool.query(
-      'INSERT INTO ads (user_id, category, title, description, price, contact) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      'INSERT INTO ads (user_id, category, title, description, price, contact, active) VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING *',
       [userId, category, title, description, price, contact]
     );
     return result.rows[0];
