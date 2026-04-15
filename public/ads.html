@@ -221,18 +221,22 @@
           favoriteButton = `<button onclick="event.stopPropagation(); toggleFavorite('ad', ${ad.id}, this)" class="favorite-btn" style="background: rgba(255,255,255,0.95); box-shadow: 0 1px 8px rgba(0,0,0,0.08); color: #333; font-size: 20px; cursor: pointer; margin-top: 10px; float: right; padding: 6px 8px; border-radius: 8px; border: none;">♡</button>`;
         }
 
+        let acceptButton = '';
+        if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
+          acceptButton = `<button onclick="event.stopPropagation(); acceptAd(${ad.id}, this)" style="background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; margin-right: 10px;">Принять объявление</button>`;
+        }
+
         const isOwner = currentUserId && ad.user_id === currentUserId;
         const titleWithBadge = isOwner ? `${ad.title} <span style="color: #27ae60; font-size: 12px;">(Ваше)</span>` : ad.title;
 
-        adDiv.innerHTML = `
-          <h3>${titleWithBadge}</h3>
-          <p><strong>Категория:</strong> ${ad.category}</p>
-          <p>${ad.description}</p>
-          ${ad.price ? `<p><strong>Цена:</strong> ${ad.price} руб.</p>` : ''}  
-          ${ad.contact ? `<p><strong>Контакт:</strong> ${ad.contact}</p>` : ''}
-          <p><small>Создано: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
-          ${deleteButton}
-        `;
+        adDiv.innerHTML = '<h3>' + titleWithBadge + '</h3>' +
+          '<p><strong>Категория:</strong> ' + ad.category + '</p>' +
+          '<p>' + ad.description + '</p>' +
+          (ad.price ? '<p><strong>Цена:</strong> ' + ad.price + ' руб.</p>' : '') +
+          (ad.contact ? '<p><strong>Контакт:</strong> ' + ad.contact + '</p>' : '') +
+          '<p><small>Создано: ' + new Date(ad.created_at).toLocaleDateString() + '</small></p>' +
+          acceptButton +
+          deleteButton;
 
         // Добавить кнопку избранного после создания innerHTML
         if (favoriteButton) {
@@ -435,6 +439,49 @@
         }
       } catch (error) {
         alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Принять объявление
+    async function acceptAd(adId, buttonElement) {
+      if (!confirm('Вы уверены, что хотите принять это объявление? После принятия вы сможете связаться с владельцем.')) {
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) {
+        alert('Необходимо войти в систему');
+        return;
+      }
+
+      buttonElement.disabled = true;
+      buttonElement.textContent = 'Обработка...';
+
+      try {
+        const response = await fetch(`/api/ads/${adId}/accept`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          alert('Объявление принято! Свяжитесь с владельцем для дальнейших шагов.');
+          buttonElement.textContent = 'Принято';
+          buttonElement.style.background = '#27ae60';
+          buttonElement.disabled = true;
+          // Можно обновить список или скрыть кнопку
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось принять объявление'));
+          buttonElement.disabled = false;
+          buttonElement.textContent = 'Принять объявление';
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+        buttonElement.disabled = false;
+        buttonElement.textContent = 'Принять объявление';
       }
     }
 

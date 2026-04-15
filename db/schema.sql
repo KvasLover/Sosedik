@@ -29,6 +29,10 @@ CREATE TABLE ads (
   active BOOLEAN DEFAULT TRUE
 );
 
+-- Add accepted fields to ads table
+ALTER TABLE ads ADD COLUMN accepted_by INTEGER REFERENCES users(id);
+ALTER TABLE ads ADD COLUMN accepted_at TIMESTAMP;
+
 -- Rentals table
 CREATE TABLE rentals (
   id SERIAL PRIMARY KEY,

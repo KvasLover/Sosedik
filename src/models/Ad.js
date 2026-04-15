@@ -84,11 +84,56 @@ const deleteAd = async (id) => {
   }
 };
 
+// Accept ad
+const acceptAd = async (id, userId) => {
+  try {
+    const result = await pool.query(
+      'UPDATE ads SET accepted_by = $1, accepted_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id != $1 AND accepted_by IS NULL RETURNING *',
+      [userId, id]
+    );
+    if (result.rows.length === 0) {
+      throw new Error('Ad not found or already accepted');
+    }
+    return result.rows[0];
+  } catch (err) {
+    throw err;
+  }
+};
+
+// Get accepted ads for user
+const getAcceptedAds = async (userId) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM ads WHERE accepted_by = $1 ORDER BY accepted_at DESC',
+      [userId]
+    );
+    return result.rows;
+  } catch (err) {
+    throw err;
+  }
+};
+
+// Get user's own ads
+const getUserAds = async (userId) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM ads WHERE user_id = $1 ORDER BY created_at DESC',
+      [userId]
+    );
+    return result.rows;
+  } catch (err) {
+    throw err;
+  }
+};
+
 module.exports = {
   getAds,
   getAdById,
   createAd,
   updateAd,
   archiveOldAds,
-  deleteAd
+  deleteAd,
+  acceptAd,
+  getAcceptedAds,
+  getUserAds
 };

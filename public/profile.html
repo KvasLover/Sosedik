@@ -51,6 +51,8 @@
         <div class="tab-buttons">
           <button class="tab-button active" onclick="showTab('edit')">Редактировать профиль</button>
           <button class="tab-button" onclick="showTab('favorites')">Избранное</button>
+          <button class="tab-button" onclick="showTab('accepted')">Принятые объявления</button>
+          <button class="tab-button" onclick="showTab('myads')">Мои объявления</button>
           <button class="tab-button" onclick="showTab('settings')">Настройки</button>
         </div>
 
@@ -104,6 +106,22 @@
           <!-- Favorites list -->
           <div id="favorites-list" style="display: grid; gap: 15px;">
             <!-- Favorites will be loaded here -->
+          </div>
+        </div>
+
+        <!-- Accepted Ads Tab -->
+        <div id="accepted-tab" class="tab-content">
+          <h2>Принятые объявления</h2>
+          <div id="accepted-list" style="display: grid; gap: 15px;">
+            <!-- Accepted ads will be loaded here -->
+          </div>
+        </div>
+
+        <!-- My Ads Tab -->
+        <div id="myads-tab" class="tab-content">
+          <h2>Мои объявления</h2>
+          <div id="myads-list" style="display: grid; gap: 15px;">
+            <!-- My ads will be loaded here -->
           </div>
         </div>
 
@@ -264,6 +282,11 @@
           
           document.getElementById('auth-check').classList.add('hidden');
           document.getElementById('profile-content').classList.remove('hidden');
+
+          const initialTab = getTabFromHash();
+          if (initialTab) {
+            showTab(initialTab);
+          }
         } else {
           throw new Error('Не удалось загрузить профиль');
         }
@@ -550,8 +573,8 @@
 
         if (response.ok) {
           alert('Объявление удалено');
-          // Перезагрузить профиль для обновления списка
-          loadProfile();
+          // Обновить список Мои объявления
+          loadMyAds();
         } else {
           const data = await response.json();
           alert('Ошибка: ' + (data.message || 'Не удалось удалить объявление'));
@@ -583,6 +606,10 @@
         // Load data for specific tabs
         if (tabName === 'favorites') {
           loadFavorites();
+        } else if (tabName === 'accepted') {
+          loadAcceptedAds();
+        } else if (tabName === 'myads') {
+          loadMyAds();
         }
       }
 
@@ -599,9 +626,19 @@
       const names = {
         'edit': 'Редактировать профиль',
         'favorites': 'Избранное',
+        'accepted': 'Принятые объявления',
+        'myads': 'Мои объявления',
         'settings': 'Настройки'
       };
       return names[tabName] || tabName;
+    }
+
+    function getTabFromHash() {
+      const hash = window.location.hash.replace('#', '');
+      if (['edit', 'favorites', 'accepted', 'myads', 'settings'].includes(hash)) {
+        return hash;
+      }
+      return null;
     }
 
     // Refresh favorites list when returning via browser history
@@ -675,6 +712,54 @@
       }
     }
 
+    // Load accepted ads
+    async function loadAcceptedAds() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/ads/accepted', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const acceptedAds = await response.json();
+          displayAcceptedAds(acceptedAds);
+        } else {
+          document.getElementById('accepted-list').innerHTML = '<p>Ошибка загрузки принятых объявлений</p>';
+        }
+      } catch (error) {
+        console.error('Error loading accepted ads:', error);
+        document.getElementById('accepted-list').innerHTML = '<p>Ошибка загрузки принятых объявлений</p>';
+      }
+    }
+
+    // Load my ads
+    async function loadMyAds() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/ads/my', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const myAds = await response.json();
+          displayMyAds(myAds);
+        } else {
+          document.getElementById('myads-list').innerHTML = '<p>Ошибка загрузки моих объявлений</p>';
+        }
+      } catch (error) {
+        console.error('Error loading my ads:', error);
+        document.getElementById('myads-list').innerHTML = '<p>Ошибка загрузки моих объявлений</p>';
+      }
+    }
+
     // Display favorites
     function displayFavorites(favorites) {
       const favoritesList = document.getElementById('favorites-list');
@@ -716,6 +801,48 @@
           </div>
         `;
       }).join('');
+    }
+
+    // Display accepted ads
+    function displayAcceptedAds(acceptedAds) {
+      const acceptedList = document.getElementById('accepted-list');
+      
+      if (acceptedAds.length === 0) {
+        acceptedList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">У вас нет принятых объявлений</p>';
+        return;
+      }
+
+      acceptedList.innerHTML = acceptedAds.map(ad => `
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #fff;">
+          <h4 style="margin: 0 0 10px 0; color: #333;">${ad.title}</h4>
+          <p style="margin: 5px 0; color: #666;">${ad.description}</p>
+          <p style="margin: 5px 0; font-size: 12px; color: #999;">Принято: ${new Date(ad.accepted_at).toLocaleDateString()}</p>
+          <button onclick="window.location.href='/ad-details.html?id=${ad.id}'" style="background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Просмотреть</button>
+        </div>
+      `).join('');
+    }
+
+    // Display my ads
+    function displayMyAds(myAds) {
+      const myadsList = document.getElementById('myads-list');
+      
+      if (myAds.length === 0) {
+        myadsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">У вас нет объявлений</p>';
+        return;
+      }
+
+      myadsList.innerHTML = myAds.map(ad => `
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #fff;">
+          <h4 style="margin: 0 0 10px 0; color: #333;">${ad.title}</h4>
+          <p style="margin: 5px 0; color: #666;">${ad.description}</p>
+          <p style="margin: 5px 0; font-size: 12px; color: #999;">Создано: ${new Date(ad.created_at).toLocaleDateString()}</p>
+          ${ad.accepted_by ? '<p style="color: #27ae60; font-weight: bold;">Принято другим пользователем</p>' : ''}
+          <div style="margin-top: 10px;">
+            <button onclick="window.location.href='/ad-details.html?id=${ad.id}#myads'" style="background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Просмотреть</button>
+            <button onclick="deleteUserAd(${ad.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Удалить</button>
+          </div>
+        </div>
+      `).join('');
     }
 
     // Remove from favorites
