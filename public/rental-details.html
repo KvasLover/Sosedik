@@ -11,7 +11,7 @@
   <header>
     <div class="header-content">
       <div class="logo"><a href="/">Соседик</a></div>
-      <nav>
+      <nav id="main-nav">
         <a href="/">Главная</a>
         <a href="/ads.html">Объявления</a>
         <a href="/rentals.html">Аренда</a>
@@ -19,6 +19,11 @@
         <a href="/profile.html">Профиль</a>
         <a href="#" onclick="logout(); return false;">Выйти</a>
       </nav>
+      <button class="hamburger" id="hamburger-btn" aria-label="Меню">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
     </div>
   </header>
 
@@ -332,7 +337,36 @@
     }
 
     // Initialize
-    document.addEventListener('DOMContentLoaded', loadRentalDetails);
+    document.addEventListener('DOMContentLoaded', () => {
+      loadRentalDetails();
+
+      // Hamburger menu functionality
+      const hamburgerBtn = document.getElementById('hamburger-btn');
+      const mainNav = document.getElementById('main-nav');
+
+      if (hamburgerBtn && mainNav) {
+        hamburgerBtn.addEventListener('click', () => {
+          hamburgerBtn.classList.toggle('active');
+          mainNav.classList.toggle('active');
+        });
+
+        // Close menu when clicking on a link
+        mainNav.querySelectorAll('a').forEach(link => {
+          link.addEventListener('click', () => {
+            hamburgerBtn.classList.remove('active');
+            mainNav.classList.remove('active');
+          });
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!hamburgerBtn.contains(e.target) && !mainNav.contains(e.target)) {
+            hamburgerBtn.classList.remove('active');
+            mainNav.classList.remove('active');
+          }
+        });
+      }
+    });
   </script>
 </body>
 </html>
