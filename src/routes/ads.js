@@ -71,6 +71,48 @@ router.post('/', verifyToken, checkLevel(1), async (req, res) => {
   }
 });
 
+// Accept ad
+router.post('/:id/accept', verifyToken, async (req, res) => {
+  try {
+    const ad = await Ad.getAdById(req.params.id);
+    if (!ad) {
+      return res.status(404).json({ message: 'Ad not found' });
+    }
+
+    if (ad.user_id === req.user.id) {
+      return res.status(400).json({ message: 'Cannot accept your own ad' });
+    }
+
+    if (ad.accepted_by) {
+      return res.status(409).json({ message: 'Ad already accepted' });
+    }
+
+    const acceptedAd = await Ad.acceptAd(req.params.id, req.user.id);
+    res.json({ message: 'Ad accepted', ad: acceptedAd });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Cancel acceptance of ad
+router.delete('/:id/accept', verifyToken, async (req, res) => {
+  try {
+    const ad = await Ad.getAdById(req.params.id);
+    if (!ad) {
+      return res.status(404).json({ message: 'Ad not found' });
+    }
+
+    if (ad.accepted_by !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to cancel this acceptance' });
+    }
+
+    const canceledAd = await Ad.cancelAd(req.params.id);
+    res.json({ message: 'Acceptance canceled', ad: canceledAd });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Update ad
 router.put('/:id', verifyToken, async (req, res) => {
   try {
@@ -105,29 +147,6 @@ router.delete('/:id', verifyToken, async (req, res) => {
 
     await Ad.deleteAd(req.params.id);
     res.json({ message: 'Ad deleted' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Accept ad
-router.post('/:id/accept', verifyToken, async (req, res) => {
-  try {
-    const ad = await Ad.getAdById(req.params.id);
-    if (!ad) {
-      return res.status(404).json({ message: 'Ad not found' });
-    }
-
-    if (ad.user_id === req.user.id) {
-      return res.status(400).json({ message: 'Cannot accept your own ad' });
-    }
-
-    if (ad.accepted_by) {
-      return res.status(409).json({ message: 'Ad already accepted' });
-    }
-
-    const acceptedAd = await Ad.acceptAd(req.params.id, req.user.id);
-    res.json({ message: 'Ad accepted', ad: acceptedAd });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

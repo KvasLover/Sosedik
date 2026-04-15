@@ -148,6 +148,14 @@
       }
     });
 
+    // Обновить объявления при возврате на страницу (навигация назад/вперёд)
+    window.addEventListener('pageshow', () => {
+      const token = localStorage.getItem('sosedik_token');
+      if (token && currentUserId) {
+        loadAds();
+      }
+    });
+
     // Get current user ID
     async function getCurrentUserId() {
       const token = localStorage.getItem('sosedik_token');
@@ -223,7 +231,11 @@
 
         let acceptButton = '';
         if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
-          acceptButton = `<button onclick="event.stopPropagation(); acceptAd(${ad.id}, this)" style="background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; margin-right: 10px;">Принять объявление</button>`;
+          if (!ad.accepted_by) {
+            acceptButton = `<button onclick="event.stopPropagation(); acceptAd(${ad.id}, this)" style="background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; margin-right: 10px;">Принять объявление</button>`;
+          } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
+            acceptButton = `<button onclick="event.stopPropagation(); cancelAcceptance(${ad.id}, this)" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; margin-top: 10px; margin-right: 10px;">Отменить принятие</button>`;
+          }
         }
 
         const isOwner = currentUserId && ad.user_id === currentUserId;
@@ -235,6 +247,7 @@
           (ad.price ? '<p><strong>Цена:</strong> ' + ad.price + ' руб.</p>' : '') +
           (ad.contact ? '<p><strong>Контакт:</strong> ' + ad.contact + '</p>' : '') +
           '<p><small>Создано: ' + new Date(ad.created_at).toLocaleDateString() + '</small></p>' +
+          (isOwner && ad.accepted_by ? '<p style="color: #27ae60; font-weight: bold;">Принято пользователем ' + (ad.acceptor_name || ('#' + ad.accepted_by)) + '</p>' : '') +
           acceptButton +
           deleteButton;
 
@@ -471,7 +484,8 @@
           buttonElement.textContent = 'Принято';
           buttonElement.style.background = '#27ae60';
           buttonElement.disabled = true;
-          // Можно обновить список или скрыть кнопку
+          // Переход на страницу деталей объявления
+          window.location.href = `/ad-details.html?id=${adId}`;
         } else {
           const data = await response.json();
           alert('Ошибка: ' + (data.message || 'Не удалось принять объявление'));
@@ -482,6 +496,54 @@
         alert('Ошибка: ' + error.message);
         buttonElement.disabled = false;
         buttonElement.textContent = 'Принять объявление';
+      }
+    }
+
+    // Отменить принятие объявления
+    async function cancelAcceptance(adId, buttonElement) {
+      if (!confirm('Вы уверены, что хотите отменить принятие этого объявления?')) {
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) {
+        alert('Необходимо войти в систему');
+        return;
+      }
+
+      buttonElement.disabled = true;
+      buttonElement.textContent = 'Обработка...';
+
+      try {
+        const response = await fetch(`/api/ads/${adId}/accept`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          alert('Принятие объявления отменено');
+          loadAds(); // Reload ads to update the list
+        } else {
+          let errorMessage = 'Не удалось отменить принятие';
+          const responseText = await response.text();
+          if (responseText) {
+            try {
+              const data = JSON.parse(responseText);
+              errorMessage = data.message || errorMessage;
+            } catch (parseError) {
+              errorMessage = responseText;
+            }
+          }
+          alert('Ошибка: ' + errorMessage);
+          buttonElement.disabled = false;
+          buttonElement.textContent = 'Отменить принятие';
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+        buttonElement.disabled = false;
+        buttonElement.textContent = 'Отменить принятие';
       }
     }
 

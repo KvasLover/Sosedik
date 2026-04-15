@@ -109,6 +109,15 @@
           document.getElementById('ad-created').textContent = new Date(ad.created_at).toLocaleString();
           currentAdOwnerId = ad.user_id;
 
+          // Если владелец и объявление принято, показать информацию
+          if (isOwner && ad.accepted_by) {
+            const acceptedInfo = document.createElement('p');
+            acceptedInfo.style.color = '#27ae60';
+            acceptedInfo.style.fontWeight = 'bold';
+            acceptedInfo.textContent = `Принято пользователем ${ad.acceptor_name || ('#' + ad.accepted_by)}`;
+            document.getElementById('ad-content').appendChild(acceptedInfo);
+          }
+
           // Настроить кнопки действий
           const actionsDiv = document.getElementById('ad-actions');
           actionsDiv.innerHTML = ''; // Очистить существующие кнопки
@@ -139,17 +148,30 @@
               }
             });
 
-            // Кнопка "Принять объявление"
-            const acceptBtn = document.createElement('button');
-            acceptBtn.textContent = 'Принять объявление';
-            acceptBtn.style.background = '#27ae60';
-            acceptBtn.style.color = 'white';
-            acceptBtn.style.border = 'none';
-            acceptBtn.style.padding = '10px 15px';
-            acceptBtn.style.marginRight = '10px';
-            acceptBtn.style.cursor = 'pointer';
-            acceptBtn.onclick = acceptAd;
-            actionsDiv.appendChild(acceptBtn);
+            // Кнопка "Принять объявление" или "Принято"
+            if (!ad.accepted_by) {
+              const acceptBtn = document.createElement('button');
+              acceptBtn.textContent = 'Принять объявление';
+              acceptBtn.style.background = '#27ae60';
+              acceptBtn.style.color = 'white';
+              acceptBtn.style.border = 'none';
+              acceptBtn.style.padding = '10px 15px';
+              acceptBtn.style.marginRight = '10px';
+              acceptBtn.style.cursor = 'pointer';
+              acceptBtn.onclick = () => acceptAd(adId, acceptBtn);
+              actionsDiv.appendChild(acceptBtn);
+            } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
+              const cancelBtn = document.createElement('button');
+              cancelBtn.textContent = 'Отменить принятие';
+              cancelBtn.style.background = '#e74c3c';
+              cancelBtn.style.color = 'white';
+              cancelBtn.style.border = 'none';
+              cancelBtn.style.padding = '10px 15px';
+              cancelBtn.style.marginRight = '10px';
+              cancelBtn.style.cursor = 'pointer';
+              cancelBtn.onclick = () => cancelAcceptance(adId, cancelBtn);
+              actionsDiv.appendChild(cancelBtn);
+            }
 
             // Кнопка "Связаться с автором"
             const contactBtn = document.createElement('button');
@@ -184,8 +206,93 @@
     }
 
     // Принять объявление
-    function acceptAd() {
-      alert('Функция "Принять объявление" пока не реализована');
+    async function acceptAd(adId, buttonElement) {
+      if (!confirm('Вы уверены, что хотите принять это объявление? После принятия вы сможете связаться с владельцем.')) {
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) {
+        alert('Необходимо войти в систему');
+        return;
+      }
+
+      buttonElement.disabled = true;
+      buttonElement.textContent = 'Обработка...';
+
+      try {
+        const response = await fetch(`/api/ads/${adId}/accept`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          alert('Объявление принято! Теперь вы можете связаться с владельцем.');
+          buttonElement.textContent = 'Принято';
+          buttonElement.style.background = '#27ae60';
+          buttonElement.disabled = true;
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось принять объявление'));
+          buttonElement.disabled = false;
+          buttonElement.textContent = 'Принять объявление';
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+        buttonElement.disabled = false;
+        buttonElement.textContent = 'Принять объявление';
+      }
+    }
+
+    // Отменить принятие объявления
+    async function cancelAcceptance(adId, buttonElement) {
+      if (!confirm('Вы уверены, что хотите отменить принятие этого объявления?')) {
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) {
+        alert('Необходимо войти в систему');
+        return;
+      }
+
+      buttonElement.disabled = true;
+      buttonElement.textContent = 'Обработка...';
+
+      try {
+        const response = await fetch(`/api/ads/${adId}/accept`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          alert('Принятие объявления отменено');
+          location.reload(); // Reload page to update UI
+        } else {
+          let errorMessage = 'Не удалось отменить принятие';
+          const responseText = await response.text();
+          if (responseText) {
+            try {
+              const data = JSON.parse(responseText);
+              errorMessage = data.message || errorMessage;
+            } catch (parseError) {
+              errorMessage = responseText;
+            }
+          }
+          alert('Ошибка: ' + errorMessage);
+          buttonElement.disabled = false;
+          buttonElement.textContent = 'Отменить принятие';
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+        buttonElement.disabled = false;
+        buttonElement.textContent = 'Отменить принятие';
+      }
     }
 
     // Связаться с автором

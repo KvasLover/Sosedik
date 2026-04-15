@@ -2,20 +2,23 @@ const pool = require('../database');
 
 // Get all active ads
 const getAds = async (filters = {}) => {
-  let query = 'SELECT id, user_id, category, title, description, price, contact, created_at, active FROM ads WHERE active = true';
+  let query = `SELECT ads.id, ads.user_id, ads.category, ads.title, ads.description, ads.price, ads.contact, ads.created_at, ads.active, ads.accepted_by, users.name as acceptor_name
+               FROM ads
+               LEFT JOIN users ON ads.accepted_by = users.id
+               WHERE ads.active = true`;
   const values = [];
 
   if (filters.category) {
-    query += ' AND category = $' + (values.length + 1);
+    query += ' AND ads.category = $' + (values.length + 1);
     values.push(filters.category);
   }
 
   if (filters.type) {
-    query += ' AND type = $' + (values.length + 1);
+    query += ' AND ads.type = $' + (values.length + 1);
     values.push(filters.type);
   }
 
-  query += ' ORDER BY created_at DESC';
+  query += ' ORDER BY ads.created_at DESC';
 
   try {
     const result = await pool.query(query, values);
@@ -28,7 +31,12 @@ const getAds = async (filters = {}) => {
 // Get ad by ID
 const getAdById = async (id) => {
   try {
-    const result = await pool.query('SELECT * FROM ads WHERE id = $1', [id]);
+    const result = await pool.query(`
+      SELECT ads.*, users.name as acceptor_name
+      FROM ads
+      LEFT JOIN users ON ads.accepted_by = users.id
+      WHERE ads.id = $1
+    `, [id]);
     return result.rows[0];
   } catch (err) {
     throw err;
@@ -100,13 +108,32 @@ const acceptAd = async (id, userId) => {
   }
 };
 
+// Cancel acceptance of ad
+const cancelAd = async (id) => {
+  try {
+    const result = await pool.query(
+      'UPDATE ads SET accepted_by = NULL, accepted_at = NULL WHERE id = $1 RETURNING *',
+      [id]
+    );
+    if (result.rows.length === 0) {
+      throw new Error('Ad not found');
+    }
+    return result.rows[0];
+  } catch (err) {
+    throw err;
+  }
+};
+
 // Get accepted ads for user
 const getAcceptedAds = async (userId) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM ads WHERE accepted_by = $1 ORDER BY accepted_at DESC',
-      [userId]
-    );
+    const result = await pool.query(`
+      SELECT ads.*, users.name as owner_name
+      FROM ads
+      LEFT JOIN users ON ads.user_id = users.id
+      WHERE ads.accepted_by = $1
+      ORDER BY ads.accepted_at DESC
+    `, [userId]);
     return result.rows;
   } catch (err) {
     throw err;
@@ -116,10 +143,13 @@ const getAcceptedAds = async (userId) => {
 // Get user's own ads
 const getUserAds = async (userId) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM ads WHERE user_id = $1 ORDER BY created_at DESC',
-      [userId]
-    );
+    const result = await pool.query(`
+      SELECT ads.*, users.name as acceptor_name
+      FROM ads
+      LEFT JOIN users ON ads.accepted_by = users.id
+      WHERE ads.user_id = $1
+      ORDER BY ads.created_at DESC
+    `, [userId]);
     return result.rows;
   } catch (err) {
     throw err;
@@ -134,6 +164,7 @@ module.exports = {
   archiveOldAds,
   deleteAd,
   acceptAd,
+  cancelAd,
   getAcceptedAds,
   getUserAds
 };

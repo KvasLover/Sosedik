@@ -817,7 +817,10 @@
           <h4 style="margin: 0 0 10px 0; color: #333;">${ad.title}</h4>
           <p style="margin: 5px 0; color: #666;">${ad.description}</p>
           <p style="margin: 5px 0; font-size: 12px; color: #999;">Принято: ${new Date(ad.accepted_at).toLocaleDateString()}</p>
-          <button onclick="window.location.href='/ad-details.html?id=${ad.id}'" style="background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Просмотреть</button>
+          <div style="margin-top: 10px;">
+            <button onclick="window.location.href='/ad-details.html?id=${ad.id}'" style="background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Просмотреть</button>
+            <button onclick="cancelAcceptance(${ad.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Отменить принятие</button>
+          </div>
         </div>
       `).join('');
     }
@@ -836,7 +839,7 @@
           <h4 style="margin: 0 0 10px 0; color: #333;">${ad.title}</h4>
           <p style="margin: 5px 0; color: #666;">${ad.description}</p>
           <p style="margin: 5px 0; font-size: 12px; color: #999;">Создано: ${new Date(ad.created_at).toLocaleDateString()}</p>
-          ${ad.accepted_by ? '<p style="color: #27ae60; font-weight: bold;">Принято другим пользователем</p>' : ''}
+          ${ad.accepted_by ? `<p style="color: #27ae60; font-weight: bold;">Принято пользователем ${ad.acceptor_name || ('#' + ad.accepted_by)}</p>` : ''}
           <div style="margin-top: 10px;">
             <button onclick="window.location.href='/ad-details.html?id=${ad.id}#myads'" style="background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Просмотреть</button>
             <button onclick="deleteUserAd(${ad.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Удалить</button>
@@ -871,6 +874,45 @@
       } catch (error) {
         console.error('Error removing from favorites:', error);
         alert('Ошибка удаления из избранного');
+      }
+    }
+
+    // Cancel acceptance of ad
+    async function cancelAcceptance(adId) {
+      if (!confirm('Вы уверены, что хотите отменить принятие этого объявления?')) {
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(`/api/ads/${adId}/accept`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          alert('Принятие объявления отменено');
+          loadAcceptedAds(); // Reload accepted ads
+        } else {
+          let errorMessage = 'Не удалось отменить принятие';
+          const responseText = await response.text();
+          if (responseText) {
+            try {
+              const data = JSON.parse(responseText);
+              errorMessage = data.message || errorMessage;
+            } catch (parseError) {
+              errorMessage = responseText;
+            }
+          }
+          alert('Ошибка: ' + errorMessage);
+        }
+      } catch (error) {
+        console.error('Error canceling acceptance:', error);
+        alert('Ошибка отмены принятия: ' + error.message);
       }
     }
 
