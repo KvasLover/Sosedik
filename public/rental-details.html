@@ -184,7 +184,7 @@
         const favoriteBtn = document.createElement('button');
         favoriteBtn.id = 'favorite-btn';
         favoriteBtn.innerHTML = '♡ В избранное';
-        favoriteBtn.style.cssText = 'background: none; border: 2px solid #ccc; padding: 8px 12px; margin-right: 10px; cursor: pointer; border-radius: 4px;';
+        favoriteBtn.style.cssText = 'background: white; color: #333; border: 2px solid #ccc; padding: 8px 12px; margin-right: 10px; cursor: pointer; border-radius: 4px;';
         favoriteBtn.onclick = () => toggleFavorite('rental', rental.id, favoriteBtn);
         actionsDiv.appendChild(favoriteBtn);
 
@@ -310,7 +310,7 @@
           if (isFavorite) {
             buttonElement.innerHTML = '♡ В избранное';
             buttonElement.style.borderColor = '#ccc';
-            buttonElement.style.color = 'inherit';
+            buttonElement.style.color = '#333';
           } else {
             buttonElement.innerHTML = '♥ В избранном';
             buttonElement.style.borderColor = '#e74c3c';

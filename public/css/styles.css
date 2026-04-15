@@ -254,6 +254,7 @@ button[style*="background: #95a5a6"] {
 /* Filter Buttons */
 .filter-btn {
   background: #f0f0f0;
+  color: #333;
   border: 1px solid #ddd;
   padding: 8px 16px;
   margin: 0 5px;
@@ -264,6 +265,10 @@ button[style*="background: #95a5a6"] {
 
 .filter-btn:hover {
   background: #e0e0e0;
+}
+
+.filter-btn:not(.active) {
+  color: #333;
 }
 
 .filter-btn.danger {
