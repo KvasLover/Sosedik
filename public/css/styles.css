@@ -945,6 +945,13 @@ span[style*="3498db"] {
     visibility: visible;
   }
 
+  #main-nav > div:not(.hidden) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    width: 100%;
+  }
+
   #main-nav a {
     padding: 0.8rem 1rem;
     margin: 0.2rem 0;
