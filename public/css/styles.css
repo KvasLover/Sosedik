@@ -829,6 +829,38 @@ span[style*="3498db"] {
   display: block;
 }
 
+/* Responsive Profile Tabs */
+@media (max-width: 768px) {
+  .tab-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .tab-button {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border-bottom: 1px solid #e2e8f0;
+    top: 0;
+    text-align: center;
+  }
+
+  .tab-button.active {
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tab-buttons {
+    gap: 0.25rem;
+  }
+
+  .tab-button {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+  }
+}
+
 /* Profile User Info Block */
 .profile-user-info {
   background: white;
