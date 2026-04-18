@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const pool = require('../database');
 const Ad = require('../models/Ad');
 const { verifyToken, checkLevel } = require('../middleware/auth');
 
@@ -148,6 +149,122 @@ router.delete('/:id', verifyToken, async (req, res) => {
     await Ad.deleteAd(req.params.id);
     res.json({ message: 'Ad deleted' });
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ===== НОВЫЕ РОУТЫ ДЛЯ СИСТЕМЫ ЗАПРОСОВ =====
+
+// Создать запрос на принятие объявления
+router.post('/:id/request', verifyToken, async (req, res) => {
+  try {
+    const ad = await Ad.getAdById(req.params.id);
+    if (!ad) {
+      return res.status(404).json({ message: 'Ad not found' });
+    }
+
+    if (ad.user_id === req.user.id) {
+      return res.status(400).json({ message: 'Cannot request your own ad' });
+    }
+
+    // Проверяем, не отправлял ли уже запрос этот пользователь
+    const existingRequest = await pool.query(`
+      SELECT id FROM ad_requests
+      WHERE ad_id = $1 AND requester_id = $2
+    `, [req.params.id, req.user.id]);
+
+    if (existingRequest.rows.length > 0) {
+      return res.status(409).json({ message: 'Request already exists' });
+    }
+
+    const { message } = req.body;
+    const request = await Ad.createAdRequest(req.params.id, req.user.id, message);
+    res.status(201).json({ message: 'Request sent', request });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Получить входящие запросы (для автора объявления)
+router.get('/requests/incoming', verifyToken, async (req, res) => {
+  try {
+    const requests = await Ad.getIncomingRequests(req.user.id);
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Получить исходящие запросы (для запрашивающего)
+router.get('/requests/outgoing', verifyToken, async (req, res) => {
+  try {
+    const requests = await Ad.getOutgoingRequests(req.user.id);
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Получить активные запросы пользователя
+router.get('/requests/active', verifyToken, async (req, res) => {
+  try {
+    const requests = await Ad.getActiveRequests(req.user.id);
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Принять запрос на объявление
+router.post('/requests/:requestId/accept', verifyToken, async (req, res) => {
+  try {
+    const acceptedRequest = await Ad.acceptAdRequest(req.params.requestId, req.user.id);
+    res.json({ message: 'Request accepted', request: acceptedRequest });
+  } catch (err) {
+    if (err.message.includes('Not authorized')) {
+      return res.status(403).json({ message: err.message });
+    }
+    if (err.message.includes('not found')) {
+      return res.status(404).json({ message: err.message });
+    }
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Отклонить запрос на объявление
+router.post('/requests/:requestId/decline', verifyToken, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({ message: 'Decline reason is required' });
+    }
+
+    const declinedRequest = await Ad.declineAdRequest(req.params.requestId, req.user.id, reason);
+    res.json({ message: 'Request declined', request: declinedRequest });
+  } catch (err) {
+    if (err.message.includes('Not authorized')) {
+      return res.status(403).json({ message: err.message });
+    }
+    if (err.message.includes('not found')) {
+      return res.status(404).json({ message: err.message });
+    }
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Подтвердить выполнение работы
+router.post('/requests/:requestId/confirm', verifyToken, async (req, res) => {
+  try {
+    const { isRequester } = req.body;
+    const confirmedRequest = await Ad.confirmAdCompletion(req.params.requestId, req.user.id, isRequester);
+    res.json({ message: 'Completion confirmed', request: confirmedRequest });
+  } catch (err) {
+    if (err.message.includes('Not authorized')) {
+      return res.status(403).json({ message: err.message });
+    }
+    if (err.message.includes('not found')) {
+      return res.status(404).json({ message: err.message });
+    }
     res.status(500).json({ message: err.message });
   }
 });

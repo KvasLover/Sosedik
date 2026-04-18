@@ -55,6 +55,7 @@
       <div class="profile-tabs">
         <div class="tab-buttons">
           <button class="tab-button active" onclick="showTab('edit')">Редактировать профиль</button>
+          <button class="tab-button" onclick="showTab('requests')">Запросы</button>
           <button class="tab-button" onclick="showTab('favorites')">Избранное</button>
           <button class="tab-button" onclick="showTab('accepted')">Принятые объявления</button>
           <button class="tab-button" onclick="showTab('myads')">Мои объявления</button>
@@ -90,6 +91,47 @@
           
           <button onclick="saveProfile()">Сохранить изменения</button>
           <div id="result-message" class="result hidden"></div>
+        </div>
+
+        <!-- Requests Tab -->
+        <div id="requests-tab" class="tab-content">
+          <h2>Запросы на объявления</h2>
+
+          <!-- Request tabs -->
+          <div class="profile-tabs" style="margin-top: 1rem;">
+            <div class="tab-buttons" style="gap: 0.5rem;">
+              <button class="tab-button active" onclick="showRequestTab('incoming')">Входящие</button>
+              <button class="tab-button" onclick="showRequestTab('outgoing')">Исходящие</button>
+              <button class="tab-button" onclick="showRequestTab('active')">Активные</button>
+            </div>
+          </div>
+
+          <!-- Incoming requests -->
+          <div id="incoming-requests" class="request-section active">
+            <h3>Входящие запросы</h3>
+            <p>Запросы от других пользователей на принятие ваших объявлений</p>
+            <div id="incoming-list">
+              <!-- Incoming requests will be loaded here -->
+            </div>
+          </div>
+
+          <!-- Outgoing requests -->
+          <div id="outgoing-requests" class="request-section">
+            <h3>Исходящие запросы</h3>
+            <p>Ваши запросы на принятие чужих объявлений</p>
+            <div id="outgoing-list">
+              <!-- Outgoing requests will be loaded here -->
+            </div>
+          </div>
+
+          <!-- Active requests -->
+          <div id="active-requests" class="request-section">
+            <h3>Активные запросы</h3>
+            <p>Принятые запросы, требующие выполнения</p>
+            <div id="active-list">
+              <!-- Active requests will be loaded here -->
+            </div>
+          </div>
         </div>
 
         <!-- Favorites Tab -->
@@ -949,6 +991,226 @@
         });
       }
     });
+
+    // ===== REQUEST MANAGEMENT FUNCTIONS =====
+
+    // Show request tab
+    function showRequestTab(tabName) {
+      // Hide all request sections
+      document.querySelectorAll('.request-section').forEach(section => {
+        section.classList.remove('active');
+      });
+
+      // Remove active class from all tab buttons
+      document.querySelectorAll('.profile-tabs .tab-buttons .tab-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      // Show selected section and activate button
+      document.getElementById(tabName + '-requests').classList.add('active');
+      event.target.classList.add('active');
+
+      // Load data for the tab
+      switch(tabName) {
+        case 'incoming':
+          loadIncomingRequests();
+          break;
+        case 'outgoing':
+          loadOutgoingRequests();
+          break;
+        case 'active':
+          loadActiveRequests();
+          break;
+      }
+    }
+
+    // Load incoming requests
+    async function loadIncomingRequests() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/ads/requests/incoming', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const requests = await response.json();
+          displayRequests('incoming-list', requests, 'incoming');
+        }
+      } catch (error) {
+        console.error('Error loading incoming requests:', error);
+      }
+    }
+
+    // Load outgoing requests
+    async function loadOutgoingRequests() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/ads/requests/outgoing', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const requests = await response.json();
+          displayRequests('outgoing-list', requests, 'outgoing');
+        }
+      } catch (error) {
+        console.error('Error loading outgoing requests:', error);
+      }
+    }
+
+    // Load active requests
+    async function loadActiveRequests() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/ads/requests/active', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const requests = await response.json();
+          displayRequests('active-list', requests, 'active');
+        }
+      } catch (error) {
+        console.error('Error loading active requests:', error);
+      }
+    }
+
+    // Display requests in a container
+    function displayRequests(containerId, requests, type) {
+      const container = document.getElementById(containerId);
+
+      if (requests.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #718096; padding: 2rem;">Нет запросов</p>';
+        return;
+      }
+
+      container.innerHTML = requests.map(request => {
+        const statusClass = request.status || 'pending';
+        const statusText = {
+          'pending': 'Ожидает ответа',
+          'accepted': 'Принят',
+          'declined': 'Отклонен',
+          'completed': 'Завершен'
+        }[statusClass] || statusClass;
+
+        let actions = '';
+
+        if (type === 'incoming' && request.status === 'pending') {
+          actions = `
+            <button onclick="acceptRequest(${request.id})" style="background: #27ae60; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem;">Принять</button>
+            <button onclick="declineRequest(${request.id})" style="background: #e74c3c; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Отклонить</button>
+          `;
+        } else if (type === 'active' && request.status === 'accepted') {
+          const isRequester = request.requester_id == currentUserId;
+          actions = `<button onclick="confirmCompletion(${request.id}, ${isRequester})" style="background: #3498db; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Подтвердить выполнение</button>`;
+        }
+
+        return `
+          <div class="request-item">
+            <h4>${request.title}</h4>
+            <p><strong>Категория:</strong> ${request.category}</p>
+            <p><strong>От:</strong> ${request.requester_name || request.creator_name}</p>
+            <p><strong>Статус:</strong> <span class="request-status ${statusClass}">${statusText}</span></p>
+            ${request.message ? `<p><strong>Сообщение:</strong> ${request.message}</p>` : ''}
+            ${request.decline_reason ? `<p><strong>Причина отклонения:</strong> ${request.decline_reason}</p>` : ''}
+            <div class="request-actions">${actions}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Accept request
+    async function acceptRequest(requestId) {
+      if (!confirm('Принять этот запрос? После принятия начнется процесс выполнения.')) return;
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/accept`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          alert('Запрос принят!');
+          loadIncomingRequests();
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось принять запрос'));
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Decline request
+    async function declineRequest(requestId) {
+      const reason = prompt('Укажите причину отклонения (обязательно):');
+      if (!reason || reason.trim().length === 0) {
+        alert('Причина отклонения обязательна');
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/decline`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ reason })
+        });
+
+        if (response.ok) {
+          alert('Запрос отклонен');
+          loadIncomingRequests();
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось отклонить запрос'));
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Confirm completion
+    async function confirmCompletion(requestId, isRequester) {
+      if (!confirm('Подтвердить выполнение работы? Это действие необратимо.')) return;
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/confirm`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ isRequester })
+        });
+
+        if (response.ok) {
+          alert('Выполнение подтверждено!');
+          loadActiveRequests();
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось подтвердить выполнение'));
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
 
   </script>
 

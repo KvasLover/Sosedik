@@ -153,29 +153,31 @@
               }
             });
 
-            // Кнопка "Принять объявление" или "Принято"
+            // Кнопка "Отправить запрос" или статус
             if (!ad.accepted_by) {
-              const acceptBtn = document.createElement('button');
-              acceptBtn.textContent = 'Принять объявление';
-              acceptBtn.style.background = '#27ae60';
-              acceptBtn.style.color = 'white';
-              acceptBtn.style.border = 'none';
-              acceptBtn.style.padding = '10px 15px';
-              acceptBtn.style.marginRight = '10px';
-              acceptBtn.style.cursor = 'pointer';
-              acceptBtn.onclick = () => acceptAd(adId, acceptBtn);
-              actionsDiv.appendChild(acceptBtn);
+              const requestBtn = document.createElement('button');
+              requestBtn.textContent = 'Отправить запрос';
+              requestBtn.style.background = '#3498db';
+              requestBtn.style.color = 'white';
+              requestBtn.style.border = 'none';
+              requestBtn.style.padding = '10px 15px';
+              requestBtn.style.marginRight = '10px';
+              requestBtn.style.cursor = 'pointer';
+              requestBtn.onclick = () => requestAd(adId, requestBtn);
+              actionsDiv.appendChild(requestBtn);
             } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
-              const cancelBtn = document.createElement('button');
-              cancelBtn.textContent = 'Отменить принятие';
-              cancelBtn.style.background = '#e74c3c';
-              cancelBtn.style.color = 'white';
-              cancelBtn.style.border = 'none';
-              cancelBtn.style.padding = '10px 15px';
-              cancelBtn.style.marginRight = '10px';
-              cancelBtn.style.cursor = 'pointer';
-              cancelBtn.onclick = () => cancelAcceptance(adId, cancelBtn);
-              actionsDiv.appendChild(cancelBtn);
+              const statusSpan = document.createElement('span');
+              statusSpan.textContent = '✓ Принято вами';
+              statusSpan.style.color = '#27ae60';
+              statusSpan.style.fontWeight = 'bold';
+              statusSpan.style.marginRight = '10px';
+              actionsDiv.appendChild(statusSpan);
+            } else {
+              const statusSpan = document.createElement('span');
+              statusSpan.textContent = 'Принято другим пользователем';
+              statusSpan.style.color = '#95a5a6';
+              statusSpan.style.marginRight = '10px';
+              actionsDiv.appendChild(statusSpan);
             }
 
             // Кнопка "Связаться с автором"
@@ -210,11 +212,10 @@
       }
     }
 
-    // Принять объявление
-    async function acceptAd(adId, buttonElement) {
-      if (!confirm('Вы уверены, что хотите принять это объявление? После принятия вы сможете связаться с владельцем.')) {
-        return;
-      }
+    // Отправить запрос на принятие объявления
+    async function requestAd(adId, buttonElement) {
+      const message = prompt('Введите сообщение для владельца объявления (опционально):', '');
+      if (message === null) return; // Отмена
 
       const token = localStorage.getItem('sosedik_token');
       if (!token) {
@@ -223,32 +224,34 @@
       }
 
       buttonElement.disabled = true;
-      buttonElement.textContent = 'Обработка...';
+      buttonElement.textContent = 'Отправка...';
 
       try {
-        const response = await fetch(`/api/ads/${adId}/accept`, {
+        const response = await fetch(`/api/ads/${adId}/request`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ message })
         });
 
         if (response.ok) {
           const data = await response.json();
-          alert('Объявление принято! Теперь вы можете связаться с владельцем.');
-          buttonElement.textContent = 'Принято';
+          alert('Запрос отправлен! Владелец объявления получит уведомление.');
+          buttonElement.textContent = 'Запрос отправлен';
           buttonElement.style.background = '#27ae60';
           buttonElement.disabled = true;
         } else {
           const data = await response.json();
-          alert('Ошибка: ' + (data.message || 'Не удалось принять объявление'));
+          alert('Ошибка: ' + (data.message || 'Не удалось отправить запрос'));
           buttonElement.disabled = false;
-          buttonElement.textContent = 'Принять объявление';
+          buttonElement.textContent = 'Отправить запрос';
         }
       } catch (error) {
         alert('Ошибка: ' + error.message);
         buttonElement.disabled = false;
-        buttonElement.textContent = 'Принять объявление';
+        buttonElement.textContent = 'Отправить запрос';
       }
     }
 

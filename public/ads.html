@@ -237,9 +237,11 @@
         let acceptButton = '';
         if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
           if (!ad.accepted_by) {
-            acceptButton = `<button onclick="event.stopPropagation(); acceptAd(${ad.id}, this)" style="background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; margin-right: 10px;">Принять объявление</button>`;
+            acceptButton = `<button onclick="event.stopPropagation(); requestAd(${ad.id}, this)" style="background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; margin-right: 10px;">Отправить запрос</button>`;
           } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
-            acceptButton = `<button onclick="event.stopPropagation(); cancelAcceptance(${ad.id}, this)" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; margin-top: 10px; margin-right: 10px;">Отменить принятие</button>`;
+            acceptButton = `<span style="color: #27ae60; margin-top: 10px; display: inline-block;">✓ Принято вами</span>`;
+          } else {
+            acceptButton = `<span style="color: #95a5a6; margin-top: 10px; display: inline-block;">Принято другим пользователем</span>`;
           }
         }
 
@@ -460,11 +462,10 @@
       }
     }
 
-    // Принять объявление
-    async function acceptAd(adId, buttonElement) {
-      if (!confirm('Вы уверены, что хотите принять это объявление? После принятия вы сможете связаться с владельцем.')) {
-        return;
-      }
+    // Отправить запрос на принятие объявления
+    async function requestAd(adId, buttonElement) {
+      const message = prompt('Введите сообщение для владельца объявления (опционально):', '');
+      if (message === null) return; // Отмена
 
       const token = localStorage.getItem('sosedik_token');
       if (!token) {
@@ -473,34 +474,34 @@
       }
 
       buttonElement.disabled = true;
-      buttonElement.textContent = 'Обработка...';
+      buttonElement.textContent = 'Отправка...';
 
       try {
-        const response = await fetch(`/api/ads/${adId}/accept`, {
+        const response = await fetch(`/api/ads/${adId}/request`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ message })
         });
 
         if (response.ok) {
           const data = await response.json();
-          alert('Объявление принято! Свяжитесь с владельцем для дальнейших шагов.');
-          buttonElement.textContent = 'Принято';
+          alert('Запрос отправлен! Владелец объявления получит уведомление.');
+          buttonElement.textContent = 'Запрос отправлен';
           buttonElement.style.background = '#27ae60';
           buttonElement.disabled = true;
-          // Переход на страницу деталей объявления
-          window.location.href = `/ad-details.html?id=${adId}`;
         } else {
           const data = await response.json();
-          alert('Ошибка: ' + (data.message || 'Не удалось принять объявление'));
+          alert('Ошибка: ' + (data.message || 'Не удалось отправить запрос'));
           buttonElement.disabled = false;
-          buttonElement.textContent = 'Принять объявление';
+          buttonElement.textContent = 'Отправить запрос';
         }
       } catch (error) {
         alert('Ошибка: ' + error.message);
         buttonElement.disabled = false;
-        buttonElement.textContent = 'Принять объявление';
+        buttonElement.textContent = 'Отправить запрос';
       }
     }
 
