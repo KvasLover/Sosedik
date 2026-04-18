@@ -66,6 +66,13 @@ nav {
   gap: 0.5rem;
 }
 
+#nav-guest:not(.hidden),
+#nav-auth:not(.hidden) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 nav a {
   color: white;
   text-decoration: none;
@@ -80,6 +87,20 @@ nav a {
 nav a:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
+}
+
+/* Notification Link */
+.notification-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 0.8rem !important;
+}
+
+.notification-link img {
+  height: 24px;
+  width: 24px;
+  object-fit: contain;
 }
 
 /* Main Content */
