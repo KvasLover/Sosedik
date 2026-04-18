@@ -20,15 +20,15 @@
 
     <div id="rentals-content">
       <!-- Button to open create rental form -->
-      <div style="margin-bottom: 20px;">
-        <button onclick="toggleCreateForm()" style="background: #27ae60;">+ Сдать в аренду</button>
+      <div class="create-button-container">
+        <button onclick="toggleCreateForm()" class="create-button">+ Сдать в аренду</button>
       </div>
 
       <!-- Form to create new rental (hidden by default) -->
       <div id="create-form" class="form-container hidden">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="form-header">
           <h2>Сдать вещь в аренду</h2>
-          <button onclick="toggleCreateForm()" style="background: #95a5a6; padding: 5px 10px;">✕</button>
+          <button onclick="toggleCreateForm()" class="close-button">✕</button>
         </div>
         <div class="form-group">
           <label for="rental-item-name">Название вещи:</label>
@@ -60,14 +60,14 @@
         </div>
         <div class="form-group">
           <label for="rental-photo">Фото вещи (необязательно):</label>
-          <input type="file" id="rental-photo" accept="image/*" style="margin-bottom: 10px;">
-          <div id="photo-preview" style="margin-top: 10px;"></div>
+          <input type="file" id="rental-photo" accept="image/*" class="photo-input">
+          <div id="photo-preview" class="photo-preview"></div>
         </div>
-        <button onclick="createRental()" style="background: #3498db;">Создать объявление</button>
+        <button onclick="createRental()" class="submit-button">Создать объявление</button>
       </div>
 
       <!-- Filters -->
-      <div style="margin-bottom: 20px;">
+      <div class="rentals-list-container">
         <select id="filter-category">
           <option value="">Все категории</option>
           <option value="инструменты">Инструменты</option>
@@ -80,7 +80,7 @@
       </div>
 
       <!-- My rentals filter -->
-      <div style="margin-bottom: 20px;">
+      <div class="filters-container">
         <label>
           <input type="checkbox" id="filter-my-rentals"> Только мои объявления об аренде
         </label>
@@ -127,7 +127,7 @@
             reader.onload = function(event) {
               currentPhotoData = event.target.result; // Store as base64
               const previewDiv = document.getElementById('photo-preview');
-              previewDiv.innerHTML = `<img src="${currentPhotoData}" style="max-width: 200px; max-height: 200px; border-radius: 4px;">`;
+              previewDiv.innerHTML = `<img src="${currentPhotoData}" class="photo-preview-small">`;
             };
             reader.readAsDataURL(file);
           }
@@ -193,34 +193,27 @@
       rentals.forEach(rental => {
         const rentalDiv = document.createElement('div');
         rentalDiv.className = 'rental-item';
-        rentalDiv.style.cssText = `
-          position: relative;
-          border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px;
-          background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;
-          transition: background 0.2s;
-          overflow: hidden;
-        `;
         rentalDiv.onclick = () => {
           window.location.href = `/rental-details.html?id=${rental.id}`;
         };
 
         const isOwner = rental.owner_id === currentUserId;
-        const ownerLabel = isOwner ? '<span style="background: #3498db; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 10px;">Ваше объявление</span>' : '';
+        const ownerLabel = isOwner ? '<span class="owner-label">Ваше объявление</span>' : '';
 
         // Load photo from localStorage
         const storedPhoto = localStorage.getItem(`sosedik_rental_photo_${rental.id}`);
         const photosHtml = storedPhoto ?
-          `<img src="${storedPhoto}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px; margin-right: 15px;">` :
+          `<img src="${storedPhoto}" class="rental-photo">` :
           '';
 
         // Delete button for owner
-        const deleteButton = isOwner ? `<button onclick="event.stopPropagation(); deleteRental(${rental.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; margin-top: 10px;">Удалить</button>` : '';
+        const deleteButton = isOwner ? `<button onclick="event.stopPropagation(); deleteRental(${rental.id})" class="delete-button">Удалить</button>` : '';
 
         rentalDiv.innerHTML = `
-          <div style="display: flex; align-items: flex-start; justify-content: space-between;">
-            <div style="display: flex; flex: 1;">
+          <div class="rental-item-header">
+            <div class="rental-item-content">
               ${photosHtml}
-              <div style="flex: 1;">
+              <div class="rental-details">
                 <h3 style="margin: 0 0 10px 0;">${rental.item_name}${ownerLabel}</h3>
                 <p style="margin: 5px 0; color: #666;"><strong>Категория:</strong> ${rental.category}</p>
                 <p style="margin: 5px 0; color: #666;"><strong>Ценность:</strong> ${getValueLabel(rental.value_category)}</p>

@@ -81,8 +81,8 @@
           <h2>Запросы на объявления</h2>
 
           <!-- Request tabs -->
-          <div class="profile-tabs" style="margin-top: 1rem;">
-            <div class="tab-buttons" style="gap: 0.5rem;">
+          <div class="profile-tabs profile-tabs-margin-top">
+            <div class="tab-buttons tab-buttons-gap">
               <button class="tab-button active" onclick="showRequestTab('incoming')">Входящие</button>
               <button class="tab-button" onclick="showRequestTab('outgoing')">Исходящие</button>
               <button class="tab-button" onclick="showRequestTab('active')">Активные</button>
@@ -122,19 +122,19 @@
           <h2>Избранное</h2>
           
           <!-- Filter buttons -->
-          <div style="margin-bottom: 10px; text-align: center;">
+          <div class="filter-buttons-container">
             <button onclick="loadFavorites()" class="filter-btn active" id="filter-all">Все</button>
             <button onclick="loadFavorites('ad')" class="filter-btn" id="filter-ads">Только объявления</button>
             <button onclick="loadFavorites('rental')" class="filter-btn" id="filter-rentals">Только аренда</button>
           </div>
           
           <!-- Clear favorites button -->
-          <div style="margin-bottom: 20px; text-align: center;">
+          <div class="clear-favorites-container">
             <button onclick="clearFavorites()" class="filter-btn danger" id="clear-all">Убрать все из избранного</button>
           </div>
           
           <!-- Favorites list -->
-          <div id="favorites-list" style="display: grid; gap: 15px;">
+          <div id="favorites-list" class="grid-list">
             <!-- Favorites will be loaded here -->
           </div>
         </div>
@@ -142,7 +142,7 @@
         <!-- Accepted Ads Tab -->
         <div id="accepted-tab" class="tab-content">
           <h2>Принятые объявления</h2>
-          <div id="accepted-list" style="display: grid; gap: 15px;">
+          <div id="accepted-list" class="grid-list">
             <!-- Accepted ads will be loaded here -->
           </div>
         </div>
@@ -150,7 +150,7 @@
         <!-- My Ads Tab -->
         <div id="myads-tab" class="tab-content">
           <h2>Мои объявления</h2>
-          <div id="myads-list" style="display: grid; gap: 15px;">
+          <div id="myads-list" class="grid-list">
             <!-- My ads will be loaded here -->
           </div>
         </div>
@@ -160,20 +160,20 @@
           <h2>Настройки</h2>
 
           <!-- Additional Info -->
-          <div class="form-container" style="margin-bottom: 2rem;">
+          <div class="form-container form-container-margin">
             <h3>Статистика</h3>
             <p><strong>Созданных объявлений:</strong> <span id="user-ads-count">0</span></p>
             <p><strong>Рейтинг:</strong> <span id="user-rating">★★★★★ (5.0)</span></p>
           </div>
 
           <!-- User Ads History -->
-          <div class="form-container" style="margin-bottom: 2rem;">
+          <div class="form-container form-container-margin">
             <h3>Последние объявления</h3>
-            <div id="user-ads-list" style="max-height: 400px; overflow-y: auto;"></div>
+            <div id="user-ads-list" class="scrollable-list"></div>
           </div>
 
           <!-- Notifications Preferences -->
-          <div class="form-container" style="margin-bottom: 2rem;">
+          <div class="form-container form-container-margin">
             <h3>Предпочтения уведомлений</h3>
             <div class="form-group">
               <label for="notify-ads">
@@ -197,43 +197,43 @@
           </div>
 
           <!-- Blocked Users -->
-          <div class="form-container" style="margin-bottom: 2rem;">
+          <div class="form-container form-container-margin">
             <h3>Заблокированные пользователи</h3>
             <p id="blocked-users-list">Нет заблокированных пользователей</p>
           </div>
 
           <!-- Activity History -->
-          <div class="form-container" style="margin-bottom: 2rem;">
+          <div class="form-container form-container-margin">
             <h3>История активности</h3>
-            <div id="activity-history" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-              <p style="color: #666;">Нет записей активности</p>
+            <div id="activity-history" class="activity-history">
+              <p class="form-hint">Нет записей активности</p>
             </div>
           </div>
 
           <!-- Two Factor Auth -->
-          <div class="form-container" style="margin-bottom: 2rem;">
+          <div class="form-container form-container-margin">
             <h3>Безопасность</h3>
             <div class="form-group">
               <label for="two-factor">
                 <input type="checkbox" id="two-factor">
                 Включить двухфакторную аутентификацию
               </label>
-              <small style="display: block; color: #666; margin-top: 5px;">Для подтверждения входа будет требоваться код</small>
+              <small class="form-hint">Для подтверждения входа будет требоваться код</small>
             </div>
           </div>
 
           <!-- Account Deletion Section -->
-          <div class="form-container" style="border: 2px solid #ff4444; background: #ffeaea;">
-            <h3 style="color: #ff4444;">Удаление аккаунта</h3>
-            <p style="color: #666; margin-bottom: 15px;">Внимание! Это действие необратимо. Все ваши данные, объявления и история активности будут удалены.</p>
-            <button onclick="deleteAccount()" style="background: #ff4444; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Удалить аккаунт</button>
+          <div class="form-container danger-section">
+            <h3 class="danger-text">Удаление аккаунта</h3>
+            <p class="danger-description">Внимание! Это действие необратимо. Все ваши данные, объявления и история активности будут удалены.</p>
+            <button onclick="deleteAccount()" class="danger-button">Удалить аккаунт</button>
           </div>
         </div>
       </div>
 
-      <div class="profile-container" style="margin-top: 2rem;">
+      <div class="profile-container profile-actions-margin">
         <button onclick="goToMain()">Вернуться на главную</button>
-        <button onclick="logout()" style="background: #ff4444; color: white;">Выйти из аккаунта</button>
+        <button onclick="logout()" class="logout-button">Выйти из аккаунта</button>
       </div>
     </div>
   </main>
@@ -293,9 +293,9 @@
           // Load and display avatar from localStorage or server
           const savedPhoto = localStorage.getItem(`sosedik_photo_${user.id}`);
           if (savedPhoto) {
-            document.getElementById('user-avatar').innerHTML = `<img src="${savedPhoto}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            document.getElementById('user-avatar').innerHTML = `<img src="${savedPhoto}" class="avatar-img">`;
           } else if (user.verification_photo) {
-            document.getElementById('user-avatar').innerHTML = `<img src="${user.verification_photo}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            document.getElementById('user-avatar').innerHTML = `<img src="${user.verification_photo}" class="avatar-img">`;
           } else {
             document.getElementById('user-avatar').innerHTML = '📷';
           }
@@ -360,15 +360,15 @@
           
           const adsList = document.getElementById('user-ads-list');
           if (allUserAds.length === 0) {
-            adsList.innerHTML = '<p style="color: #666;">Вы пока не создали объявлений</p>';
+            adsList.innerHTML = '<p class="no-items-message">Вы пока не создали объявлений</p>';
             return;
           }
           
           adsList.innerHTML = allUserAds.map(ad => `
-            <div style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">
+            <div class="ad-item">
               <strong>${ad.title}</strong>
-              <p style="margin: 5px 0; font-size: 12px; color: #666;">${ad.category} • ${new Date(ad.created_at).toLocaleDateString()}</p>
-              <button onclick="deleteUserAd(${ad.id})" style="background: #e74c3c; color: white; border: none; padding: 3px 8px; font-size: 12px; margin-top: 5px;">Удалить</button>
+              <p class="ad-meta">${ad.category} • ${new Date(ad.created_at).toLocaleDateString()}</p>
+              <button onclick="deleteUserAd(${ad.id})" class="delete-ad-btn">Удалить</button>
             </div>
           `).join('');
         }
@@ -436,7 +436,7 @@
             const reader = new FileReader();
             reader.onload = function(event) {
               const photoData = event.target.result;
-              document.getElementById('user-avatar').innerHTML = `<img src="${photoData}" style="width: 100%; height: 100%; object-fit: cover;">`;
+              document.getElementById('user-avatar').innerHTML = `<img src="${photoData}" class="avatar-img">`;
               // Save to localStorage immediately - get userId from token or currentUserId
               const userId = currentUserId || getUserIdFromToken();
               if (userId) {
@@ -796,7 +796,7 @@
       const favoritesList = document.getElementById('favorites-list');
       
       if (favorites.length === 0) {
-        favoritesList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">У вас нет избранных элементов</p>';
+        favoritesList.innerHTML = '<p class="favorite-empty">У вас нет избранных элементов</p>';
         return;
       }
 
@@ -807,25 +807,25 @@
         
         let imageHtml = '';
         if (fav.item_type === 'rental' && item.photo_url) {
-          imageHtml = `<img src="${item.photo_url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; margin-right: 15px;">`;
+          imageHtml = `<img src="${item.photo_url}" class="favorite-photo">`;
         }
 
         return `
-          <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #fff; display: flex; align-items: center;">
+          <div class="favorite-item">
             ${imageHtml}
-            <div style="flex: 1;">
-              <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div class="favorite-content">
+              <div class="favorite-header">
                 <div>
-                  <h4 style="margin: 0 0 5px 0; color: #333;">
-                    <span style="background: ${fav.item_type === 'ad' ? '#3498db' : '#e67e22'}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 10px;">${typeLabel}</span>
+                  <h4 class="favorite-title">
+                    <span class="favorite-type ${fav.item_type === 'ad' ? '' : 'favorite-type-rental'}">${typeLabel}</span>
                     ${item.title || item.item_name}
                   </h4>
-                  <p style="margin: 5px 0; color: #666; font-size: 14px;">${item.description || item.rental_terms || ''}</p>
-                  <p style="margin: 5px 0; font-size: 12px; color: #999;">Добавлено в избранное: ${new Date(fav.created_at).toLocaleDateString()}</p>
+                  <p class="favorite-description">${item.description || item.rental_terms || ''}</p>
+                  <p class="favorite-date">Добавлено в избранное: ${new Date(fav.created_at).toLocaleDateString()}</p>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 5px;">
-                  <button onclick="window.location.href='${link}'" style="background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Просмотреть</button>
-                  <button onclick="removeFromFavorites('${fav.item_type}', ${item.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Удалить</button>
+                <div class="favorite-actions">
+                  <button onclick="window.location.href='${link}'" class="view-btn">Просмотреть</button>
+                  <button onclick="removeFromFavorites('${fav.item_type}', ${item.id})" class="remove-btn">Удалить</button>
                 </div>
               </div>
             </div>
@@ -839,7 +839,7 @@
       const acceptedList = document.getElementById('accepted-list');
       
       if (acceptedAds.length === 0) {
-        acceptedList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">У вас нет принятых объявлений</p>';
+        acceptedList.innerHTML = '<p class="accepted-empty">У вас нет принятых объявлений</p>';
         return;
       }
 

@@ -20,15 +20,15 @@
 
     <div id="ads-content">
       <!-- Button to open create ad form -->
-      <div style="margin-bottom: 20px;">
-        <button onclick="toggleCreateForm()" style="background: #27ae60;">+ Создать объявление</button>
+      <div class="ads-create-container">
+        <button onclick="toggleCreateForm()" class="ads-create-btn">+ Создать объявление</button>
       </div>
 
       <!-- Form to create new ad (hidden by default) -->
       <div id="create-form" class="form-container hidden">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="ads-form-header">
           <h2>Создать объявление</h2>
-          <button onclick="toggleCreateForm()" style="background: #95a5a6; padding: 5px 10px;">✕</button>
+          <button onclick="toggleCreateForm()" class="ads-close-btn">✕</button>
         </div>
         <div class="form-group">
           <label for="ad-category">Категория:</label>
@@ -62,9 +62,9 @@
       </div>
 
       <!-- Search and filters -->
-      <div class="form-container" style="background: #f0f0f0;">
+      <div class="form-container ads-filters">
         <h2>Поиск и фильтры</h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="ads-filters-grid">
           <div class="form-group">
             <label for="search-query">Поиск:</label>
             <input type="text" id="search-query" placeholder="Введите поисковый запрос">
@@ -85,7 +85,7 @@
       </div>
 
       <!-- My ads filter -->
-      <div style="margin-bottom: 20px;">
+      <div class="ads-filters-container">
         <label for="filter-my-ads">
           <input type="checkbox" id="filter-my-ads" onchange="applyFilters()">
           Только мои объявления
@@ -210,27 +210,27 @@
 
         let deleteButton = '';
         if (currentUserId && parseInt(ad.user_id) === parseInt(currentUserId)) {
-          deleteButton = `<button onclick="event.stopPropagation(); deleteAd(${ad.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; margin-top: 10px;">Удалить</button>`;
+          deleteButton = `<button onclick="event.stopPropagation(); deleteAd(${ad.id})" class="ads-delete-btn">Удалить</button>`;
         }
 
         let favoriteButton = '';
         if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
-          favoriteButton = `<button onclick="event.stopPropagation(); toggleFavorite('ad', ${ad.id}, this)" class="favorite-btn" style="background: rgba(255,255,255,0.95); box-shadow: 0 1px 8px rgba(0,0,0,0.08); color: #333; font-size: 20px; cursor: pointer; margin-top: 10px; float: right; padding: 6px 8px; border-radius: 8px; border: none;">♡</button>`;
+          favoriteButton = `<button onclick="event.stopPropagation(); toggleFavorite('ad', ${ad.id}, this)" class="ads-favorite-btn">♡</button>`;
         }
 
         let acceptButton = '';
         if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
           if (!ad.accepted_by) {
-            acceptButton = `<button onclick="event.stopPropagation(); requestAd(${ad.id}, this)" style="background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; margin-right: 10px;">Отправить запрос</button>`;
+            acceptButton = `<button onclick="event.stopPropagation(); requestAd(${ad.id}, this)" class="ads-request-btn">Отправить запрос</button>`;
           } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
-            acceptButton = `<span style="color: #27ae60; margin-top: 10px; display: inline-block;">✓ Принято вами</span>`;
+            acceptButton = `<span class="ads-accepted">✓ Принято вами</span>`;
           } else {
-            acceptButton = `<span style="color: #95a5a6; margin-top: 10px; display: inline-block;">Принято другим пользователем</span>`;
+            acceptButton = `<span class="ads-taken">Принято другим пользователем</span>`;
           }
         }
 
         const isOwner = currentUserId && ad.user_id === currentUserId;
-        const titleWithBadge = isOwner ? `${ad.title} <span style="color: #27ae60; font-size: 12px;">(Ваше)</span>` : ad.title;
+        const titleWithBadge = isOwner ? `${ad.title} <span class="ads-owner-badge">(Ваше)</span>` : ad.title;
 
         adDiv.innerHTML = '<h3>' + titleWithBadge + '</h3>' +
           '<p><strong>Категория:</strong> ' + ad.category + '</p>' +
@@ -238,7 +238,7 @@
           (ad.price ? '<p><strong>Цена:</strong> ' + ad.price + ' руб.</p>' : '') +
           (ad.contact ? '<p><strong>Контакт:</strong> ' + ad.contact + '</p>' : '') +
           '<p><small>Создано: ' + new Date(ad.created_at).toLocaleDateString() + '</small></p>' +
-          (isOwner && ad.accepted_by ? '<p style="color: #27ae60; font-weight: bold;">Принято пользователем ' + (ad.acceptor_name || ('#' + ad.accepted_by)) + '</p>' : '') +
+          (isOwner && ad.accepted_by ? '<p class="ads-accepted-by">Принято пользователем ' + (ad.acceptor_name || ('#' + ad.accepted_by)) + '</p>' : '') +
           acceptButton +
           deleteButton;
 
