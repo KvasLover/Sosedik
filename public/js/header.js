@@ -3,29 +3,29 @@ const headerTemplate = `
 <header>
   <div class="header-content">
     <div class="logo"><a href="/">Соседик</a></div>
+    <div class="notification-container" id="notification-container">
+      <a href="/notifications.html" class="notification-link" id="notification-bell">
+        <img src="/notification.png" alt="Уведомления">
+        <span class="notification-count hidden" id="notification-count"></span>
+      </a>
+      <div class="notification-popup" id="notification-popup">
+        <div class="notification-header">
+          <h4>Уведомления</h4>
+        </div>
+        <div class="notification-list" id="notification-list">
+          <p class="no-notifications">Загрузка уведомлений...</p>
+        </div>
+        <div class="notification-footer">
+          <a href="/notifications.html" class="view-all-link">Все уведомления</a>
+        </div>
+      </div>
+    </div>
     <nav id="main-nav">
       <div id="nav-guest">
         <a href="/">Главная</a>
         <a href="/login.html">Войти</a>
       </div>
       <div id="nav-auth" class="hidden">
-        <div class="notification-container">
-          <a href="/notifications.html" class="notification-link" id="notification-bell">
-            <img src="/notification.png" alt="Уведомления">
-            <span class="notification-count hidden" id="notification-count"></span>
-          </a>
-          <div class="notification-popup" id="notification-popup">
-            <div class="notification-header">
-              <h4>Уведомления</h4>
-            </div>
-            <div class="notification-list" id="notification-list">
-              <p class="no-notifications">Загрузка уведомлений...</p>
-            </div>
-            <div class="notification-footer">
-              <a href="/notifications.html" class="view-all-link">Все уведомления</a>
-            </div>
-          </div>
-        </div>
         <a href="/">Главная</a>
         <a href="/ads.html">Объявления</a>
         <a href="/rentals.html">Аренда</a>
@@ -53,6 +53,7 @@ function initHeader() {
   const mainNav = document.getElementById('main-nav');
   const guestNav = document.getElementById('nav-guest');
   const authNav = document.getElementById('nav-auth');
+  const notificationContainer = document.getElementById('notification-container');
   const notificationBell = document.getElementById('notification-bell');
   const notificationPopup = document.getElementById('notification-popup');
   const notificationList = document.getElementById('notification-list');
@@ -71,10 +72,12 @@ function initHeader() {
   if (token) {
     guestNav.classList.add('hidden');
     authNav.classList.remove('hidden');
+    if (notificationContainer) notificationContainer.classList.remove('hidden');
     loadNotifications(token);
   } else {
     guestNav.classList.remove('hidden');
     authNav.classList.add('hidden');
+    if (notificationContainer) notificationContainer.classList.add('hidden');
   }
 
   if (hamburgerBtn && mainNav) {
