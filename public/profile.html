@@ -823,8 +823,8 @@
         const link = fav.item_type === 'ad' ? `/ad-details.html?id=${item.id}` : `/rental-details.html?id=${item.id}`;
         
         let imageHtml = '';
-        if (fav.item_type === 'rental' && item.photo_url) {
-          imageHtml = `<img src="${item.photo_url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; margin-right: 15px;">`;
+        if (fav.item_type === 'rental' && item.photos && item.photos.length > 0) {
+          imageHtml = `<img src="${item.photos[0]}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; margin-right: 15px;">`;
         }
 
         return `

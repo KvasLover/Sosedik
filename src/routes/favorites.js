@@ -98,7 +98,10 @@ router.get('/', verifyToken, async (req, res) => {
       })
     );
 
-    res.json(favoritesWithData);
+    // Filter out favorites with non-existent items
+    const validFavorites = favoritesWithData.filter(fav => fav.item !== null && fav.item !== undefined);
+
+    res.json(validFavorites);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
