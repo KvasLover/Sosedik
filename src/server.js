@@ -8,6 +8,7 @@ const usersRoutes = require('./routes/users');
 const messagesRoutes = require('./routes/messages');
 const rentalsRoutes = require('./routes/rentals');
 const favoritesRoutes = require('./routes/favorites');
+const notificationsRoutes = require('./routes/notifications');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -23,6 +24,7 @@ app.use('/api/users', usersRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/rentals', rentalsRoutes);
 app.use('/api/favorites', favoritesRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Test database connection
 app.get('/api/health', async (req, res) => {
