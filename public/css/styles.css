@@ -1114,9 +1114,13 @@ body.mobile .header-content {
   gap: 8px;
 }
 
-body.mobile .notification-container {
+body.mobile .notification-container:not(.hidden) {
   display: block !important;
   order: 1;
+}
+
+body.mobile .notification-container.hidden {
+  display: none !important;
 }
 
 body.mobile .header-actions {
@@ -1172,8 +1176,13 @@ body.mobile #main-nav a:hover {
 }
 
 /* Desktop Navigation - JS-based */
-body.desktop .notification-container {
+body.desktop .notification-container:not(.hidden) {
   order: 1;
+  display: block;
+}
+
+body.desktop .notification-container.hidden {
+  display: none !important;
 }
 
 body.desktop #main-nav {
