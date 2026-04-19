@@ -1,4 +1,3 @@
-// Header initialization script
 const headerTemplate = `
 <header>
   <div class="header-content">
@@ -164,4 +163,4 @@ function initHeader() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', initHeader);alert("header.js works!");
+document.addEventListener('DOMContentLoaded', initHeader);

@@ -107,7 +107,7 @@
     <p>&copy; 2026 Соседик. Все права защищены.</p>
   </footer>
 
-  <script src="js/header.js"></script>
+  <script src="js/header_new.js" defer></script>
   <script src="js/app.js"></script>
   <script>
     let allAds = []; // Store all ads for filtering
@@ -536,35 +536,6 @@
         buttonElement.textContent = 'Отменить принятие';
       }
     }
-
-    // Hamburger menu functionality
-    document.addEventListener('DOMContentLoaded', () => {
-      const hamburgerBtn = document.getElementById('hamburger-btn');
-      const mainNav = document.getElementById('main-nav');
-
-      if (hamburgerBtn && mainNav) {
-        hamburgerBtn.addEventListener('click', () => {
-          hamburgerBtn.classList.toggle('active');
-          mainNav.classList.toggle('active');
-        });
-
-        // Close menu when clicking on a link
-        mainNav.querySelectorAll('a').forEach(link => {
-          link.addEventListener('click', () => {
-            hamburgerBtn.classList.remove('active');
-            mainNav.classList.remove('active');
-          });
-        });
-
-        // Close menu when clicking outside
-        document.addEventListener('click', (e) => {
-          if (!hamburgerBtn.contains(e.target) && !mainNav.contains(e.target)) {
-            hamburgerBtn.classList.remove('active');
-            mainNav.classList.remove('active');
-          }
-        });
-      }
-    });
 
   </script>
 </body>
