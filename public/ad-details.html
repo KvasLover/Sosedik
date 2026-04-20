@@ -93,7 +93,7 @@
             document.getElementById('location-value').textContent = ad.location;
           }
 
-          document.getElementById('ad-author').textContent = `Пользователь ${ad.user_id}`;
+          document.getElementById('ad-author').textContent = ad.author_name || `Пользователь ${ad.user_id}`;
           document.getElementById('ad-created').textContent = new Date(ad.created_at).toLocaleString();
           currentAdOwnerId = ad.user_id;
 
@@ -412,6 +412,42 @@
       document.getElementById('ad-details').classList.add('hidden');
     } else {
       loadAdDetails();
+      loadPendingRequestsState();
+    }
+
+    // Load pending requests and update button states
+    async function loadPendingRequestsState() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/ads/requests/outgoing', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const outgoingRequests = await response.json();
+          
+          // Check if there's a request for this specific ad
+          const hasRequest = outgoingRequests.some(req => 
+            req.ad_id === parseInt(adId) && 
+            (req.status === 'pending' || req.status === 'accepted')
+          );
+
+          if (hasRequest) {
+            const requestBtn = document.querySelector('button');
+            if (requestBtn && requestBtn.textContent.includes('Отправить запрос')) {
+              requestBtn.textContent = 'Запрос отправлен';
+              requestBtn.style.background = '#27ae60';
+              requestBtn.disabled = true;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки состояния запросов:', error.message);
+      }
     }
   </script>
   <script src="js/header_new.js" defer></script>

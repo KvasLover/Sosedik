@@ -133,7 +133,10 @@
         document.getElementById('ads-content').classList.add('hidden');
       } else {
         // Get current user ID and load ads
-        getCurrentUserId().then(() => loadAds());
+        getCurrentUserId().then(() => {
+          loadAds();
+          loadPendingRequestsState();
+        });
       }
     });
 
@@ -142,6 +145,7 @@
       const token = localStorage.getItem('sosedik_token');
       if (token && currentUserId) {
         loadAds();
+        loadPendingRequestsState();
       }
     });
 
@@ -233,6 +237,7 @@
         const titleWithBadge = isOwner ? `${ad.title} <span style="color: #27ae60; font-size: 12px;">(Ваше)</span>` : ad.title;
 
         adDiv.innerHTML = '<h3>' + titleWithBadge + '</h3>' +
+          '<p><strong>Автор:</strong> ' + (ad.author_name || ('Пользователь #' + ad.user_id)) + '</p>' +
           '<p><strong>Категория:</strong> ' + ad.category + '</p>' +
           '<p>' + ad.description + '</p>' +
           (ad.price ? '<p><strong>Цена:</strong> ' + ad.price + ' руб.</p>' : '') +
@@ -534,6 +539,52 @@
         alert('Ошибка: ' + error.message);
         buttonElement.disabled = false;
         buttonElement.textContent = 'Отменить принятие';
+      }
+    }
+
+    // Load pending requests and update button states
+    async function loadPendingRequestsState() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/ads/requests/outgoing', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const outgoingRequests = await response.json();
+          const requestedAdIds = new Set();
+
+          // Collect ad IDs that have pending or accepted requests
+          outgoingRequests.forEach(req => {
+            if (req.status === 'pending' || req.status === 'accepted') {
+              requestedAdIds.add(req.ad_id);
+            }
+          });
+
+          // Update all request buttons
+          document.querySelectorAll('button').forEach(button => {
+            // Look for buttons with text "Отправить запрос"
+            if (button.textContent.includes('Отправить запрос')) {
+              // Try to find the parent ad item and extract ad ID from the onclick handler
+              const onClickHandler = button.getAttribute('onclick');
+              const adIdMatch = onClickHandler.match(/requestAd\((\d+)/);
+              if (adIdMatch) {
+                const adId = parseInt(adIdMatch[1]);
+                if (requestedAdIds.has(adId)) {
+                  button.textContent = 'Запрос отправлен';
+                  button.style.background = '#27ae60';
+                  button.disabled = true;
+                }
+              }
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки состояния запросов:', error.message);
       }
     }
 

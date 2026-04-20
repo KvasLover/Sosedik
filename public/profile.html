@@ -452,6 +452,22 @@
       }
       
       loadProfile();
+      
+      // Load tab from hash if present
+      const hash = window.location.hash;
+      if (hash) {
+        const tabName = hash.replace('#', '');
+        showTab(tabName);
+      }
+    });
+
+    // Listen for hash changes (browser back/forward)
+    window.addEventListener('hashchange', () => {
+      const hash = window.location.hash;
+      if (hash) {
+        const tabName = hash.replace('#', '');
+        showTab(tabName);
+      }
     });
 
     async function saveProfile() {
@@ -651,6 +667,9 @@
       if (clickedButton) {
         clickedButton.classList.add('active');
       }
+
+      // Update URL hash for persistence
+      window.location.hash = tabName;
     }
 
     function getTabDisplayName(tabName) {
@@ -957,10 +976,13 @@
         section.classList.remove('active');
       });
 
-      // Remove active class from all tab buttons
-      document.querySelectorAll('.profile-tabs .tab-buttons .tab-button').forEach(btn => {
-        btn.classList.remove('active');
-      });
+      // Remove active class from request tab buttons ONLY (not main profile tabs)
+      const requestTabsContainer = document.querySelector('#requests-tab .profile-tabs .tab-buttons');
+      if (requestTabsContainer) {
+        requestTabsContainer.querySelectorAll('.tab-button').forEach(btn => {
+          btn.classList.remove('active');
+        });
+      }
 
       // Show selected section and activate button
       document.getElementById(tabName + '-requests').classList.add('active');
@@ -1055,23 +1077,48 @@
           'completed': 'Завершен'
         }[statusClass] || statusClass;
 
+        let labelText = 'От:';  // Default label
+        let nameText = '';
         let actions = '';
 
-        if (type === 'incoming' && request.status === 'pending') {
-          actions = `
-            <button onclick="acceptRequest(${request.id})" style="background: #27ae60; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem;">Принять</button>
-            <button onclick="declineRequest(${request.id})" style="background: #e74c3c; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Отклонить</button>
-          `;
-        } else if (type === 'active' && request.status === 'accepted') {
-          const isRequester = request.requester_id == currentUserId;
-          actions = `<button onclick="confirmCompletion(${request.id}, ${isRequester})" style="background: #3498db; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Подтвердить выполнение</button>`;
+        // Determine label and name based on request type
+        if (type === 'incoming') {
+          labelText = 'От:';
+          nameText = request.requester_name || 'Неизвестный';
+          
+          if (request.status === 'pending') {
+            actions = `
+              <button onclick="acceptRequest(${request.id})" style="background: #27ae60; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem;">Принять</button>
+              <button onclick="declineRequest(${request.id})" style="background: #e74c3c; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Отклонить</button>
+            `;
+          } else if (request.status === 'declined') {
+            actions = `<button onclick="deleteDeclinedRequest(${request.id}, 'incoming')" style="background: #34495e; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold;">Убрать из списка</button>`;
+          }
+        } else if (type === 'outgoing') {
+          labelText = 'Кому:';
+          nameText = request.creator_name || 'Неизвестный';
+          
+          if (request.status === 'pending') {
+            actions = `<button onclick="cancelRequest(${request.id}, 'outgoing')" style="background: #e67e22; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Отменить запрос</button>`;
+          } else if (request.status === 'declined') {
+            actions = `<button onclick="deleteDeclinedRequest(${request.id}, 'outgoing')" style="background: #34495e; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold;">Убрать из списка</button>`;
+          }
+        } else if (type === 'active') {
+          labelText = 'С:';
+          const otherParty = request.requester_id == currentUserId ? request.creator_name : request.requester_name;
+          nameText = otherParty || 'Неизвестный';
+          
+          if (request.status === 'accepted') {
+            const isRequester = request.requester_id == currentUserId;
+            actions = `<button onclick="confirmCompletion(${request.id}, ${isRequester})" style="background: #3498db; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Подтвердить выполнение</button>`;
+          }
         }
 
         return `
           <div class="request-item">
             <h4>${request.title}</h4>
             <p><strong>Категория:</strong> ${request.category}</p>
-            <p><strong>От:</strong> ${request.requester_name || request.creator_name}</p>
+            <p><strong>${labelText}</strong> ${nameText}</p>
             <p><strong>Статус:</strong> <span class="request-status ${statusClass}">${statusText}</span></p>
             ${request.message ? `<p><strong>Сообщение:</strong> ${request.message}</p>` : ''}
             ${request.decline_reason ? `<p><strong>Причина отклонения:</strong> ${request.decline_reason}</p>` : ''}
@@ -1162,6 +1209,62 @@
         } else {
           const data = await response.json();
           alert('Ошибка: ' + (data.message || 'Не удалось подтвердить выполнение'));
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Delete declined request
+    async function deleteDeclinedRequest(requestId, type) {
+      if (!confirm('Убрать этот запрос из списка?')) return;
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/delete`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          alert('Запрос удален!');
+          // Reload the appropriate tab
+          if (type === 'incoming') {
+            loadIncomingRequests();
+          } else if (type === 'outgoing') {
+            loadOutgoingRequests();
+          }
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось удалить запрос'));
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Cancel pending request
+    async function cancelRequest(requestId, type) {
+      if (!confirm('Отменить этот запрос?')) return;
+
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/cancel`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          alert('Запрос отменен!');
+          // Reload the outgoing requests tab
+          loadOutgoingRequests();
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось отменить запрос'));
         }
       } catch (error) {
         alert('Ошибка: ' + error.message);

@@ -167,10 +167,10 @@ router.post('/:id/request', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Cannot request your own ad' });
     }
 
-    // Проверяем, не отправлял ли уже запрос этот пользователь
+    // Проверяем, не отправлял ли уже запрос этот пользователь (только если не отклонен и не завершен)
     const existingRequest = await pool.query(`
       SELECT id FROM ad_requests
-      WHERE ad_id = $1 AND requester_id = $2
+      WHERE ad_id = $1 AND requester_id = $2 AND status IN ('pending', 'accepted')
     `, [req.params.id, req.user.id]);
 
     if (existingRequest.rows.length > 0) {
@@ -264,6 +264,44 @@ router.post('/requests/:requestId/confirm', verifyToken, async (req, res) => {
     }
     if (err.message.includes('not found')) {
       return res.status(404).json({ message: err.message });
+    }
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Удалить отклоненный запрос
+router.delete('/requests/:requestId/delete', verifyToken, async (req, res) => {
+  try {
+    const deletedRequest = await Ad.deleteDeclinedRequest(req.params.requestId, req.user.id);
+    res.json({ message: 'Request deleted', request: deletedRequest });
+  } catch (err) {
+    if (err.message.includes('Not authorized')) {
+      return res.status(403).json({ message: err.message });
+    }
+    if (err.message.includes('not found')) {
+      return res.status(404).json({ message: err.message });
+    }
+    if (err.message.includes('Can only delete declined')) {
+      return res.status(400).json({ message: err.message });
+    }
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Cancel pending request (only requester can cancel)
+router.delete('/requests/:requestId/cancel', verifyToken, async (req, res) => {
+  try {
+    const cancelledRequest = await Ad.cancelAdRequest(req.params.requestId, req.user.id);
+    res.json({ message: 'Request cancelled', request: cancelledRequest });
+  } catch (err) {
+    if (err.message.includes('Not authorized')) {
+      return res.status(403).json({ message: err.message });
+    }
+    if (err.message.includes('not found')) {
+      return res.status(404).json({ message: err.message });
+    }
+    if (err.message.includes('Can only cancel pending')) {
+      return res.status(400).json({ message: err.message });
     }
     res.status(500).json({ message: err.message });
   }

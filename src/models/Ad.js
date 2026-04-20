@@ -2,9 +2,10 @@ const pool = require('../database');
 
 // Get all active ads
 const getAds = async (filters = {}) => {
-  let query = `SELECT ads.id, ads.user_id, ads.category, ads.title, ads.description, ads.price, ads.contact, ads.created_at, ads.active, ads.accepted_by, users.name as acceptor_name
+  let query = `SELECT ads.id, ads.user_id, ads.category, ads.title, ads.description, ads.price, ads.contact, ads.created_at, ads.active, ads.accepted_by, users.name as acceptor_name, author.name as author_name
                FROM ads
                LEFT JOIN users ON ads.accepted_by = users.id
+               LEFT JOIN users as author ON ads.user_id = author.id
                WHERE ads.active = true`;
   const values = [];
 
@@ -32,9 +33,10 @@ const getAds = async (filters = {}) => {
 const getAdById = async (id) => {
   try {
     const result = await pool.query(`
-      SELECT ads.*, users.name as acceptor_name
+      SELECT ads.*, users.name as acceptor_name, author.name as author_name, author.phone as author_phone
       FROM ads
       LEFT JOIN users ON ads.accepted_by = users.id
+      LEFT JOIN users as author ON ads.user_id = author.id
       WHERE ads.id = $1
     `, [id]);
     return result.rows[0];
@@ -161,6 +163,12 @@ const getUserAds = async (userId) => {
 // Создать запрос на принятие объявления
 const createAdRequest = async (adId, requesterId, message = '') => {
   try {
+    // First, delete any completed requests from this user for this ad
+    await pool.query(`
+      DELETE FROM ad_requests
+      WHERE ad_id = $1 AND requester_id = $2 AND status = 'completed'
+    `, [adId, requesterId]);
+
     const result = await pool.query(`
       INSERT INTO ad_requests (ad_id, requester_id, message)
       VALUES ($1, $2, $3)
@@ -180,7 +188,7 @@ const getIncomingRequests = async (userId) => {
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       JOIN users u ON ar.requester_id = u.id
-      WHERE ads.user_id = $1 AND ar.status = 'pending'
+      WHERE ads.user_id = $1 AND ar.status IN ('pending', 'declined')
       ORDER BY ar.created_at DESC
     `, [userId]);
     return result.rows;
@@ -193,11 +201,14 @@ const getIncomingRequests = async (userId) => {
 const getOutgoingRequests = async (userId) => {
   try {
     const result = await pool.query(`
-      SELECT ar.*, ads.title, ads.category, u.name as creator_name
+      SELECT ar.*, ads.title, ads.category, ads.user_id, 
+             u.name as requester_name, u.phone as requester_phone,
+             u2.name as creator_name, u2.phone as creator_phone
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
-      JOIN users u ON ads.user_id = u.id
-      WHERE ar.requester_id = $1
+      JOIN users u ON ar.requester_id = u.id
+      JOIN users u2 ON ads.user_id = u2.id
+      WHERE ar.requester_id = $1 AND ar.status IN ('pending', 'declined')
       ORDER BY ar.created_at DESC
     `, [userId]);
     return result.rows;
@@ -343,19 +354,94 @@ const getActiveRequests = async (userId) => {
   try {
     const result = await pool.query(`
       SELECT ar.*, ads.title, ads.category,
-             CASE
-               WHEN ads.user_id = $1 THEN u2.name
-               ELSE u1.name
-             END as other_party_name
+             u1.name as requester_name, u1.phone as requester_phone,
+             u2.name as creator_name, u2.phone as creator_phone
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       JOIN users u1 ON ar.requester_id = u1.id
       JOIN users u2 ON ads.user_id = u2.id
       WHERE (ar.requester_id = $1 OR ads.user_id = $1)
-        AND ar.status IN ('accepted', 'pending')
+        AND ar.status = 'accepted'
       ORDER BY ar.updated_at DESC
     `, [userId]);
     return result.rows;
+  } catch (err) {
+    throw err;
+  }
+};
+
+// Удалить отклоненный запрос
+const deleteDeclinedRequest = async (requestId, userId) => {
+  try {
+    // Проверяем, что запрос отклонен и пользователь имеет право удалить
+    const request = await pool.query(`
+      SELECT ar.*, ads.user_id as ad_owner_id
+      FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
+      WHERE ar.id = $1
+    `, [requestId]);
+
+    if (request.rows.length === 0) {
+      throw new Error('Request not found');
+    }
+
+    const req = request.rows[0];
+
+    // Может удалить либо запрашивающий, либо владелец объявления
+    if (req.requester_id !== userId && req.ad_owner_id !== userId) {
+      throw new Error('Not authorized to delete this request');
+    }
+
+    // Удаляем только отклоненные запросы
+    if (req.status !== 'declined') {
+      throw new Error('Can only delete declined requests');
+    }
+
+    const result = await pool.query(`
+      DELETE FROM ad_requests
+      WHERE id = $1
+      RETURNING *
+    `, [requestId]);
+
+    return result.rows[0];
+  } catch (err) {
+    throw err;
+  }
+};
+
+// Cancel pending request (only requester can cancel)
+const cancelAdRequest = async (requestId, userId) => {
+  try {
+    // Check that request exists and user is the requester
+    const request = await pool.query(`
+      SELECT ar.*
+      FROM ad_requests ar
+      WHERE ar.id = $1
+    `, [requestId]);
+
+    if (request.rows.length === 0) {
+      throw new Error('Request not found');
+    }
+
+    const req = request.rows[0];
+
+    // Only requester can cancel
+    if (req.requester_id !== userId) {
+      throw new Error('Not authorized to cancel this request');
+    }
+
+    // Can only cancel pending requests
+    if (req.status !== 'pending') {
+      throw new Error('Can only cancel pending requests');
+    }
+
+    const result = await pool.query(`
+      DELETE FROM ad_requests
+      WHERE id = $1
+      RETURNING *
+    `, [requestId]);
+
+    return result.rows[0];
   } catch (err) {
     throw err;
   }
@@ -379,5 +465,7 @@ module.exports = {
   acceptAdRequest,
   declineAdRequest,
   confirmAdCompletion,
-  getActiveRequests
+  getActiveRequests,
+  deleteDeclinedRequest,
+  cancelAdRequest
 };
