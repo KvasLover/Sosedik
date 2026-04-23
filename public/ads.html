@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Объявления - Соседик</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
+
 <body>
   <!-- Header -->
   <div id="header-root"></div>
@@ -253,7 +255,7 @@
           tempDiv.innerHTML = favoriteButton;
           const favBtn = tempDiv.firstElementChild;
           adDiv.appendChild(favBtn);
-          
+
           // Проверить статус избранного и обновить кнопку
           checkFavoriteStatus('ad', ad.id).then(isFavorite => {
             if (isFavorite) {
@@ -264,6 +266,12 @@
         }
 
         adsList.appendChild(adDiv);
+
+        // Если кнопка "Отправить запрос" была создана, проверим активный запрос
+        const requestButton = adDiv.querySelector('button[onclick*="requestAd"]');
+        if (requestButton) {
+          checkActiveRequestForAd(ad.id, requestButton);
+        }
       });
     }
 
@@ -293,8 +301,8 @@
 
       // Filter by search query
       if (searchQuery) {
-        filteredAds = filteredAds.filter(ad => 
-          ad.title.toLowerCase().includes(searchQuery) || 
+        filteredAds = filteredAds.filter(ad =>
+          ad.title.toLowerCase().includes(searchQuery) ||
           ad.description.toLowerCase().includes(searchQuery)
         );
       }
@@ -323,9 +331,9 @@
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ 
-            category, 
-            title, 
+          body: JSON.stringify({
+            category,
+            title,
             description,
             price: price || null,
             contact: contact || null
@@ -397,12 +405,12 @@
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           return data.isFavorite;
         }
-        
+
         return false;
       } catch (error) {
         console.error('Error checking favorite status:', error);
@@ -588,6 +596,34 @@
       }
     }
 
+    // Проверить, есть ли активный запрос от текущего пользователя на данное объявление
+    async function checkActiveRequestForAd(adId, buttonElement) {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/ads/requests/outgoing', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const requests = await response.json();
+          const hasActive = requests.some(req =>
+            req.ad_id === parseInt(adId) &&
+            (req.status === 'pending' || req.status === 'accepted' || req.status === 'in_progress')
+          );
+          if (hasActive) {
+            buttonElement.textContent = 'Запрос отправлен';
+            buttonElement.style.background = '#27ae60';
+            buttonElement.disabled = true;
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка проверки запроса:', error);
+      }
+    }
+
+
   </script>
 </body>
+
 </html>

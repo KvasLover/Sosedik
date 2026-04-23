@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Детали объявления - Соседик</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
+
 <body>
   <!-- Header -->
   <div id="header-root"></div>
@@ -21,7 +23,8 @@
         <p id="ad-description"></p>
         <p id="ad-price" style="display: none;"><strong>Цена:</strong> <span id="price-value"></span> руб.</p>
         <p id="ad-urgency" style="display: none;"><strong>Срочность:</strong> <span id="urgency-value"></span></p>
-        <p id="ad-location" style="display: none;"><strong>Местоположение:</strong> <span id="location-value"></span></p>
+        <p id="ad-location" style="display: none;"><strong>Местоположение:</strong> <span id="location-value"></span>
+        </p>
         <p><strong>Автор:</strong> <span id="ad-author"></span></p>
         <p><small>Создано: <span id="ad-created"></span></small></p>
 
@@ -56,6 +59,32 @@
         return payload.id;
       } catch (e) {
         return null;
+      }
+    }
+
+    // Проверить, есть ли активный запрос от текущего пользователя на данное объявление
+    async function checkActiveRequestForAd(adId, buttonElement) {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/ads/requests/outgoing', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const requests = await response.json();
+          const hasActive = requests.some(req =>
+            req.ad_id === parseInt(adId) &&
+            (req.status === 'pending' || req.status === 'accepted' || req.status === 'in_progress')
+          );
+          if (hasActive) {
+            buttonElement.textContent = 'Запрос отправлен';
+            buttonElement.style.background = '#27ae60';
+            buttonElement.disabled = true;
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка проверки запроса:', error);
       }
     }
 
@@ -148,6 +177,9 @@
               requestBtn.style.cursor = 'pointer';
               requestBtn.onclick = () => requestAd(adId, requestBtn);
               actionsDiv.appendChild(requestBtn);
+
+              // После добавления кнопки проверим, есть ли уже активный запрос
+              checkActiveRequestForAd(adId, requestBtn);
             } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
               const statusSpan = document.createElement('span');
               statusSpan.textContent = '✓ Принято вами';
@@ -344,12 +376,12 @@
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           return data.isFavorite;
         }
-        
+
         return false;
       } catch (error) {
         console.error('Error checking favorite status:', error);
@@ -412,7 +444,7 @@
       document.getElementById('ad-details').classList.add('hidden');
     } else {
       loadAdDetails();
-      loadPendingRequestsState();
+      //loadPendingRequestsState();
     }
 
     // Load pending requests and update button states
@@ -429,10 +461,10 @@
 
         if (response.ok) {
           const outgoingRequests = await response.json();
-          
+
           // Check if there's a request for this specific ad
-          const hasRequest = outgoingRequests.some(req => 
-            req.ad_id === parseInt(adId) && 
+          const hasRequest = outgoingRequests.some(req =>
+            req.ad_id === parseInt(adId) &&
             (req.status === 'pending' || req.status === 'accepted')
           );
 
@@ -452,4 +484,5 @@
   </script>
   <script src="js/header_new.js" defer></script>
 </body>
+
 </html>
