@@ -1020,6 +1020,11 @@ span[style*="3498db"] {
   color: #1e40af;
 }
 
+.request-status.in_progress { 
+  background: #e0e7ff; 
+  color: #9189f2; 
+}
+
 /* Profile User Info Block */
 .profile-user-info {
   background: white;

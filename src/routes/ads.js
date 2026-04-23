@@ -159,24 +159,32 @@ router.delete('/:id', verifyToken, async (req, res) => {
 router.post('/:id/request', verifyToken, async (req, res) => {
   try {
     const ad = await Ad.getAdById(req.params.id);
-    if (!ad) {
-      return res.status(404).json({ message: 'Ad not found' });
-    }
+    if (!ad) return res.status(404).json({ message: 'Ad not found' });
+    if (ad.user_id === req.user.id) return res.status(400).json({ message: 'Cannot request your own ad' });
 
-    if (ad.user_id === req.user.id) {
-      return res.status(400).json({ message: 'Cannot request your own ad' });
-    }
-
-    // Проверяем, не отправлял ли уже запрос этот пользователь (только если не отклонен и не завершен)
-    const existingRequest = await pool.query(`
+    // 1. Проверяем, нет ли уже активного запроса (pending, accepted, in_progress)
+    const activeRequest = await pool.query(`
       SELECT id FROM ad_requests
-      WHERE ad_id = $1 AND requester_id = $2 AND status IN ('pending', 'accepted')
+      WHERE ad_id = $1 AND requester_id = $2
+        AND status IN ('pending', 'accepted', 'in_progress')
     `, [req.params.id, req.user.id]);
 
-    if (existingRequest.rows.length > 0) {
-      return res.status(409).json({ message: 'Request already exists' });
+    if (activeRequest.rows.length > 0) {
+      return res.status(409).json({ message: 'You already have an active request for this ad' });
     }
 
+    // 2. Защита от спама: нельзя отправлять новый запрос, если предыдущий был отклонён менее 30 секунд назад
+    const recentRejected = await pool.query(`
+      SELECT id FROM ad_requests
+      WHERE ad_id = $1 AND requester_id = $2 AND status = 'rejected'
+        AND updated_at > NOW() - INTERVAL '30 seconds'
+    `, [req.params.id, req.user.id]);
+
+    if (recentRejected.rows.length > 0) {
+      return res.status(429).json({ message: 'You can send a new request only after 30 seconds since the last rejection' });
+    }
+
+    // 3. Создаём новый запрос
     const { message } = req.body;
     const request = await Ad.createAdRequest(req.params.id, req.user.id, message);
     res.status(201).json({ message: 'Request sent', request });

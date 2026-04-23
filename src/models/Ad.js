@@ -402,18 +402,20 @@ const confirmAdCompletion = async (requestId, userId) => {
     const updatedReq = updated.rows[0];
 
     if (updatedReq.requester_confirmed && updatedReq.creator_confirmed) {
-      await pool.query(`
-        UPDATE ad_requests
-        SET status = 'completed', completed_at = CURRENT_TIMESTAMP
-        WHERE id = $1
-      `, [requestId]);
+  await pool.query(`
+    UPDATE ad_requests
+    SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+  `, [requestId]);
 
-      await pool.query(`
-        UPDATE ads
-        SET acceptance_status = 'completed'
-        WHERE id = $1
-      `, [req.ad_id]);
-    }
+  await pool.query(`
+    UPDATE ads
+    SET acceptance_status = 'open',
+        accepted_by = NULL,
+        accepted_at = NULL
+    WHERE id = $1
+  `, [req.ad_id]);
+}
 
     return updatedReq;
   } catch (err) {
