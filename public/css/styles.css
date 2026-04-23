@@ -1442,6 +1442,18 @@ body.desktop .notification-container {
   background: #c0392b;
 }
 
+.button-hide {
+  background: #2c3e50;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.button-hide:hover {
+  background: #1a252f;
+}
+
 /* Mobile Notification Styles */
 @media (max-width: 768px) {
   .notification-popup {

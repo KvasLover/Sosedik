@@ -301,6 +301,29 @@ router.post('/requests/:requestId/confirm', verifyToken, async (req, res) => {
   }
 });
 
+// Скрыть конкретный отклонённый запрос
+router.post('/requests/:requestId/hide', verifyToken, async (req, res) => {
+  try {
+    const { isIncoming } = req.body; // true = входящий (автор скрывает), false = исходящий (запросивший)
+    const hiddenRequest = await Ad.hideRejectedRequest(req.params.requestId, req.user.id, isIncoming);
+    if (!hiddenRequest) return res.status(404).json({ message: 'Request not found' });
+    res.json({ message: 'Request hidden', request: hiddenRequest });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Скрыть все отклонённые запросы пользователя (по типу)
+router.post('/requests/hide-all', verifyToken, async (req, res) => {
+  try {
+    const { isIncoming } = req.body;
+    const count = await Ad.hideAllRejectedRequests(req.user.id, isIncoming);
+    res.json({ message: `${count} requests hidden` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Удалить отклоненный запрос
 router.delete('/requests/:requestId/delete', verifyToken, async (req, res) => {
   try {

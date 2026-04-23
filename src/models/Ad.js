@@ -182,39 +182,35 @@ const createAdRequest = async (adId, requesterId, message = '') => {
 
 // Получить входящие запросы (для автора объявления)
 const getIncomingRequests = async (userId) => {
-  try {
-    const result = await pool.query(`
-      SELECT ar.*, ads.title, ads.category, u.name as requester_name, u.phone as requester_phone
-      FROM ad_requests ar
-      JOIN ads ON ar.ad_id = ads.id
-      JOIN users u ON ar.requester_id = u.id
-      WHERE ads.user_id = $1 AND ar.status IN ('pending', 'rejected')
-      ORDER BY ar.created_at DESC
-    `, [userId]);
-    return result.rows;
-  } catch (err) {
-    throw err;
-  }
+  const result = await pool.query(`
+    SELECT ar.*, ads.title, ads.category, u.name as requester_name, u.phone as requester_phone
+    FROM ad_requests ar
+    JOIN ads ON ar.ad_id = ads.id
+    JOIN users u ON ar.requester_id = u.id
+    WHERE ads.user_id = $1 
+      AND ar.status IN ('pending', 'rejected')
+      AND (ar.hidden_by_creator IS NOT TRUE)
+    ORDER BY ar.created_at DESC
+  `, [userId]);
+  return result.rows;
 };
 
 // Получить исходящие запросы (для запрашивающего)
 const getOutgoingRequests = async (userId) => {
-  try {
-    const result = await pool.query(`
-      SELECT ar.*, ads.title, ads.category, ads.user_id, 
-             u.name as requester_name, u.phone as requester_phone,
-             u2.name as creator_name, u2.phone as creator_phone
-      FROM ad_requests ar
-      JOIN ads ON ar.ad_id = ads.id
-      JOIN users u ON ar.requester_id = u.id
-      JOIN users u2 ON ads.user_id = u2.id
-      WHERE ar.requester_id = $1 AND ar.status IN ('pending', 'rejected')
-      ORDER BY ar.created_at DESC
-    `, [userId]);
-    return result.rows;
-  } catch (err) {
-    throw err;
-  }
+  const result = await pool.query(`
+    SELECT ar.*, ads.title, ads.category, ads.user_id, 
+           u.name as requester_name, u.phone as requester_phone,
+           u2.name as creator_name, u2.phone as creator_phone
+    FROM ad_requests ar
+    JOIN ads ON ar.ad_id = ads.id
+    JOIN users u ON ar.requester_id = u.id
+    JOIN users u2 ON ads.user_id = u2.id
+    WHERE ar.requester_id = $1 
+      AND ar.status IN ('pending', 'rejected')
+      AND (ar.hidden_by_requester IS NOT TRUE)
+    ORDER BY ar.created_at DESC
+  `, [userId]);
+  return result.rows;
 };
 
 // Принять запрос на объявление (переводит из pending в accepted)
@@ -519,6 +515,46 @@ const cancelAdRequest = async (requestId, userId) => {
   }
 };
 
+// Скрыть отклонённый запрос для конкретного пользователя (не удаляя из БД)
+const hideRejectedRequest = async (requestId, userId, isIncoming) => {
+  try {
+    let field = isIncoming ? 'hidden_by_creator' : 'hidden_by_requester';
+    const result = await pool.query(`
+      UPDATE ad_requests
+      SET ${field} = true
+      WHERE id = $1
+      RETURNING *
+    `, [requestId]);
+    return result.rows[0];
+  } catch (err) {
+    throw err;
+  }
+};
+
+// Скрыть все отклонённые запросы для пользователя (по типу)
+const hideAllRejectedRequests = async (userId, isIncoming) => {
+  try {
+    let field = isIncoming ? 'hidden_by_creator' : 'hidden_by_requester';
+    // Определяем, какие запросы относятся к пользователю
+    let condition = isIncoming 
+      ? `ads.user_id = $1`   // для входящих: автор объявления
+      : `ar.requester_id = $1`; // для исходящих: запросивший
+
+    const result = await pool.query(`
+      UPDATE ad_requests ar
+      SET ${field} = true
+      FROM ads
+      WHERE ar.ad_id = ads.id
+        AND ${condition}
+        AND ar.status = 'rejected'
+        AND (ar.${field} IS NOT TRUE)
+    `, [userId]);
+    return result.rowCount;
+  } catch (err) {
+    throw err;
+  }
+};
+
 module.exports = {
   getAds,
   getAdById,
@@ -540,5 +576,7 @@ module.exports = {
   getActiveRequests,
   deleteDeclinedRequest,
   cancelAdRequest,
-  startAdRequest  // Новый метод для перехода accepted → in_progress
+  startAdRequest,  // Новый метод для перехода accepted → in_progress
+  hideRejectedRequest,
+  hideAllRejectedRequests
 };
