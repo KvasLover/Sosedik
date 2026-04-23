@@ -188,7 +188,7 @@ const getIncomingRequests = async (userId) => {
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       JOIN users u ON ar.requester_id = u.id
-      WHERE ads.user_id = $1 AND ar.status IN ('pending', 'declined')
+      WHERE ads.user_id = $1 AND ar.status IN ('pending', 'rejected')
       ORDER BY ar.created_at DESC
     `, [userId]);
     return result.rows;
@@ -208,7 +208,7 @@ const getOutgoingRequests = async (userId) => {
       JOIN ads ON ar.ad_id = ads.id
       JOIN users u ON ar.requester_id = u.id
       JOIN users u2 ON ads.user_id = u2.id
-      WHERE ar.requester_id = $1 AND ar.status IN ('pending', 'declined')
+      WHERE ar.requester_id = $1 AND ar.status IN ('pending', 'rejected')
       ORDER BY ar.created_at DESC
     `, [userId]);
     return result.rows;
@@ -217,12 +217,13 @@ const getOutgoingRequests = async (userId) => {
   }
 };
 
-// Принять запрос на объявление
+// Принять запрос на объявление (переводит из pending в accepted)
+// Все остальные pending запросы для этого же объявления автоматически отклоняются
 const acceptAdRequest = async (requestId, userId) => {
   try {
     // Проверяем, что пользователь - владелец объявления
     const request = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       WHERE ar.id = $1
@@ -232,11 +233,25 @@ const acceptAdRequest = async (requestId, userId) => {
       throw new Error('Request not found');
     }
 
-    if (request.rows[0].ad_owner_id !== userId) {
+    const req = request.rows[0];
+
+    if (req.ad_owner_id !== userId) {
       throw new Error('Not authorized to accept this request');
     }
 
-    // Обновляем статус запроса
+    // Проверяем, что запрос в статусе pending
+    if (req.current_status !== 'pending') {
+      throw new Error('Can only accept pending requests');
+    }
+
+    // АВТОМАТИЧЕСКИ ОТКЛОНЯЕМ ВСЕ ОСТАЛЬНЫЕ PENDING ЗАПРОСЫ НА ЭТО ОБЪЯВЛЕНИЕ
+    await pool.query(`
+      UPDATE ad_requests
+      SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+      WHERE ad_id = $1 AND status = 'pending' AND id != $2
+    `, [req.ad_id, requestId]);
+
+    // Обновляем статус принятого запроса
     const result = await pool.query(`
       UPDATE ad_requests
       SET status = 'accepted', updated_at = CURRENT_TIMESTAMP
@@ -249,7 +264,7 @@ const acceptAdRequest = async (requestId, userId) => {
       UPDATE ads
       SET acceptance_status = 'accepted', accepted_by = $2, accepted_at = CURRENT_TIMESTAMP
       WHERE id = $1
-    `, [request.rows[0].ad_id, request.rows[0].requester_id]);
+    `, [req.ad_id, req.requester_id]);
 
     return result.rows[0];
   } catch (err) {
@@ -257,44 +272,13 @@ const acceptAdRequest = async (requestId, userId) => {
   }
 };
 
-// Отклонить запрос на объявление
-const declineAdRequest = async (requestId, userId, reason) => {
-  try {
-    // Проверяем, что пользователь - владелец объявления
-    const request = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id
-      FROM ad_requests ar
-      JOIN ads ON ar.ad_id = ads.id
-      WHERE ar.id = $1
-    `, [requestId]);
-
-    if (request.rows.length === 0) {
-      throw new Error('Request not found');
-    }
-
-    if (request.rows[0].ad_owner_id !== userId) {
-      throw new Error('Not authorized to decline this request');
-    }
-
-    // Обновляем статус запроса
-    const result = await pool.query(`
-      UPDATE ad_requests
-      SET status = 'declined', decline_reason = $2, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      RETURNING *
-    `, [requestId, reason]);
-
-    return result.rows[0];
-  } catch (err) {
-    throw err;
-  }
-};
-
-// Подтвердить выполнение работы
-const confirmAdCompletion = async (requestId, userId, isRequester) => {
+// Начать выполнение работы (переводит accepted → in_progress)
+// Может быть вызвано только если запрос в статусе accepted
+// Доступно для обеих сторон
+const startAdRequest = async (requestId, userId) => {
   try {
     const request = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       WHERE ar.id = $1
@@ -306,30 +290,118 @@ const confirmAdCompletion = async (requestId, userId, isRequester) => {
 
     const req = request.rows[0];
 
-    // Проверяем права доступа
-    if (isRequester && req.requester_id !== userId) {
-      throw new Error('Not authorized');
+    // Проверяем, что запрос находится в статусе accepted
+    if (req.current_status !== 'accepted') {
+      throw new Error('Can only start accepted requests');
     }
-    if (!isRequester && req.ad_owner_id !== userId) {
-      throw new Error('Not authorized');
+
+    // Проверяем права: только автор объявления или запросивший могут начать
+    if (req.ad_owner_id !== userId && req.requester_id !== userId) {
+      throw new Error('Not authorized to start this request');
+    }
+
+    // Переводим запрос в статус in_progress
+    const result = await pool.query(`
+      UPDATE ad_requests
+      SET status = 'in_progress', updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `, [requestId]);
+
+    // Обновляем статус объявления
+    await pool.query(`
+      UPDATE ads
+      SET acceptance_status = 'in_progress'
+      WHERE id = $1
+    `, [req.ad_id]);
+
+    return result.rows[0];
+  } catch (err) {
+    throw err;
+  }
+};
+
+// Отклонить запрос на объявление (статус: pending → rejected)
+const declineAdRequest = async (requestId, userId, reason) => {
+  try {
+    // Проверяем, что пользователь - владелец объявления
+    const request = await pool.query(`
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status
+      FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
+      WHERE ar.id = $1
+    `, [requestId]);
+
+    if (request.rows.length === 0) {
+      throw new Error('Request not found');
+    }
+
+    const req = request.rows[0];
+
+    if (req.ad_owner_id !== userId) {
+      throw new Error('Not authorized to decline this request');
+    }
+
+    // Проверяем, что запрос в статусе pending
+    if (req.current_status !== 'pending') {
+      throw new Error('Can only decline pending requests');
+    }
+
+    // Обновляем статус запроса
+    const result = await pool.query(`
+      UPDATE ad_requests
+      SET status = 'rejected', decline_reason = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `, [requestId, reason]);
+
+    return result.rows[0];
+  } catch (err) {
+    throw err;
+  }
+};
+
+const confirmAdCompletion = async (requestId, userId) => {
+  try {
+    const request = await pool.query(`
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status
+      FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
+      WHERE ar.id = $1
+    `, [requestId]);
+
+    if (request.rows.length === 0) throw new Error('Request not found');
+    const req = request.rows[0];
+
+    // Автоматически определяем, кто подтверждает
+    let isRequester = false;
+    if (req.requester_id === userId) isRequester = true;
+    else if (req.ad_owner_id === userId) isRequester = false;
+    else throw new Error('Not authorized');
+
+    // Проверка статуса
+    if (req.current_status !== 'in_progress') {
+      throw new Error('Can only confirm completion for in_progress requests');
+    }
+
+    // Защита от повторного подтверждения
+    const field = isRequester ? 'requester_confirmed' : 'creator_confirmed';
+    if (req[field] === true) {
+      throw new Error('You have already confirmed this request');
     }
 
     // Обновляем подтверждение
-    const field = isRequester ? 'requester_confirmed' : 'creator_confirmed';
     await pool.query(`
       UPDATE ad_requests
       SET ${field} = true, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
     `, [requestId]);
 
-    // Проверяем, подтвердили ли обе стороны
-    const updated = await pool.query(`
-      SELECT * FROM ad_requests WHERE id = $1
-    `, [requestId]);
-
+    // Проверяем, не завершили ли оба
+    const updated = await pool.query(`SELECT * FROM ad_requests WHERE id = $1`, [requestId]);
     const updatedReq = updated.rows[0];
+
     if (updatedReq.requester_confirmed && updatedReq.creator_confirmed) {
-      // Обе стороны подтвердили - завершаем
       await pool.query(`
         UPDATE ad_requests
         SET status = 'completed', completed_at = CURRENT_TIMESTAMP
@@ -343,7 +415,7 @@ const confirmAdCompletion = async (requestId, userId, isRequester) => {
       `, [req.ad_id]);
     }
 
-    return updated.rows[0];
+    return updatedReq;
   } catch (err) {
     throw err;
   }
@@ -351,23 +423,18 @@ const confirmAdCompletion = async (requestId, userId, isRequester) => {
 
 // Получить активные запросы пользователя
 const getActiveRequests = async (userId) => {
-  try {
-    const result = await pool.query(`
-      SELECT ar.*, ads.title, ads.category,
-             u1.name as requester_name, u1.phone as requester_phone,
-             u2.name as creator_name, u2.phone as creator_phone
-      FROM ad_requests ar
-      JOIN ads ON ar.ad_id = ads.id
-      JOIN users u1 ON ar.requester_id = u1.id
-      JOIN users u2 ON ads.user_id = u2.id
-      WHERE (ar.requester_id = $1 OR ads.user_id = $1)
-        AND ar.status = 'accepted'
-      ORDER BY ar.updated_at DESC
-    `, [userId]);
-    return result.rows;
-  } catch (err) {
-    throw err;
-  }
+  const result = await pool.query(`
+    SELECT ar.*, ads.title, ads.category,
+           u1.name as requester_name, u2.name as creator_name
+    FROM ad_requests ar
+    JOIN ads ON ar.ad_id = ads.id
+    JOIN users u1 ON ar.requester_id = u1.id
+    JOIN users u2 ON ads.user_id = u2.id
+    WHERE (ar.requester_id = $1 OR ads.user_id = $1)
+      AND ar.status IN ('accepted', 'in_progress')
+    ORDER BY ar.updated_at DESC
+  `, [userId]);
+  return result.rows;
 };
 
 // Удалить отклоненный запрос
@@ -375,7 +442,7 @@ const deleteDeclinedRequest = async (requestId, userId) => {
   try {
     // Проверяем, что запрос отклонен и пользователь имеет право удалить
     const request = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       WHERE ar.id = $1
@@ -392,9 +459,9 @@ const deleteDeclinedRequest = async (requestId, userId) => {
       throw new Error('Not authorized to delete this request');
     }
 
-    // Удаляем только отклоненные запросы
-    if (req.status !== 'declined') {
-      throw new Error('Can only delete declined requests');
+    // Удаляем только отклоненные (rejected) запросы
+    if (req.current_status !== 'rejected') {
+      throw new Error('Can only delete rejected requests');
     }
 
     const result = await pool.query(`
@@ -409,12 +476,13 @@ const deleteDeclinedRequest = async (requestId, userId) => {
   }
 };
 
-// Cancel pending request (only requester can cancel)
+// Cancel pending request (только запросивший, только если status = pending → cancelled)
+// Вместо удаления записи, меняем статус на 'cancelled'
 const cancelAdRequest = async (requestId, userId) => {
   try {
     // Check that request exists and user is the requester
     const request = await pool.query(`
-      SELECT ar.*
+      SELECT ar.*, ar.status as current_status
       FROM ad_requests ar
       WHERE ar.id = $1
     `, [requestId]);
@@ -431,12 +499,14 @@ const cancelAdRequest = async (requestId, userId) => {
     }
 
     // Can only cancel pending requests
-    if (req.status !== 'pending') {
+    if (req.current_status !== 'pending') {
       throw new Error('Can only cancel pending requests');
     }
 
+    // Вместо удаления, меняем статус на cancelled
     const result = await pool.query(`
-      DELETE FROM ad_requests
+      UPDATE ad_requests
+      SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
       RETURNING *
     `, [requestId]);
@@ -467,5 +537,6 @@ module.exports = {
   confirmAdCompletion,
   getActiveRequests,
   deleteDeclinedRequest,
-  cancelAdRequest
+  cancelAdRequest,
+  startAdRequest  // Новый метод для перехода accepted → in_progress
 };

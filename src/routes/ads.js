@@ -248,6 +248,28 @@ router.post('/requests/:requestId/decline', verifyToken, async (req, res) => {
     if (err.message.includes('not found')) {
       return res.status(404).json({ message: err.message });
     }
+    if (err.message.includes('Can only decline')) {
+      return res.status(400).json({ message: err.message });
+    }
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Начать выполнение запроса (accepted → in_progress)
+router.post('/requests/:requestId/start', verifyToken, async (req, res) => {
+  try {
+    const startedRequest = await Ad.startAdRequest(req.params.requestId, req.user.id);
+    res.json({ message: 'Request started', request: startedRequest });
+  } catch (err) {
+    if (err.message.includes('Not authorized')) {
+      return res.status(403).json({ message: err.message });
+    }
+    if (err.message.includes('not found')) {
+      return res.status(404).json({ message: err.message });
+    }
+    if (err.message.includes('Can only start')) {
+      return res.status(400).json({ message: err.message });
+    }
     res.status(500).json({ message: err.message });
   }
 });
@@ -255,8 +277,7 @@ router.post('/requests/:requestId/decline', verifyToken, async (req, res) => {
 // Подтвердить выполнение работы
 router.post('/requests/:requestId/confirm', verifyToken, async (req, res) => {
   try {
-    const { isRequester } = req.body;
-    const confirmedRequest = await Ad.confirmAdCompletion(req.params.requestId, req.user.id, isRequester);
+    const confirmedRequest = await Ad.confirmAdCompletion(req.params.requestId, req.user.id);
     res.json({ message: 'Completion confirmed', request: confirmedRequest });
   } catch (err) {
     if (err.message.includes('Not authorized')) {
@@ -264,6 +285,9 @@ router.post('/requests/:requestId/confirm', verifyToken, async (req, res) => {
     }
     if (err.message.includes('not found')) {
       return res.status(404).json({ message: err.message });
+    }
+    if (err.message.includes('Can only confirm')) {
+      return res.status(400).json({ message: err.message });
     }
     res.status(500).json({ message: err.message });
   }
@@ -281,14 +305,14 @@ router.delete('/requests/:requestId/delete', verifyToken, async (req, res) => {
     if (err.message.includes('not found')) {
       return res.status(404).json({ message: err.message });
     }
-    if (err.message.includes('Can only delete declined')) {
+    if (err.message.includes('Can only delete rejected')) {
       return res.status(400).json({ message: err.message });
     }
     res.status(500).json({ message: err.message });
   }
 });
 
-// Cancel pending request (only requester can cancel)
+// Cancel pending request (только запросивший может отменить, pending → cancelled)
 router.delete('/requests/:requestId/cancel', verifyToken, async (req, res) => {
   try {
     const cancelledRequest = await Ad.cancelAdRequest(req.params.requestId, req.user.id);

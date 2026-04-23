@@ -1074,6 +1074,7 @@
           'pending': 'Ожидает ответа',
           'accepted': 'Принят',
           'declined': 'Отклонен',
+          'in_progress': 'Выполняется',
           'completed': 'Завершен'
         }[statusClass] || statusClass;
 
@@ -1104,15 +1105,35 @@
             actions = `<button onclick="deleteDeclinedRequest(${request.id}, 'outgoing')" style="background: #34495e; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold;">Убрать из списка</button>`;
           }
         } else if (type === 'active') {
-          labelText = 'С:';
-          const otherParty = request.requester_id == currentUserId ? request.creator_name : request.requester_name;
-          nameText = otherParty || 'Неизвестный';
-          
-          if (request.status === 'accepted') {
-            const isRequester = request.requester_id == currentUserId;
-            actions = `<button onclick="confirmCompletion(${request.id}, ${isRequester})" style="background: #3498db; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Подтвердить выполнение</button>`;
-          }
-        }
+  labelText = 'С:';
+  const otherParty = request.requester_id == currentUserId ? request.creator_name : request.requester_name;
+  nameText = otherParty || 'Неизвестный';
+  
+  // Статус "accepted" — ещё не начали работу
+  if (request.status === 'accepted') {
+    // Кнопка "Начать работу" (опционально, но полезно)
+    actions = `<button onclick="startWork(${request.id})" style="background: #27ae60; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem;">Начать работу</button>`;
+  }
+  
+  // Статус "in_progress" — работа идёт, можно подтверждать
+  if (request.status === 'in_progress') {
+    // Проверяем, подтверждал ли уже этот пользователь
+    const requesterConfirmed = request.requester_confirmed === true;
+    const creatorConfirmed = request.creator_confirmed === true;
+    const currentUserIsRequester = (request.requester_id == currentUserId);
+    const currentUserIsCreator = (request.ad_owner_id == currentUserId);
+    
+    let alreadyConfirmed = false;
+    if (currentUserIsRequester && requesterConfirmed) alreadyConfirmed = true;
+    if (currentUserIsCreator && creatorConfirmed) alreadyConfirmed = true;
+    
+    if (!alreadyConfirmed) {
+      actions = `<button onclick="confirmCompletion(${request.id})" style="background: #3498db; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Подтвердить выполнение</button>`;
+    } else {
+      actions = `<span style="color: #27ae60; font-weight: bold;">✓ Вы подтвердили выполнение</span>`;
+    }
+  }
+}
 
         return `
           <div class="request-item">
@@ -1186,34 +1207,57 @@
       }
     }
 
-    // Confirm completion
-    async function confirmCompletion(requestId, isRequester) {
-      if (!confirm('Подтвердить выполнение работы? Это действие необратимо.')) return;
 
-      const token = localStorage.getItem('sosedik_token');
-      if (!token) return;
-
-      try {
-        const response = await fetch(`/api/ads/requests/${requestId}/confirm`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ isRequester })
-        });
-
-        if (response.ok) {
-          alert('Выполнение подтверждено!');
-          loadActiveRequests();
-        } else {
-          const data = await response.json();
-          alert('Ошибка: ' + (data.message || 'Не удалось подтвердить выполнение'));
-        }
-      } catch (error) {
-        alert('Ошибка: ' + error.message);
-      }
+async function startWork(requestId) {
+  if (!confirm('Начать выполнение работы? После этого вы сможете подтвердить завершение.')) return;
+  const token = localStorage.getItem('sosedik_token');
+  try {
+    const response = await fetch(`/api/ads/requests/${requestId}/start`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({})
+    });
+    if (response.ok) {
+      alert('Работа начата!');
+      loadActiveRequests(); // обновить список
+    } else {
+      const data = await response.json();
+      alert('Ошибка: ' + (data.message || 'Не удалось начать работу'));
     }
+  } catch (error) {
+    alert('Ошибка: ' + error.message);
+  }
+}
+
+
+    // Confirm completion
+    async function confirmCompletion(requestId) {
+  if (!confirm('Подтвердить выполнение работы?')) return;
+  const token = localStorage.getItem('sosedik_token');
+  try {
+    const response = await fetch(`/api/ads/requests/${requestId}/confirm`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({})   // ← пустой объект, isRequester больше не нужен
+    });
+
+    if (response.ok) {
+      alert('Выполнение подтверждено!');
+      loadActiveRequests(); // перезагружаем список активных запросов
+    } else {
+      const data = await response.json();
+      alert('Ошибка: ' + (data.message || 'Не удалось подтвердить'));
+    }
+  } catch (error) {
+    alert('Ошибка: ' + error.message);
+  }
+}
 
     // Delete declined request
     async function deleteDeclinedRequest(requestId, type) {
