@@ -52,12 +52,21 @@
           <textarea id="ad-description" placeholder="Описание объявления" rows="4" required></textarea>
         </div>
         <div class="form-group">
-          <label for="ad-price">Цена (опционально):</label>
+          <label for="ad-contact">Контактная информация:</label>
+          <input type="text" id="ad-contact" placeholder="Телефон или email">
+        </div>
+        <div class="form-group">
+          <label for="ad-price">Цена (необязательно):</label>
           <input type="number" id="ad-price" placeholder="Цена в рублях">
         </div>
         <div class="form-group">
-          <label for="ad-contact">Контактная информация:</label>
-          <input type="text" id="ad-contact" placeholder="Телефон или email">
+          <label for="ad-preferred-time">Желаемое время/дата (необязательно):</label>
+          <input type="text" id="ad-preferred-time" placeholder="Например: завтра с 14 до 16, или 25.04 в 10:00">
+        </div>
+        <div class="form-group">
+          <label for="ad-terms">Условия (необязательно):</label>
+          <textarea id="ad-terms" placeholder="Дополнительные условия: нужна дрель, требуются грузчики и т.п."
+            rows="2"></textarea>
         </div>
         <button onclick="createAd()">Создать</button>
         <div id="create-message" class="result hidden"></div>
@@ -244,6 +253,8 @@
           '<p>' + ad.description + '</p>' +
           (ad.price ? '<p><strong>Цена:</strong> ' + ad.price + ' руб.</p>' : '') +
           (ad.contact ? '<p><strong>Контакт:</strong> ' + ad.contact + '</p>' : '') +
+          (ad.preferred_time ? '<p><strong>Желаемое время/дата:</strong> ' + ad.preferred_time + '</p>' : '') +
+          (ad.terms ? '<p><strong>Условия:</strong> ' + ad.terms.substring(0, 100) + (ad.terms.length > 100 ? '...' : '') + '</p>' : '') +
           '<p><small>Создано: ' + new Date(ad.created_at).toLocaleDateString() + '</small></p>' +
           (isOwner && ad.accepted_by ? '<p style="color: #27ae60; font-weight: bold;">Принято пользователем ' + (ad.acceptor_name || ('#' + ad.accepted_by)) + '</p>' : '') +
           acceptButton +
@@ -310,7 +321,6 @@
       displayAds(filteredAds);
     }
 
-    // Создать объявление
     async function createAd() {
       const token = localStorage.getItem('sosedik_token');
       const category = document.getElementById('ad-category').value;
@@ -318,6 +328,8 @@
       const description = document.getElementById('ad-description').value;
       const price = document.getElementById('ad-price').value;
       const contact = document.getElementById('ad-contact').value;
+      const preferredTime = document.getElementById('ad-preferred-time').value;
+      const terms = document.getElementById('ad-terms').value;
 
       if (!category || !title || !description) {
         alert('Заполните все обязательные поля');
@@ -336,7 +348,9 @@
             title,
             description,
             price: price || null,
-            contact: contact || null
+            contact: contact || null,
+            preferredTime: preferredTime || null,
+            terms: terms || null
           })
         });
 
@@ -344,13 +358,16 @@
 
         if (response.ok) {
           showCreateMessage('Объявление создано успешно!', true);
+          // очистить форму
           document.getElementById('ad-category').value = '';
           document.getElementById('ad-title').value = '';
           document.getElementById('ad-description').value = '';
           document.getElementById('ad-price').value = '';
           document.getElementById('ad-contact').value = '';
-          toggleCreateForm(); // Закрыть форму
-          loadAds();
+          document.getElementById('ad-preferred-time').value = '';
+          document.getElementById('ad-terms').value = '';
+          toggleCreateForm();
+          loadAds(); // перезагрузить список объявлений
         } else {
           showCreateMessage(data.message || 'Ошибка создания объявления', false);
         }

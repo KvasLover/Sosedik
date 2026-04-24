@@ -2,7 +2,7 @@ const pool = require('../database');
 
 // Get all active ads
 const getAds = async (filters = {}) => {
-  let query = `SELECT ads.id, ads.user_id, ads.category, ads.title, ads.description, ads.price, ads.contact, ads.created_at, ads.active, ads.accepted_by, users.name as acceptor_name, author.name as author_name
+  let query = `SELECT ads.id, ads.user_id, ads.category, ads.title, ads.description, ads.price, ads.contact, ads.created_at, ads.active, ads.accepted_by, users.name as acceptor_name, author.name as author_name, ads.preferred_time, ads.terms
                FROM ads
                LEFT JOIN users ON ads.accepted_by = users.id
                LEFT JOIN users as author ON ads.user_id = author.id
@@ -46,11 +46,12 @@ const getAdById = async (id) => {
 };
 
 // Create new ad
-const createAd = async (userId, category, title, description, price = null, contact = null) => {
+const createAd = async (userId, category, title, description, price = null, contact = null, preferredTime = null, terms = null) => {
   try {
     const result = await pool.query(
-      'INSERT INTO ads (user_id, category, title, description, price, contact) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [userId, category, title, description, price, contact]
+      `INSERT INTO ads (user_id, category, title, description, price, contact, preferred_time, terms) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [userId, category, title, description, price, contact, preferredTime, terms]
     );
     return result.rows[0];
   } catch (err) {

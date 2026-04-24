@@ -22,6 +22,9 @@
         <p><strong>Тип:</strong> <span id="ad-type"></span></p>
         <p id="ad-description"></p>
         <p id="ad-price" style="display: none;"><strong>Цена:</strong> <span id="price-value"></span> руб.</p>
+        <p id="ad-preferred-time" style="display: none;"><strong>Желаемое время/дата:</strong> <span
+            id="preferred-time-value"></span></p>
+        <p id="ad-terms" style="display: none;"><strong>Условия:</strong> <span id="terms-value"></span></p>
         <p id="ad-urgency" style="display: none;"><strong>Срочность:</strong> <span id="urgency-value"></span></p>
         <p id="ad-location" style="display: none;"><strong>Местоположение:</strong> <span id="location-value"></span>
         </p>
@@ -110,6 +113,15 @@
           if (ad.price) {
             document.getElementById('ad-price').style.display = 'block';
             document.getElementById('price-value').textContent = ad.price;
+          }
+
+          if (ad.preferred_time) {
+            document.getElementById('ad-preferred-time').style.display = 'block';
+            document.getElementById('preferred-time-value').textContent = ad.preferred_time;
+          }
+          if (ad.terms) {
+            document.getElementById('ad-terms').style.display = 'block';
+            document.getElementById('terms-value').textContent = ad.terms;
           }
 
           if (ad.urgency) {
