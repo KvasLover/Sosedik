@@ -268,18 +268,19 @@ router.post('/requests/:requestId/decline', verifyToken, async (req, res) => {
 // Начать выполнение запроса (accepted → in_progress)
 router.post('/requests/:requestId/start', verifyToken, async (req, res) => {
   try {
-    const startedRequest = await Ad.startAdRequest(req.params.requestId, req.user.id);
+    const { agreedPrice, agreedTime, agreementComment } = req.body;
+    const startedRequest = await Ad.startAdRequest(
+      req.params.requestId,
+      req.user.id,
+      agreedPrice,
+      agreedTime,
+      agreementComment
+    );
     res.json({ message: 'Request started', request: startedRequest });
   } catch (err) {
-    if (err.message.includes('Not authorized')) {
-      return res.status(403).json({ message: err.message });
-    }
-    if (err.message.includes('not found')) {
-      return res.status(404).json({ message: err.message });
-    }
-    if (err.message.includes('Can only start')) {
-      return res.status(400).json({ message: err.message });
-    }
+    if (err.message.includes('Not authorized')) return res.status(403).json({ message: err.message });
+    if (err.message.includes('not found')) return res.status(404).json({ message: err.message });
+    if (err.message.includes('Can only start')) return res.status(400).json({ message: err.message });
     res.status(500).json({ message: err.message });
   }
 });

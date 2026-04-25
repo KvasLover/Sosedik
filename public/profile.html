@@ -1093,6 +1093,7 @@
         let labelText = 'От:';  // Default label
         let nameText = '';
         let actions = '';
+        let agreedInfo = '';
 
         // Determine label and name based on request type
         if (type === 'incoming') {
@@ -1121,10 +1122,20 @@
           const otherParty = request.requester_id == currentUserId ? request.creator_name : request.requester_name;
           nameText = otherParty || 'Неизвестный';
 
+          // Вывод зафиксированных условий, если они есть
+          if (request.agreed_price || request.agreed_time || request.agreement_comment) {
+            agreedInfo = '<div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; font-size: 0.9rem;">';
+            agreedInfo += '<strong>📝 Согласованные условия:</strong><br>';
+            if (request.agreed_price) agreedInfo += `💰 Цена: ${request.agreed_price} руб.<br>`;
+            if (request.agreed_time) agreedInfo += `⏱ Время/дата: ${request.agreed_time}<br>`;
+            if (request.agreement_comment) agreedInfo += `📄 Комментарий: ${request.agreement_comment}<br>`;
+            agreedInfo += '</div>';
+          }
+
           // Статус "accepted" — ещё не начали работу
           if (request.status === 'accepted') {
             // Кнопка "Начать работу" (опционально, но полезно)
-            actions = `<button onclick="startWork(${request.id})" style="background: #27ae60; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem;">Начать работу</button>`;
+            actions = `<button onclick="openStartModal(${request.id})" style="background: #27ae60; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Начать работу</button>`;
           }
 
           // Статус "in_progress" — работа идёт, можно подтверждать
@@ -1148,16 +1159,17 @@
         }
 
         return `
-          <div class="request-item">
-            <h4>${request.title}</h4>
-            <p><strong>Категория:</strong> ${request.category}</p>
-            <p><strong>${labelText}</strong> ${nameText}</p>
-            <p><strong>Статус:</strong> <span class="request-status ${statusClass}">${statusText}</span></p>
-            ${request.message ? `<p><strong>Сообщение:</strong> ${request.message}</p>` : ''}
-            ${request.decline_reason ? `<p><strong>Причина отклонения:</strong> ${request.decline_reason}</p>` : ''}
-            <div class="request-actions">${actions}</div>
-          </div>
-        `;
+    <div class="request-item">
+      <h4>${request.title}</h4>
+      <p><strong>Категория:</strong> ${request.category}</p>
+      <p><strong>${labelText}</strong> ${nameText}</p>
+      <p><strong>Статус:</strong> <span class="request-status ${statusClass}">${statusText}</span></p>
+      ${request.message ? `<p><strong>Сообщение:</strong> ${request.message}</p>` : ''}
+      ${request.decline_reason ? `<p><strong>Причина отклонения:</strong> ${request.decline_reason}</p>` : ''}
+      ${agreedInfo}
+      <div class="request-actions">${actions}</div>
+    </div>
+  `;
       }).join('');
     }
 
@@ -1219,22 +1231,60 @@
       }
     }
 
+    let currentStartRequestId = null;
 
-    async function startWork(requestId) {
-      if (!confirm('Начать выполнение работы? После этого вы сможете подтвердить завершение.')) return;
+    // Открыть модальное окно с предзаполненными данными из объявления
+    async function openStartModal(requestId) {
+      currentStartRequestId = requestId;
       const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      // Получить данные запроса (чтобы узнать ad_id и т.п.)
+      const response = await fetch(`/api/ads/requests/active`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const requests = await response.json();
+        const request = requests.find(r => r.id === requestId);
+        if (request) {
+          // Предзаполняем поля из объявления (или из уже сохранённых agreed_*, если есть)
+          document.getElementById('modal-agreed-price').value = request.ad_price || '';
+          document.getElementById('modal-agreed-time').value = request.ad_preferred_time || '';
+          document.getElementById('modal-agreement-comment').value = request.ad_terms || '';
+        }
+      }
+      document.getElementById('start-work-modal').style.display = 'flex';
+    }
+
+    function closeStartModal() {
+      document.getElementById('start-work-modal').style.display = 'none';
+      currentStartRequestId = null;
+    }
+
+    async function submitStartWork() {
+      if (!currentStartRequestId) return;
+      const agreedPrice = document.getElementById('modal-agreed-price').value;
+      const agreedTime = document.getElementById('modal-agreed-time').value;
+      const agreementComment = document.getElementById('modal-agreement-comment').value;
+      const token = localStorage.getItem('sosedik_token');
+
       try {
-        const response = await fetch(`/api/ads/requests/${requestId}/start`, {
+        const response = await fetch(`/api/ads/requests/${currentStartRequestId}/start`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({})
+          body: JSON.stringify({
+            agreedPrice: agreedPrice ? Number(agreedPrice) : null,
+            agreedTime: agreedTime || null,
+            agreementComment: agreementComment || null
+          })
         });
         if (response.ok) {
           alert('Работа начата!');
-          loadActiveRequests(); // обновить список
+          closeStartModal();
+          loadActiveRequests(); // обновить список активных запросов
         } else {
           const data = await response.json();
           alert('Ошибка: ' + (data.message || 'Не удалось начать работу'));
@@ -1387,6 +1437,30 @@
   <footer>
     <p>&copy; 2026 Соседик. Все права защищены.</p>
   </footer>
+
+  <!-- Модальное окно для уточнения условий -->
+  <div id="start-work-modal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 1.5rem; border-radius: 8px; max-width: 500px; width: 90%;">
+      <h3>Уточните условия сделки</h3>
+      <div class="form-group">
+        <label>Цена (руб):</label>
+        <input type="number" id="modal-agreed-price" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Время/дата:</label>
+        <input type="text" id="modal-agreed-time" class="form-control" placeholder="Например: завтра в 15:00">
+      </div>
+      <div class="form-group">
+        <label>Комментарий / условия:</label>
+        <textarea id="modal-agreement-comment" class="form-control" rows="3"></textarea>
+      </div>
+      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <button onclick="closeStartModal()" style="background: #95a5a6;">Отмена</button>
+        <button onclick="submitStartWork()" style="background: #27ae60;">Начать работу</button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

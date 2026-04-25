@@ -272,40 +272,39 @@ const acceptAdRequest = async (requestId, userId) => {
 // Начать выполнение работы (переводит accepted → in_progress)
 // Может быть вызвано только если запрос в статусе accepted
 // Доступно для обеих сторон
-const startAdRequest = async (requestId, userId) => {
+
+const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime = null, agreementComment = null) => {
   try {
     const request = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status,
+             ads.price as ad_price, ads.preferred_time as ad_time, ads.terms as ad_terms
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       WHERE ar.id = $1
     `, [requestId]);
 
-    if (request.rows.length === 0) {
-      throw new Error('Request not found');
-    }
-
+    if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
 
-    // Проверяем, что запрос находится в статусе accepted
-    if (req.current_status !== 'accepted') {
-      throw new Error('Can only start accepted requests');
-    }
+    if (req.current_status !== 'accepted') throw new Error('Can only start accepted requests');
+    if (req.ad_owner_id !== userId && req.requester_id !== userId) throw new Error('Not authorized to start this request');
 
-    // Проверяем права: только автор объявления или запросивший могут начать
-    if (req.ad_owner_id !== userId && req.requester_id !== userId) {
-      throw new Error('Not authorized to start this request');
-    }
+    // Определяем итоговые значения agreed_* полей
+    const finalAgreedPrice = (agreedPrice !== null && agreedPrice !== undefined) ? agreedPrice : req.ad_price;
+    const finalAgreedTime = (agreedTime !== null && agreedTime !== undefined) ? agreedTime : req.ad_time;
+    const finalAgreementComment = (agreementComment !== null && agreementComment !== undefined) ? agreementComment : req.ad_terms;
 
-    // Переводим запрос в статус in_progress
     const result = await pool.query(`
       UPDATE ad_requests
-      SET status = 'in_progress', updated_at = CURRENT_TIMESTAMP
+      SET status = 'in_progress',
+          updated_at = CURRENT_TIMESTAMP,
+          agreed_price = $2,
+          agreed_time = $3,
+          agreement_comment = $4
       WHERE id = $1
       RETURNING *
-    `, [requestId]);
+    `, [requestId, finalAgreedPrice, finalAgreedTime, finalAgreementComment]);
 
-    // Обновляем статус объявления
     await pool.query(`
       UPDATE ads
       SET acceptance_status = 'in_progress'
@@ -399,20 +398,20 @@ const confirmAdCompletion = async (requestId, userId) => {
     const updatedReq = updated.rows[0];
 
     if (updatedReq.requester_confirmed && updatedReq.creator_confirmed) {
-  await pool.query(`
+      await pool.query(`
     UPDATE ad_requests
     SET status = 'completed', completed_at = CURRENT_TIMESTAMP
     WHERE id = $1
   `, [requestId]);
 
-  await pool.query(`
+      await pool.query(`
     UPDATE ads
     SET acceptance_status = 'open',
         accepted_by = NULL,
         accepted_at = NULL
     WHERE id = $1
   `, [req.ad_id]);
-}
+    }
 
     return updatedReq;
   } catch (err) {
@@ -424,7 +423,9 @@ const confirmAdCompletion = async (requestId, userId) => {
 const getActiveRequests = async (userId) => {
   const result = await pool.query(`
     SELECT ar.*, ads.title, ads.category,
-           u1.name as requester_name, u2.name as creator_name
+           u1.name as requester_name, u2.name as creator_name,
+           ads.price as ad_price, ads.preferred_time as ad_preferred_time, ads.terms as ad_terms,
+           ads.user_id as ad_owner_id
     FROM ad_requests ar
     JOIN ads ON ar.ad_id = ads.id
     JOIN users u1 ON ar.requester_id = u1.id
@@ -537,7 +538,7 @@ const hideAllRejectedRequests = async (userId, isIncoming) => {
   try {
     let field = isIncoming ? 'hidden_by_creator' : 'hidden_by_requester';
     // Определяем, какие запросы относятся к пользователю
-    let condition = isIncoming 
+    let condition = isIncoming
       ? `ads.user_id = $1`   // для входящих: автор объявления
       : `ar.requester_id = $1`; // для исходящих: запросивший
 
