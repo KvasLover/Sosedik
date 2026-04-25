@@ -1160,6 +1160,12 @@
           }
         }
 
+        // Ссылка на чат (только для accepted и in_progress)
+        let chatLink = '';
+        if (request.status === 'accepted' || request.status === 'in_progress') {
+          chatLink = `<div style="margin-top: 10px;"><a href="/request-chat.html?requestId=${request.id}" target="_blank">💬 Перейти в чат сделки</a></div>`;
+        }
+
         return `
     <div class="request-item">
       <h4>${request.title}</h4>
@@ -1169,6 +1175,7 @@
       ${request.message ? `<p><strong>Сообщение:</strong> ${request.message}</p>` : ''}
       ${request.decline_reason ? `<p><strong>Причина отклонения:</strong> ${request.decline_reason}</p>` : ''}
       ${agreedInfo}
+      ${chatLink}
       <div class="request-actions">${actions}</div>
     </div>
   `;

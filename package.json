@@ -5,7 +5,9 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "backup": "node backup-db.js",
+    "restore": "node restore-db.js"
   },
   "keywords": ["web-app", "neighbors", "node.js"],
   "author": "",
