@@ -253,10 +253,16 @@
       <div class="profile-layout">
         <!-- Sidebar Menu -->
         <aside class="profile-sidebar">
+          <!-- Dashboard Group -->
+          <div class="menu-group">
+            <div class="menu-group-title">📊 Обзор</div>
+            <button class="menu-item active" onclick="showProfileTab('dashboard')">Dashboard</button>
+          </div>
+
           <!-- My Content Group -->
           <div class="menu-group">
             <div class="menu-group-title">📋 Мой контент</div>
-            <button class="menu-item active" onclick="showProfileTab('myads')">Мои объявления</button>
+            <button class="menu-item" onclick="showProfileTab('myads')">Мои объявления</button>
           </div>
 
           <!-- Interactions Group -->
@@ -285,8 +291,41 @@
         <!-- Main Content -->
         <div class="profile-main">
 
+          <!-- Dashboard Tab -->
+          <div id="dashboard-tab" class="profile-tab active">
+            <h2>Dashboard</h2>
+            
+            <!-- Quick Stats -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
+              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold;" id="stat-ads">0</div>
+                <div style="font-size: 14px; opacity: 0.9;">Мои объявления</div>
+              </div>
+              <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold;" id="stat-incoming">0</div>
+                <div style="font-size: 14px; opacity: 0.9;">Входящих запросов</div>
+              </div>
+              <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold;" id="stat-active">0</div>
+                <div style="font-size: 14px; opacity: 0.9;">Активных сделок</div>
+              </div>
+              <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold;" id="stat-favorites">0</div>
+                <div style="font-size: 14px; opacity: 0.9;">В избранном</div>
+              </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
+              <h3 style="margin-top: 0;">Последняя активность</h3>
+              <div id="dashboard-activity" style="color: #666;">
+                <p>Загрузка...</p>
+              </div>
+            </div>
+          </div>
+
           <!-- My Ads Tab -->
-          <div id="myads-tab" class="profile-tab active">
+          <div id="myads-tab" class="profile-tab">
             <h2>Мои объявления</h2>
             <div id="myads-list" style="display: grid; gap: 15px;">
               <!-- My ads will be loaded here -->
@@ -479,6 +518,9 @@
 
       // Load data if needed
       switch (tabName) {
+        case 'dashboard':
+          loadDashboard();
+          break;
         case 'incoming':
           loadIncomingRequests();
           break;
@@ -545,7 +587,7 @@
           document.getElementById('show-apartment').checked = user.show_apartment || false;
 
           // Load initial data
-          loadMyAds();
+          loadDashboard();
           loadPreferences();
 
           document.getElementById('auth-check').classList.add('hidden');
@@ -555,6 +597,77 @@
         }
       } catch (error) {
         showResult('Ошибка загрузки профиля: ' + error.message, false);
+      }
+    }
+
+    // Load dashboard with statistics
+    async function loadDashboard() {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        // Load all data in parallel
+        const [adsRes, incomingRes, activeRes, favoritesRes] = await Promise.all([
+          fetch('/api/ads', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/ads/requests/incoming', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/ads/requests/active', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/favorites', { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+
+        // Parse responses
+        const ads = adsRes.ok ? await adsRes.json() : [];
+        const incoming = incomingRes.ok ? await incomingRes.json() : [];
+        const active = activeRes.ok ? await activeRes.json() : [];
+        const favorites = favoritesRes.ok ? await favoritesRes.json() : [];
+
+        // Filter user's own ads
+        const userAds = ads.filter(ad => ad.user_id === currentUserId);
+
+        // Update stats
+        document.getElementById('stat-ads').textContent = userAds.length;
+        document.getElementById('stat-incoming').textContent = incoming.length;
+        document.getElementById('stat-active').textContent = active.length;
+        document.getElementById('stat-favorites').textContent = favorites.length;
+
+        // Build activity log
+        const activities = [];
+        
+        // Add ads to activity
+        userAds.slice(0, 3).forEach(ad => {
+          activities.push({
+            type: 'ad',
+            time: new Date(ad.created_at),
+            text: `Создано объявление "${ad.title}"`
+          });
+        });
+
+        // Add incoming requests to activity
+        incoming.slice(0, 3).forEach(req => {
+          const status = req.status === 'pending' ? 'новый' : req.status;
+          activities.push({
+            type: 'request',
+            time: new Date(req.created_at),
+            text: `${req.status === 'pending' ? 'Новый запрос' : 'Запрос'} от ${req.requester_name || 'пользователя'}`
+          });
+        });
+
+        // Sort by time (newest first) and take top 5
+        activities.sort((a, b) => b.time - a.time);
+        const recentActivities = activities.slice(0, 5);
+
+        // Display activity
+        const activityDiv = document.getElementById('dashboard-activity');
+        if (recentActivities.length === 0) {
+          activityDiv.innerHTML = '<p style="color: #999;">Нет активности</p>';
+        } else {
+          activityDiv.innerHTML = recentActivities.map(act => `
+            <div style="padding: 10px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+              <span>${act.text}</span>
+              <span style="font-size: 12px; color: #999;">${act.time.toLocaleDateString()}</span>
+            </div>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки dashboard:', error);
+        document.getElementById('dashboard-activity').innerHTML = '<p style="color: #d32f2f;">Ошибка загрузки данных</p>';
       }
     }
 
