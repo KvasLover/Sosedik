@@ -275,6 +275,7 @@ const acceptAdRequest = async (requestId, userId) => {
 
 const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime = null, agreementComment = null) => {
   try {
+    // Получаем запрос и связанное объявление
     const request = await pool.query(`
       SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status,
              ads.price as ad_price, ads.preferred_time as ad_time, ads.terms as ad_terms
@@ -286,25 +287,34 @@ const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime 
     if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
 
+    // Проверка прав и статуса
     if (req.current_status !== 'accepted') throw new Error('Can only start accepted requests');
     if (req.ad_owner_id !== userId && req.requester_id !== userId) throw new Error('Not authorized to start this request');
 
-    // Определяем итоговые значения agreed_* полей
-    const finalAgreedPrice = (agreedPrice !== null && agreedPrice !== undefined) ? agreedPrice : req.ad_price;
-    const finalAgreedTime = (agreedTime !== null && agreedTime !== undefined) ? agreedTime : req.ad_time;
-    const finalAgreementComment = (agreementComment !== null && agreementComment !== undefined) ? agreementComment : req.ad_terms;
+    // Определяем значения для agreed_* (только если они ещё не установлены)
+    // Для цены: если передан agreedPrice, используем его, иначе из объявления, иначе NULL
+    let newAgreedPrice = (agreedPrice !== null && agreedPrice !== undefined) ? agreedPrice : req.ad_price;
+    let newAgreedTime = (agreedTime !== null && agreedTime !== undefined) ? agreedTime : req.ad_time;
+    let newAgreedComment = (agreementComment !== null && agreementComment !== undefined) ? agreementComment : req.ad_terms;
 
+    // Защита от перезаписи: используем COALESCE, чтобы не менять уже установленные значения
     const result = await pool.query(`
       UPDATE ad_requests
       SET status = 'in_progress',
           updated_at = CURRENT_TIMESTAMP,
-          agreed_price = $2,
-          agreed_time = $3,
-          agreement_comment = $4
-      WHERE id = $1
+          agreed_price = COALESCE(agreed_price, $2),
+          agreed_time = COALESCE(agreed_time, $3),
+          agreement_comment = COALESCE(agreement_comment, $4)
+      WHERE id = $1 AND status = 'accepted'
       RETURNING *
-    `, [requestId, finalAgreedPrice, finalAgreedTime, finalAgreementComment]);
+    `, [requestId, newAgreedPrice, newAgreedTime, newAgreedComment]);
 
+    // Если ни одна строка не обновлена, значит статус уже не accepted (гонка)
+    if (result.rows.length === 0) {
+      throw new Error('Request already started or invalid state');
+    }
+
+    // Обновляем статус объявления
     await pool.query(`
       UPDATE ads
       SET acceptance_status = 'in_progress'
@@ -476,40 +486,42 @@ const deleteDeclinedRequest = async (requestId, userId) => {
   }
 };
 
-// Cancel pending request (только запросивший, только если status = pending → cancelled)
-// Вместо удаления записи, меняем статус на 'cancelled'
 const cancelAdRequest = async (requestId, userId) => {
   try {
-    // Check that request exists and user is the requester
+    // Получаем запрос и данные объявления
     const request = await pool.query(`
-      SELECT ar.*, ar.status as current_status
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status
       FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
       WHERE ar.id = $1
     `, [requestId]);
 
-    if (request.rows.length === 0) {
-      throw new Error('Request not found');
-    }
-
+    if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
 
-    // Only requester can cancel
-    if (req.requester_id !== userId) {
-      throw new Error('Not authorized to cancel this request');
+    if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized');
+
+    // Разрешаем отмену для pending и accepted
+    if (!['pending', 'accepted'].includes(req.current_status)) {
+      throw new Error('Can only cancel pending or accepted requests');
     }
 
-    // Can only cancel pending requests
-    if (req.current_status !== 'pending') {
-      throw new Error('Can only cancel pending requests');
-    }
-
-    // Вместо удаления, меняем статус на cancelled
+    // Обновляем статус запроса на cancelled
     const result = await pool.query(`
       UPDATE ad_requests
       SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
       RETURNING *
     `, [requestId]);
+
+    // Если запрос был в статусе accepted, сбрасываем объявление
+    if (req.current_status === 'accepted') {
+      await pool.query(`
+        UPDATE ads
+        SET acceptance_status = 'open', accepted_by = NULL, accepted_at = NULL
+        WHERE id = $1
+      `, [req.ad_id]);
+    }
 
     return result.rows[0];
   } catch (err) {

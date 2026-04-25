@@ -1134,8 +1134,10 @@
 
           // Статус "accepted" — ещё не начали работу
           if (request.status === 'accepted') {
-            // Кнопка "Начать работу" (опционально, но полезно)
-            actions = `<button onclick="openStartModal(${request.id})" style="background: #27ae60; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Начать работу</button>`;
+            actions = `
+    <button onclick="openStartModal(${request.id})" style="background: #27ae60; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem;">Начать работу</button>
+    <button onclick="cancelAcceptedRequest(${request.id})" style="background: #e67e22; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Отменить договорённость</button>
+  `;
           }
 
           // Статус "in_progress" — работа идёт, можно подтверждать
@@ -1425,6 +1427,27 @@
         } else {
           const data = await response.json();
           alert('Ошибка: ' + (data.message || 'Не удалось убрать'));
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Отмена запроса в статусе accepted
+    async function cancelAcceptedRequest(requestId) {
+      if (!confirm('Вы уверены, что хотите отменить договорённость? Объявление снова станет доступно для других запросов.')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/cancel`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          alert('Договорённость отменена');
+          loadActiveRequests(); // обновить список
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось отменить'));
         }
       } catch (error) {
         alert('Ошибка: ' + error.message);
