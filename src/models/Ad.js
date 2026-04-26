@@ -221,11 +221,11 @@ const acceptAdRequest = async (requestId, userId) => {
   try {
     // Проверяем, что пользователь - владелец объявления
     const request = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status
-      FROM ad_requests ar
-      JOIN ads ON ar.ad_id = ads.id
-      WHERE ar.id = $1
-    `, [requestId]);
+  SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status, ads.title
+  FROM ad_requests ar
+  JOIN ads ON ar.ad_id = ads.id
+  WHERE ar.id = $1
+`, [requestId]);
 
     if (request.rows.length === 0) {
       throw new Error('Request not found');
@@ -264,6 +264,14 @@ const acceptAdRequest = async (requestId, userId) => {
       WHERE id = $1
     `, [req.ad_id, req.requester_id]);
 
+    // Уведомление запросившему
+    await Notification.createNotification(
+      req.requester_id,
+      'request_accepted',
+      `Ваш запрос на объявление "${req.title}" принят`,
+      'Запрос принят'
+    );
+
     return result.rows[0];
   } catch (err) {
     throw err;
@@ -278,12 +286,13 @@ const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime 
   try {
     // Получаем запрос и связанное объявление
     const request = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status,
-             ads.price as ad_price, ads.preferred_time as ad_time, ads.terms as ad_terms
-      FROM ad_requests ar
-      JOIN ads ON ar.ad_id = ads.id
-      WHERE ar.id = $1
-    `, [requestId]);
+  SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status,
+         ads.price as ad_price, ads.preferred_time as ad_time, ads.terms as ad_terms,
+         ads.title
+  FROM ad_requests ar
+  JOIN ads ON ar.ad_id = ads.id
+  WHERE ar.id = $1
+`, [requestId]);
 
     if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
@@ -321,6 +330,14 @@ const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime 
       SET acceptance_status = 'in_progress'
       WHERE id = $1
     `, [req.ad_id]);
+
+    const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
+    await Notification.createNotification(
+      otherUserId,
+      'request_started',
+      `Сделка по объявлению "${req.title}" начата`,
+      'Сделка начата'
+    );
 
     return result.rows[0];
   } catch (err) {
@@ -371,11 +388,11 @@ const declineAdRequest = async (requestId, userId, reason) => {
 const confirmAdCompletion = async (requestId, userId) => {
   try {
     const request = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status
-      FROM ad_requests ar
-      JOIN ads ON ar.ad_id = ads.id
-      WHERE ar.id = $1
-    `, [requestId]);
+  SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status, ads.title
+  FROM ad_requests ar
+  JOIN ads ON ar.ad_id = ads.id
+  WHERE ar.id = $1
+`, [requestId]);
 
     if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
@@ -414,6 +431,19 @@ const confirmAdCompletion = async (requestId, userId) => {
     SET status = 'completed', completed_at = CURRENT_TIMESTAMP
     WHERE id = $1
   `, [requestId]);
+
+      await Notification.createNotification(
+        updatedReq.requester_id,
+        'request_completed',
+        `Сделка по объявлению "${updatedReq.title}" завершена`,
+        null
+      );
+      await Notification.createNotification(
+        updatedReq.ad_owner_id,
+        'request_completed',
+        `Сделка по объявлению "${updatedReq.title}" завершена`,
+        null
+      );
 
       await pool.query(`
     UPDATE ads
@@ -491,11 +521,11 @@ const cancelAdRequest = async (requestId, userId) => {
   try {
     // Получаем запрос и данные объявления
     const request = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status
-      FROM ad_requests ar
-      JOIN ads ON ar.ad_id = ads.id
-      WHERE ar.id = $1
-    `, [requestId]);
+  SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status, ads.title
+  FROM ad_requests ar
+  JOIN ads ON ar.ad_id = ads.id
+  WHERE ar.id = $1
+`, [requestId]);
 
     if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
@@ -523,6 +553,14 @@ const cancelAdRequest = async (requestId, userId) => {
         WHERE id = $1
       `, [req.ad_id]);
     }
+
+    const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
+    await Notification.createNotification(
+      otherUserId,
+      'request_cancelled_by_user',
+      `Договорённость по объявлению "${req.title}" отменена другой стороной`,
+      null
+    );
 
     return result.rows[0];
   } catch (err) {

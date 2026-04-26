@@ -1,13 +1,13 @@
 const pool = require('./src/database');
 
-async function check() {
+async function run() {
   const res = await pool.query(`
-    SELECT column_name, data_type 
+    SELECT column_name, is_nullable 
     FROM information_schema.columns 
-    WHERE table_name = 'notifications'
+    WHERE table_name = 'notifications' 
     ORDER BY ordinal_position;
   `);
   console.table(res.rows);
   pool.end();
 }
-check();
+run();

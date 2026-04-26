@@ -28,15 +28,11 @@ const getUnreadCount = async (userId) => {
 
 // Create notification
 const createNotification = async (userId, type, message, title = null, relatedId = null, relatedType = null) => {
-  try {
-    const result = await pool.query(
-      'INSERT INTO notifications (user_id, type, title, message, related_id, related_type) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [userId, type, title, message, relatedId, relatedType]
-    );
-    return result.rows[0];
-  } catch (err) {
-    throw err;
-  }
+  const result = await pool.query(
+    'INSERT INTO notifications (user_id, type, message, title, related_id, related_type) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+    [userId, type, message, title, relatedId, relatedType]
+  );
+  return result.rows[0];
 };
 
 // Mark notification as read

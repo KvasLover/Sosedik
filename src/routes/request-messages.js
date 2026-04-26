@@ -3,6 +3,7 @@ const router = express.Router();
 const { verifyToken } = require('../middleware/auth');
 const RequestMessage = require('../models/RequestMessage');
 const pool = require('../database');
+const Notification = require('../models/Notification');
 
 // GET /api/request-messages?requestId=...
 router.get('/', verifyToken, async (req, res) => {
@@ -64,6 +65,34 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     const message = await RequestMessage.createMessage(requestId, req.user.id, trimmedText);
+
+    // --- Уведомление другому участнику (с защитой от ошибок) ---
+    try {
+      const participants = await pool.query(`
+    SELECT requester_id, ads.user_id as ad_owner_id
+    FROM ad_requests
+    JOIN ads ON ad_requests.ad_id = ads.id
+    WHERE ad_requests.id = $1
+  `, [requestId]);
+
+      if (participants.rows.length > 0) {
+        const otherUserId = (req.user.id === participants.rows[0].requester_id)
+          ? participants.rows[0].ad_owner_id
+          : participants.rows[0].requester_id;
+
+        await Notification.createNotification(
+          otherUserId,
+          'new_message',
+          `Новое сообщение в сделке`,
+          null
+        );
+      }
+    } catch (notifErr) {
+      console.error('Ошибка при создании уведомления о сообщении:', notifErr);
+      // Не прерываем выполнение, сообщение уже сохранено
+    }
+    // --- Конец уведомления ---
+
     res.status(201).json({ message });
   } catch (err) {
     res.status(500).json({ message: err.message });
