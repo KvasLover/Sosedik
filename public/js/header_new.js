@@ -44,6 +44,15 @@ const headerTemplate = `
 </header>
 `;
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
+}
 function initHeader() {
   const headerRoot = document.getElementById('header-root');
   if (!headerRoot) return;
@@ -176,15 +185,43 @@ function initHeader() {
         return;
       }
 
-      notificationList.innerHTML = notifications.map(notification => `
+            notificationList.innerHTML = notifications.map(notification => `
         <div class="notification-item ${notification.is_read ? 'read' : 'unread'}">
           <div class="notification-content">
-            <p>${notification.message}</p>
+            <p>${escapeHtml(notification.message)}</p>
             <small>${new Date(notification.created_at).toLocaleString()}</small>
           </div>
-          ${notification.is_read ? '' : '<div class="unread-indicator"></div>'}
+          <div class="notification-actions">
+            ${!notification.is_read ? `<button class="mark-read-popup" data-id="${notification.id}" style="background: #3498db; border: none; color: white; padding: 2px 5px; margin-right: 5px; cursor: pointer;">✓</button>` : ''}
+            <button class="delete-notif-popup" data-id="${notification.id}" style="background: #e74c3c; border: none; color: white; padding: 2px 5px; cursor: pointer;">✖</button>
+          </div>
+          ${!notification.is_read ? '<div class="unread-indicator"></div>' : ''}
         </div>
       `).join('');
+
+      // Обработчики для кнопок в попапе
+      document.querySelectorAll('.mark-read-popup').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          await fetch(`/api/notifications/${id}/read`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${tokenValue}` }
+          });
+          loadNotifications(tokenValue);
+        });
+      });
+      document.querySelectorAll('.delete-notif-popup').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          await fetch(`/api/notifications/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${tokenValue}` }
+          });
+          loadNotifications(tokenValue);
+        });
+      });
     } catch (error) {
       notificationList.innerHTML = '<p class="no-notifications">Ошибка загрузки уведомлений</p>';
       console.error(error);

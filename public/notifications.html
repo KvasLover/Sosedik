@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Уведомления - Соседик</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
+
 <body>
   <!-- Header -->
   <div id="header-root"></div>
@@ -33,46 +35,88 @@
         document.getElementById('notifications-container').innerHTML = '';
         return;
       }
+      await refreshNotifications();
+    });
 
+    async function refreshNotifications() {
+      const token = localStorage.getItem('sosedik_token');
       try {
         const response = await fetch('/api/notifications', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        if (!response.ok) {
-          throw new Error('Не удалось загрузить уведомления');
-        }
-
+        if (!response.ok) throw new Error('Не удалось загрузить уведомления');
         const data = await response.json();
         renderNotifications(data.notifications || []);
       } catch (error) {
-        document.getElementById('notifications-container').innerHTML =
-          '<p class="error">Ошибка загрузки уведомлений: ' + error.message + '</p>';
+        document.getElementById('notifications-container').innerHTML = '<p class="error">Ошибка загрузки уведомлений: ' + error.message + '</p>';
       }
-    });
+    }
 
     function renderNotifications(notifications) {
       const container = document.getElementById('notifications-container');
-
       if (!notifications || notifications.length === 0) {
         container.innerHTML = '<p>У вас нет новых уведомлений</p>';
         return;
       }
-
       const html = notifications.map(notification => `
         <div class="notification-item ${notification.is_read ? 'read' : 'unread'}">
           <div class="notification-content">
-            <p>${notification.message}</p>
+            <p>${escapeHtml(notification.message)}</p>
             <small>${new Date(notification.created_at).toLocaleString()}</small>
+          </div>
+          <div class="notification-actions">
+            ${!notification.is_read ? `<button class="mark-read-btn" data-id="${notification.id}" style="background: #3498db; border: none; color: white; padding: 5px 10px; margin-right: 5px; cursor: pointer;">✓ Прочитано</button>` : ''}
+            <button class="delete-notif-btn" data-id="${notification.id}" style="background: #e74c3c; border: none; color: white; padding: 5px 10px; cursor: pointer;">✖ Удалить</button>
           </div>
           ${!notification.is_read ? '<div class="unread-indicator"></div>' : ''}
         </div>
       `).join('');
-
       container.innerHTML = html;
+
+      document.querySelectorAll('.mark-read-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          await markAsRead(id);
+          await refreshNotifications();
+        });
+      });
+      document.querySelectorAll('.delete-notif-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          await deleteNotification(id);
+          await refreshNotifications();
+        });
+      });
     }
-  </script>
+
+    async function markAsRead(id) {
+      const token = localStorage.getItem('sosedik_token');
+      await fetch(`/api/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    }
+
+    async function deleteNotification(id) {
+      const token = localStorage.getItem('sosedik_token');
+      await fetch(`/api/notifications/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+</script>
 </body>
+
 </html>
