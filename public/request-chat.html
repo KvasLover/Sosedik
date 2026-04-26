@@ -92,8 +92,9 @@
           });
           if (response.ok) {
             const data = await response.json();
+            // Устанавливаем русский статус (одна строка)
             document.getElementById('deal-status').innerText = getStatusName(data.status);
-            document.getElementById('deal-status').textContent = data.status || '—';
+
             // Показываем согласованные условия, если есть, иначе из объявления
             const price = data.agreed_price ?? data.ad_price ?? '—';
             const time = data.agreed_time ?? data.ad_time ?? '—';
