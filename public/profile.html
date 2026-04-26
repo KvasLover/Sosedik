@@ -134,7 +134,7 @@
       display: block;
     }
 
-    .profile-tab > h2 {
+    .profile-tab>h2 {
       margin-top: 0;
       color: #333;
       font-size: 20px;
@@ -171,6 +171,116 @@
       background: #f3f3f3;
       border-color: #ccc;
       color: #333;
+    }
+
+    /* Table styles */
+    .profile-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .profile-table thead {
+      background: #f5f5f5;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      color: #666;
+    }
+
+    .profile-table th {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .profile-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
+    }
+
+    .profile-table tbody tr:hover {
+      background: #f9f9f9;
+    }
+
+    .profile-table .action-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .profile-table button {
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .profile-table button:hover {
+      border-color: #1976d2;
+      color: #1976d2;
+    }
+
+    .profile-table button.delete-btn {
+      border-color: #d32f2f;
+      color: #d32f2f;
+    }
+
+    .profile-table button.delete-btn:hover {
+      background: #ffebee;
+    }
+
+    .profile-table .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status-badge.accepted {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.in_progress {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .status-badge.completed {
+      background: #d1e7dd;
+      color: #0f5132;
+    }
+
+    .status-badge.rejected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    /* Responsive table scroll */
+    @media (max-width: 768px) {
+      .profile-table-wrapper {
+        overflow-x: auto;
+        margin: -16px;
+        padding: 16px;
+      }
+
+      .profile-table {
+        min-width: 600px;
+      }
     }
 
     /* Responsive */
@@ -216,6 +326,18 @@
         width: 100%;
       }
     }
+
+    .chat-link {
+      margin-top: 10px;
+      display: inline-block;
+      font-size: 12px;
+      color: #1976d2;
+      text-decoration: none;
+    }
+
+    .chat-link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 
@@ -253,33 +375,24 @@
       <div class="profile-layout">
         <!-- Sidebar Menu -->
         <aside class="profile-sidebar">
-          <!-- Dashboard Group -->
           <div class="menu-group">
             <div class="menu-group-title">📊 Обзор</div>
             <button class="menu-item active" onclick="showProfileTab('dashboard')">Dashboard</button>
           </div>
-
-          <!-- My Content Group -->
           <div class="menu-group">
             <div class="menu-group-title">📋 Мой контент</div>
             <button class="menu-item" onclick="showProfileTab('myads')">Мои объявления</button>
           </div>
-
-          <!-- Interactions Group -->
           <div class="menu-group">
             <div class="menu-group-title">🔄 Взаимодействия</div>
             <button class="menu-item" onclick="showProfileTab('incoming')">Входящие запросы</button>
             <button class="menu-item" onclick="showProfileTab('outgoing')">Исходящие запросы</button>
             <button class="menu-item" onclick="showProfileTab('active')">Активные сделки</button>
           </div>
-
-          <!-- Saved Group -->
           <div class="menu-group">
             <div class="menu-group-title">⭐ Сохраненное</div>
             <button class="menu-item" onclick="showProfileTab('favorites')">Избранное</button>
           </div>
-
-          <!-- Management Group -->
           <div class="menu-group">
             <div class="menu-group-title">⚙️ Управление</div>
             <button class="menu-item" onclick="showProfileTab('edit')">Профиль</button>
@@ -294,8 +407,6 @@
           <!-- Dashboard Tab -->
           <div id="dashboard-tab" class="profile-tab active">
             <h2>Dashboard</h2>
-            
-            <!-- Quick Stats -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
               <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
                 <div style="font-size: 32px; font-weight: bold;" id="stat-ads">0</div>
@@ -314,51 +425,39 @@
                 <div style="font-size: 14px; opacity: 0.9;">В избранном</div>
               </div>
             </div>
-
-            <!-- Recent Activity -->
             <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
               <h3 style="margin-top: 0;">Последняя активность</h3>
-              <div id="dashboard-activity" style="color: #666;">
-                <p>Загрузка...</p>
-              </div>
+              <div id="dashboard-activity" style="color: #666;">Загрузка...</div>
             </div>
           </div>
 
           <!-- My Ads Tab -->
           <div id="myads-tab" class="profile-tab">
             <h2>Мои объявления</h2>
-            <div id="myads-list" style="display: grid; gap: 15px;">
-              <!-- My ads will be loaded here -->
-            </div>
+            <div id="myads-list"></div>
           </div>
 
           <!-- Incoming Requests Tab -->
           <div id="incoming-tab" class="profile-tab">
             <h2>Входящие запросы</h2>
             <p style="color: #666; margin-bottom: 15px;">Запросы от других пользователей на принятие ваших объявлений</p>
-            <button onclick="hideAllRejected(true)" style="margin-bottom: 15px;">Убрать все отклонённые</button>
-            <div id="incoming-list">
-              <!-- Incoming requests will be loaded here -->
-            </div>
+            <button onclick="hideAllRejected(true)" class="filter-btn" style="margin-bottom: 15px;">Убрать все отклонённые</button>
+            <div id="incoming-list"></div>
           </div>
 
           <!-- Outgoing Requests Tab -->
           <div id="outgoing-tab" class="profile-tab">
             <h2>Исходящие запросы</h2>
             <p style="color: #666; margin-bottom: 15px;">Ваши запросы на принятие чужих объявлений</p>
-            <button onclick="hideAllRejected(false)" style="margin-bottom: 15px;">Убрать все отклонённые</button>
-            <div id="outgoing-list">
-              <!-- Outgoing requests will be loaded here -->
-            </div>
+            <button onclick="hideAllRejected(false)" class="filter-btn" style="margin-bottom: 15px;">Убрать все отклонённые</button>
+            <div id="outgoing-list"></div>
           </div>
 
           <!-- Active Deals Tab -->
           <div id="active-tab" class="profile-tab">
             <h2>Активные сделки</h2>
             <p style="color: #666; margin-bottom: 15px;">Принятые запросы, требующие выполнения</p>
-            <div id="active-list">
-              <!-- Active deals will be loaded here -->
-            </div>
+            <div id="active-list"></div>
           </div>
 
           <!-- Favorites Tab -->
@@ -372,9 +471,7 @@
             <div style="margin-bottom: 20px; text-align: center;">
               <button onclick="clearFavorites()" class="filter-btn" id="clear-all" style="border-color: #d32f2f; color: #d32f2f;">Убрать все из избранного</button>
             </div>
-            <div id="favorites-list" style="display: grid; gap: 15px;">
-              <!-- Favorites will be loaded here -->
-            </div>
+            <div id="favorites-list"></div>
           </div>
 
           <!-- Edit Profile Tab -->
@@ -450,7 +547,7 @@
     let currentUserId = null;
     let currentStartRequestId = null;
 
-    // Get user ID from JWT token
+    // Получение userId из токена
     function getUserIdFromToken() {
       const token = localStorage.getItem('sosedik_token');
       if (!token) return null;
@@ -462,14 +559,14 @@
       }
     }
 
-    // Helper functions
     function getStatusName(status) {
       const statuses = {
         'pending': 'Ожидание',
         'accepted': 'Принято',
         'in_progress': 'В процессе',
         'completed': 'Завершено',
-        'rejected': 'Отклонено'
+        'rejected': 'Отклонено',
+        'cancelled': 'Отменено'
       };
       return statuses[status] || status;
     }
@@ -487,59 +584,40 @@
 
     function showResult(message, isSuccess) {
       const resultDiv = document.getElementById('result-message');
+      if (!resultDiv) return;
       resultDiv.textContent = message;
       resultDiv.className = 'result ' + (isSuccess ? 'success' : 'error');
       resultDiv.classList.remove('hidden');
       setTimeout(() => resultDiv.classList.add('hidden'), 5000);
     }
 
-    // Show profile tab (используется для меню)
+    // ---- Навигация по вкладкам (sidebar) ----
     function showProfileTab(tabName) {
-      // Hide all tabs
       const tabs = document.querySelectorAll('.profile-tab');
       tabs.forEach(tab => tab.classList.remove('active'));
 
-      // Remove active class from all menu items
       const menuItems = document.querySelectorAll('.menu-item');
       menuItems.forEach(item => item.classList.remove('active'));
 
-      // Show selected tab
       const tabId = tabName + '-tab';
       const selectedTab = document.getElementById(tabId);
-      if (selectedTab) {
-        selectedTab.classList.add('active');
-      }
+      if (selectedTab) selectedTab.classList.add('active');
 
-      // Mark menu item as active
       const menuItem = document.querySelector(`button[onclick="showProfileTab('${tabName}')"]`);
-      if (menuItem) {
-        menuItem.classList.add('active');
-      }
+      if (menuItem) menuItem.classList.add('active');
 
-      // Load data if needed
+      // Загрузка данных для соответствующих вкладок
       switch (tabName) {
-        case 'dashboard':
-          loadDashboard();
-          break;
-        case 'incoming':
-          loadIncomingRequests();
-          break;
-        case 'outgoing':
-          loadOutgoingRequests();
-          break;
-        case 'active':
-          loadActiveRequests();
-          break;
-        case 'myads':
-          loadMyAds();
-          break;
-        case 'favorites':
-          loadFavorites();
-          break;
+        case 'dashboard': loadDashboard(); break;
+        case 'incoming': loadIncomingRequests(); break;
+        case 'outgoing': loadOutgoingRequests(); break;
+        case 'active': loadActiveRequests(); break;
+        case 'myads': loadMyAds(); break;
+        case 'favorites': loadFavorites(); break;
       }
     }
 
-    // Load profile data
+    // ---- Загрузка профиля ----
     async function loadProfile() {
       const token = localStorage.getItem('sosedik_token');
       if (!token) {
@@ -550,61 +628,49 @@
 
       try {
         const response = await fetch('/api/users/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
+        if (!response.ok) throw new Error('Не удалось загрузить профиль');
+        const user = await response.json();
+        currentUserId = user.id;
 
-        if (response.ok) {
-          const user = await response.json();
-          currentUserId = user.id;
+        document.getElementById('user-phone').textContent = user.phone;
+        document.getElementById('user-level').textContent = getLevelName(user.level);
+        document.getElementById('user-points').textContent = user.points;
+        document.getElementById('user-created-display').innerHTML = `<strong>Дата регистрации:</strong> ${new Date(user.created_at).toLocaleDateString()}`;
+        document.getElementById('user-display-name').textContent = user.name || 'Пользователь';
 
-          // Display user info
-          document.getElementById('user-phone').textContent = user.phone;
-          document.getElementById('user-level').textContent = getLevelName(user.level);
-          document.getElementById('user-points').textContent = user.points;
-          document.getElementById('user-created-display').innerHTML = `<strong>Дата регистрации:</strong> ${new Date(user.created_at).toLocaleDateString()}`;
-          document.getElementById('user-display-name').textContent = user.name || 'Пользователь';
-
-          // Display apartment if show_apartment is true
-          if (user.apartment && user.show_apartment) {
-            document.getElementById('apartment-display').innerHTML = `<strong>Квартира:</strong> ${user.apartment}`;
-          } else {
-            document.getElementById('apartment-display').innerHTML = '';
-          }
-
-          // Load and display avatar
-          const savedPhoto = localStorage.getItem(`sosedik_photo_${user.id}`);
-          if (savedPhoto) {
-            document.getElementById('user-avatar').innerHTML = `<img src="${savedPhoto}" style="width: 100%; height: 100%; object-fit: cover;">`;
-          } else if (user.verification_photo) {
-            document.getElementById('user-avatar').innerHTML = `<img src="${user.verification_photo}" style="width: 100%; height: 100%; object-fit: cover;">`;
-          }
-
-          // Fill edit form
-          document.getElementById('user-name').value = user.name || '';
-          document.getElementById('user-apartment').value = user.apartment || '';
-          document.getElementById('show-apartment').checked = user.show_apartment || false;
-
-          // Load initial data
-          loadDashboard();
-          loadPreferences();
-
-          document.getElementById('auth-check').classList.add('hidden');
-          document.getElementById('profile-content').classList.remove('hidden');
+        if (user.apartment && user.show_apartment) {
+          document.getElementById('apartment-display').innerHTML = `<strong>Квартира:</strong> ${user.apartment}`;
         } else {
-          throw new Error('Не удалось загрузить профиль');
+          document.getElementById('apartment-display').innerHTML = '';
         }
+
+        const savedPhoto = localStorage.getItem(`sosedik_photo_${user.id}`);
+        if (savedPhoto) {
+          document.getElementById('user-avatar').innerHTML = `<img src="${savedPhoto}" style="width:100%;height:100%;object-fit:cover;">`;
+        } else if (user.verification_photo) {
+          document.getElementById('user-avatar').innerHTML = `<img src="${user.verification_photo}" style="width:100%;height:100%;object-fit:cover;">`;
+        }
+
+        document.getElementById('user-name').value = user.name || '';
+        document.getElementById('user-apartment').value = user.apartment || '';
+        document.getElementById('show-apartment').checked = user.show_apartment || false;
+
+        loadDashboard();
+        loadPreferences();
+
+        document.getElementById('auth-check').classList.add('hidden');
+        document.getElementById('profile-content').classList.remove('hidden');
       } catch (error) {
         showResult('Ошибка загрузки профиля: ' + error.message, false);
       }
     }
 
-    // Load dashboard with statistics
+    // ---- Dashboard ----
     async function loadDashboard() {
       const token = localStorage.getItem('sosedik_token');
       try {
-        // Load all data in parallel
         const [adsRes, incomingRes, activeRes, favoritesRes] = await Promise.all([
           fetch('/api/ads', { headers: { 'Authorization': `Bearer ${token}` } }),
           fetch('/api/ads/requests/incoming', { headers: { 'Authorization': `Bearer ${token}` } }),
@@ -612,332 +678,384 @@
           fetch('/api/favorites', { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
 
-        // Parse responses
-        const ads = adsRes.ok ? await adsRes.json() : [];
-        const incoming = incomingRes.ok ? await incomingRes.json() : [];
-        const active = activeRes.ok ? await activeRes.json() : [];
-        const favorites = favoritesRes.ok ? await favoritesRes.json() : [];
+        let ads = adsRes.ok ? await adsRes.json() : [];
+        let incoming = incomingRes.ok ? await incomingRes.json() : [];
+        let active = activeRes.ok ? await activeRes.json() : [];
+        let favorites = favoritesRes.ok ? await favoritesRes.json() : [];
 
-        // Filter user's own ads
         const userAds = ads.filter(ad => ad.user_id === currentUserId);
-
-        // Update stats
         document.getElementById('stat-ads').textContent = userAds.length;
         document.getElementById('stat-incoming').textContent = incoming.length;
         document.getElementById('stat-active').textContent = active.length;
         document.getElementById('stat-favorites').textContent = favorites.length;
 
-        // Build activity log
         const activities = [];
-        
-        // Add ads to activity
         userAds.slice(0, 3).forEach(ad => {
-          activities.push({
-            type: 'ad',
-            time: new Date(ad.created_at),
-            text: `Создано объявление "${ad.title}"`
-          });
+          activities.push({ time: new Date(ad.created_at), text: `Создано объявление "${ad.title}"` });
         });
-
-        // Add incoming requests to activity
         incoming.slice(0, 3).forEach(req => {
-          const status = req.status === 'pending' ? 'новый' : req.status;
-          activities.push({
-            type: 'request',
-            time: new Date(req.created_at),
-            text: `${req.status === 'pending' ? 'Новый запрос' : 'Запрос'} от ${req.requester_name || 'пользователя'}`
-          });
+          activities.push({ time: new Date(req.created_at), text: `${req.status === 'pending' ? 'Новый запрос' : 'Запрос'} от ${req.requester_name || 'пользователя'}` });
         });
-
-        // Sort by time (newest first) and take top 5
         activities.sort((a, b) => b.time - a.time);
-        const recentActivities = activities.slice(0, 5);
-
-        // Display activity
         const activityDiv = document.getElementById('dashboard-activity');
-        if (recentActivities.length === 0) {
+        if (activities.length === 0) {
           activityDiv.innerHTML = '<p style="color: #999;">Нет активности</p>';
         } else {
-          activityDiv.innerHTML = recentActivities.map(act => `
-            <div style="padding: 10px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+          activityDiv.innerHTML = activities.slice(0, 5).map(act => `
+            <div style="padding: 10px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between;">
               <span>${act.text}</span>
-              <span style="font-size: 12px; color: #999;">${act.time.toLocaleDateString()}</span>
+              <span style="font-size:12px;color:#999;">${act.time.toLocaleDateString()}</span>
             </div>
           `).join('');
         }
       } catch (error) {
-        console.error('Ошибка загрузки dashboard:', error);
-        document.getElementById('dashboard-activity').innerHTML = '<p style="color: #d32f2f;">Ошибка загрузки данных</p>';
+        console.error('Dashboard error:', error);
+        document.getElementById('dashboard-activity').innerHTML = '<p style="color:#d32f2f;">Ошибка загрузки</p>';
       }
     }
 
-    // Load my ads
+    // ---- Мои объявления ----
     async function loadMyAds() {
       const token = localStorage.getItem('sosedik_token');
       try {
-        const response = await fetch('/api/ads', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          const ads = await response.json();
-          const userAds = ads.filter(ad => ad.user_id === currentUserId);
-
-          const adsList = document.getElementById('myads-list');
-          if (userAds.length === 0) {
-            adsList.innerHTML = '<p style="color: #666; grid-column: 1/-1;">Вы пока не создали объявлений</p>';
-            return;
-          }
-
-          adsList.innerHTML = userAds.map(ad => `
-            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; background: white;">
-              <h3 style="margin: 0 0 10px 0;">${ad.title}</h3>
-              <p style="margin: 5px 0; font-size: 14px; color: #666;">
-                <strong>Категория:</strong> ${ad.category} | 
-                <strong>Тип:</strong> ${ad.type === 'offer' ? 'Предложение' : 'Запрос'} |
-                <strong>Дата:</strong> ${new Date(ad.created_at).toLocaleDateString()}
-              </p>
-              <p style="margin: 5px 0; font-size: 14px; color: #666;">${ad.description.substring(0, 100)}...</p>
-              <div style="margin-top: 10px; display: flex; gap: 10px;">
-                <button onclick="editAd(${ad.id})" style="flex: 1; padding: 8px; border: 1px solid #1976d2; background: white; color: #1976d2; border-radius: 4px; cursor: pointer;">Редактировать</button>
-                <button onclick="deleteAd(${ad.id})" style="flex: 1; padding: 8px; border: 1px solid #d32f2f; background: white; color: #d32f2f; border-radius: 4px; cursor: pointer;">Удалить</button>
-              </div>
-            </div>
-          `).join('');
+        // Сначала пробуем /api/ads/my, если нет — фильтруем /api/ads
+        let response = await fetch('/api/ads/my', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!response.ok) {
+          response = await fetch('/api/ads', { headers: { 'Authorization': `Bearer ${token}` } });
+          if (response.ok) {
+            const allAds = await response.json();
+            var userAds = allAds.filter(ad => ad.user_id === currentUserId);
+          } else throw new Error('Не удалось загрузить объявления');
+        } else {
+          userAds = await response.json();
         }
+        const listDiv = document.getElementById('myads-list');
+        if (!userAds.length) {
+          listDiv.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">Вы пока не создали объявлений</p>';
+          return;
+        }
+        listDiv.innerHTML = `
+          <div class="profile-table-wrapper">
+            <table class="profile-table">
+              <thead><tr><th>Название</th><th>Категория</th><th>Тип</th><th>Дата</th><th>Действия</th></tr></thead>
+              <tbody>
+                ${userAds.map(ad => `
+                  <tr>
+                    <td><strong>${escapeHtml(ad.title)}</strong></td>
+                    <td>${escapeHtml(ad.category)}</td>
+                    <td>${ad.type === 'offer' ? 'Предложение' : 'Запрос'}</td>
+                    <td>${new Date(ad.created_at).toLocaleDateString()}</td>
+                    <td class="action-buttons">
+                      <button onclick="viewAd(${ad.id})">Просмотр</button>
+                      <button class="delete-btn" onclick="deleteAd(${ad.id})">Удалить</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
       } catch (error) {
-        console.error('Ошибка загрузки объявлений:', error);
+        console.error('Ошибка загрузки моих объявлений:', error);
       }
     }
 
-    // Load incoming requests
+    // Просмотр объявления
+    function viewAd(adId) {
+      window.location.href = `/ad-details.html?id=${adId}`;
+    }
+
+    // Удаление объявления
+    async function deleteAd(adId) {
+      if (!confirm('Вы уверены, что хотите удалить это объявление?')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/${adId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          showResult('Объявление удалено', true);
+          loadMyAds();
+          loadDashboard();
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось удалить'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
+    }
+
+    // ---- Входящие запросы ----
     async function loadIncomingRequests() {
       const token = localStorage.getItem('sosedik_token');
       try {
         const response = await fetch('/api/ads/requests/incoming', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        if (response.ok) {
-          const requests = await response.json();
-          const list = document.getElementById('incoming-list');
-          if (requests.length === 0) {
-            list.innerHTML = '<p style="color: #666;">Входящих запросов нет</p>';
-            return;
-          }
-          list.innerHTML = requests.map(req => `
-            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; background: white;">
-              <p><strong>От:</strong> ${req.requester_name || 'Пользователь'}</p>
-              <p><strong>На объявление:</strong> ${req.ad_title}</p>
-              <p><strong>Статус:</strong> ${getStatusName(req.status)}</p>
-              <p style="color: #666; font-size: 12px;">Отправлено: ${new Date(req.created_at).toLocaleDateString()}</p>
-              ${req.status === 'pending' ? `
-                <div style="margin-top: 10px; display: flex; gap: 10px;">
-                  <button onclick="acceptAdRequest(${req.id})" style="flex: 1; padding: 8px; border: 1px solid #1976d2; background: white; color: #1976d2; border-radius: 4px; cursor: pointer;">Принять</button>
-                  <button onclick="declineAdRequest(${req.id})" style="flex: 1; padding: 8px; border: 1px solid #d32f2f; background: white; color: #d32f2f; border-radius: 4px; cursor: pointer;">Отклонить</button>
-                </div>
-              ` : ''}
-            </div>
-          `).join('');
+        if (!response.ok) throw new Error('Ошибка загрузки');
+        const requests = await response.json();
+        const listDiv = document.getElementById('incoming-list');
+        if (!requests.length) {
+          listDiv.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">Входящих запросов нет</p>';
+          return;
         }
+        listDiv.innerHTML = `
+          <div class="profile-table-wrapper">
+            <table class="profile-table">
+              <thead><tr><th>От пользователя</th><th>Объявление</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
+              <tbody>
+                ${requests.map(req => `
+                  <tr>
+                    <td>${escapeHtml(req.requester_name || 'Пользователь')}</td>
+                    <td>${escapeHtml(req.title)}</td>
+                    <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
+                    <td>${new Date(req.created_at).toLocaleDateString()}</td>
+                    <td class="action-buttons">
+                      ${req.status === 'pending' ? `
+                        <button onclick="acceptAdRequest(${req.id})">Принять</button>
+                        <button class="delete-btn" onclick="declineAdRequest(${req.id})">Отклонить</button>
+                      ` : ''}
+                      ${req.status === 'rejected' ? `
+                        <button class="delete-btn" onclick="hideRequest(${req.id}, true)">Убрать</button>
+                      ` : ''}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
       } catch (error) {
-        console.error('Ошибка загрузки входящих запросов:', error);
+        console.error(error);
       }
     }
 
-    // Load outgoing requests
+    async function acceptAdRequest(requestId) {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/accept`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          showResult('Запрос принят', true);
+          loadIncomingRequests();
+          loadDashboard();
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось принять'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
+    }
+
+    async function declineAdRequest(requestId) {
+      const reason = prompt('Укажите причину отклонения (обязательно):');
+      if (!reason) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/decline`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
+        });
+        if (response.ok) {
+          showResult('Запрос отклонён', true);
+          loadIncomingRequests();
+          loadDashboard();
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось отклонить'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
+    }
+
+    // ---- Исходящие запросы ----
     async function loadOutgoingRequests() {
       const token = localStorage.getItem('sosedik_token');
       try {
         const response = await fetch('/api/ads/requests/outgoing', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        if (response.ok) {
-          const requests = await response.json();
-          const list = document.getElementById('outgoing-list');
-          if (requests.length === 0) {
-            list.innerHTML = '<p style="color: #666;">Исходящих запросов нет</p>';
-            return;
-          }
-          list.innerHTML = requests.map(req => `
-            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; background: white;">
-              <p><strong>Кому:</strong> ${req.ad_creator_name || 'Пользователь'}</p>
-              <p><strong>На объявление:</strong> ${req.ad_title}</p>
-              <p><strong>Статус:</strong> ${getStatusName(req.status)}</p>
-              <p style="color: #666; font-size: 12px;">Отправлено: ${new Date(req.created_at).toLocaleDateString()}</p>
-            </div>
-          `).join('');
+        if (!response.ok) throw new Error();
+        const requests = await response.json();
+        const listDiv = document.getElementById('outgoing-list');
+        if (!requests.length) {
+          listDiv.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">Исходящих запросов нет</p>';
+          return;
         }
+        listDiv.innerHTML = `
+          <div class="profile-table-wrapper">
+            <table class="profile-table">
+              <thead><tr><th>Кому</th><th>Объявление</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
+              <tbody>
+                ${requests.map(req => `
+                  <tr>
+                    <td>${escapeHtml(req.creator_name || 'Пользователь')}</td>
+                    <td>${escapeHtml(req.title)}</td>
+                    <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
+                    <td>${new Date(req.created_at).toLocaleDateString()}</td>
+                    <td class="action-buttons">
+                      ${req.status === 'pending' ? `<button class="delete-btn" onclick="cancelOutgoingRequest(${req.id})">Отменить запрос</button>` : ''}
+                      ${req.status === 'rejected' ? `<button class="delete-btn" onclick="hideRequest(${req.id}, false)">Убрать</button>` : ''}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
       } catch (error) {
-        console.error('Ошибка загрузки исходящих запросов:', error);
+        console.error(error);
       }
     }
 
-    // Load active requests
+    async function cancelOutgoingRequest(requestId) {
+      if (!confirm('Отменить запрос?')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/cancel`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          showResult('Запрос отменён', true);
+          loadOutgoingRequests();
+          loadDashboard();
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось отменить'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
+    }
+
+    // ---- Скрытие отклонённых (одного и всех) ----
+    async function hideRequest(requestId, isIncoming) {
+      if (!confirm('Убрать этот запрос из списка?')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/hide`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isIncoming })
+        });
+        if (response.ok) {
+          showResult('Запрос убран', true);
+          if (isIncoming) loadIncomingRequests();
+          else loadOutgoingRequests();
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
+    }
+
+    async function hideAllRejected(isIncoming) {
+      if (!confirm('Убрать все отклонённые запросы?')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch('/api/ads/requests/hide-all', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isIncoming })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          showResult(data.message || 'Готово', true);
+          if (isIncoming) loadIncomingRequests();
+          else loadOutgoingRequests();
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
+    }
+
+    // ---- Активные сделки ----
     async function loadActiveRequests() {
       const token = localStorage.getItem('sosedik_token');
       try {
         const response = await fetch('/api/ads/requests/active', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        if (response.ok) {
-          const requests = await response.json();
-          const list = document.getElementById('active-list');
-          if (requests.length === 0) {
-            list.innerHTML = '<p style="color: #666;">Активных сделок нет</p>';
-            return;
-          }
-          list.innerHTML = requests.map(req => `
-            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; background: white;">
-              <p><strong>Объявление:</strong> ${req.ad_title}</p>
-              <p><strong>Участник:</strong> ${req.other_user_name || 'Пользователь'}</p>
-              <p><strong>Статус:</strong> ${getStatusName(req.status)}</p>
-              <p style="color: #666; font-size: 12px;">Начало: ${new Date(req.created_at).toLocaleDateString()}</p>
-            </div>
-          `).join('');
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки активных запросов:', error);
-      }
-    }
-
-    // Load favorites
-    async function loadFavorites(type = '') {
-      const token = localStorage.getItem('sosedik_token');
-      try {
-        let url = '/api/favorites';
-        if (type) url += `?itemType=${type}`;
-
-        const response = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${token}` }
+        if (!response.ok) throw new Error();
+        let requests = await response.json();
+        // Для каждой сделки определим имя партнёра и роль текущего пользователя
+        requests = requests.map(req => {
+          const otherParty = req.requester_id === currentUserId ? req.creator_name : req.requester_name;
+          const otherId = req.requester_id === currentUserId ? req.ad_owner_id : req.requester_id;
+          const userConfirmed = (req.requester_id === currentUserId && req.requester_confirmed) ||
+                                 (req.ad_owner_id === currentUserId && req.creator_confirmed);
+          return { ...req, other_party_name: otherParty || 'Пользователь', other_party_id: otherId, userConfirmed };
         });
-
-        if (response.ok) {
-          const favorites = await response.json();
-          const list = document.getElementById('favorites-list');
-          if (favorites.length === 0) {
-            list.innerHTML = '<p style="color: #666; grid-column: 1/-1;">Нет избранного</p>';
-            return;
-          }
-          list.innerHTML = favorites.map(fav => `
-            <div style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; background: white;">
-              <h4 style="margin: 0 0 5px 0;">${fav.title}</h4>
-              <p style="margin: 5px 0; font-size: 14px; color: #666;">Тип: ${fav.item_type === 'ad' ? 'Объявление' : 'Аренда'}</p>
-              <button onclick="removeFavorite('${fav.item_type}', ${fav.item_id})" style="margin-top: 10px; padding: 8px 12px; border: 1px solid #d32f2f; background: white; color: #d32f2f; border-radius: 4px; cursor: pointer;">Удалить</button>
-            </div>
-          `).join('');
+        const listDiv = document.getElementById('active-list');
+        if (!requests.length) {
+          listDiv.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">Активных сделок нет</p>';
+          return;
         }
+        listDiv.innerHTML = `
+          <div class="profile-table-wrapper">
+            <table class="profile-table">
+              <thead><tr><th>Объявление</th><th>Участник</th><th>Статус</th><th>Начало</th><th>Действия</th></tr></thead>
+              <tbody>
+                ${requests.map(req => `
+                  <tr>
+                    <td><strong>${escapeHtml(req.title)}</strong></td>
+                    <td>${escapeHtml(req.other_party_name)}</td>
+                    <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
+                    <td>${new Date(req.created_at).toLocaleDateString()}</td>
+                    <td class="action-buttons">
+                      ${req.status === 'accepted' ? `
+                        <button onclick="openStartModal(${req.id})">Начать работу</button>
+                        <button class="delete-btn" onclick="cancelAcceptedRequest(${req.id})">Отменить договорённость</button>
+                      ` : ''}
+                      ${req.status === 'in_progress' && !req.userConfirmed ? `
+                        <button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>
+                      ` : ''}
+                      ${req.status === 'in_progress' && req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили</span>` : ''}
+                      <a href="/request-chat.html?requestId=${req.id}" target="_blank" class="chat-link">💬 Чат сделки</a>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
       } catch (error) {
-        console.error('Ошибка загрузки избранного:', error);
+        console.error(error);
       }
     }
 
-    // Save profile
-    async function saveProfile() {
-      const token = localStorage.getItem('sosedik_token');
-      const name = document.getElementById('user-name').value;
-      const apartment = document.getElementById('user-apartment').value;
-      const showApartment = document.getElementById('show-apartment').checked;
-
-      try {
-        const response = await fetch('/api/users/me', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ name, apartment, show_apartment: showApartment })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Ошибка обновления профиля');
-        }
-
-        showResult('Профиль обновлен успешно!', true);
-        loadProfile();
-      } catch (error) {
-        showResult('Ошибка: ' + error.message, false);
-      }
-    }
-
-    // Save preferences
-    function savePreferences() {
-      const notifyAds = document.getElementById('notify-ads').checked;
-      const notifyResponses = document.getElementById('notify-responses').checked;
-
-      localStorage.setItem('sosedik_notify_ads', notifyAds);
-      localStorage.setItem('sosedik_notify_responses', notifyResponses);
-
-      showResult('Предпочтения сохранены!', true);
-    }
-
-    function loadPreferences() {
-      const notifyAds = localStorage.getItem('sosedik_notify_ads') !== 'false';
-      const notifyResponses = localStorage.getItem('sosedik_notify_responses') !== 'false';
-
-      document.getElementById('notify-ads').checked = notifyAds;
-      document.getElementById('notify-responses').checked = notifyResponses;
-    }
-
-    // Delete account
-    async function deleteAccount() {
-      if (!confirm('Вы уверены, что хотите удалить аккаунт? Это действие необратимо!')) return;
-
-      const token = localStorage.getItem('sosedik_token');
-      if (!token) {
-        showResult('Вы не авторизованы', false);
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/users/me', {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-          localStorage.removeItem('sosedik_token');
-          if (currentUserId) {
-            localStorage.removeItem(`sosedik_photo_${currentUserId}`);
-          }
-          showResult('Аккаунт успешно удален', true);
-          setTimeout(() => window.location.href = '/', 2000);
-        } else {
-          const data = await response.json();
-          showResult('Ошибка: ' + (data.message || 'Не удалось удалить аккаунт'), false);
-        }
-      } catch (error) {
-        showResult('Ошибка: ' + error.message, false);
-      }
-    }
-
-    // Navigate
-    function goToMain() {
-      window.location.href = '/';
-    }
-
-    function logout() {
-      localStorage.removeItem('sosedik_token');
-      window.location.href = '/login.html';
-    }
-
-    // Stub/placeholder functions
-    function editAd(id) { window.location.href = `/ad-details.html?id=${id}`; }
-    function deleteAd(id) { if (confirm('Удалить объявление?')) { console.log('Delete ad:', id); loadMyAds(); } }
-    function acceptAdRequest(id) { console.log('Accept request:', id); loadIncomingRequests(); }
-    function declineAdRequest(id) { console.log('Decline request:', id); loadIncomingRequests(); }
-    function hideAllRejected(incoming) { console.log('Hide rejected:', incoming); }
-    function removeFavorite(type, id) { console.log('Remove favorite:', type, id); loadFavorites(); }
-    function clearFavorites() { console.log('Clear all favorites'); loadFavorites(); }
-
-    // Modal functions
+    // ---- Модальное окно для старта сделки ----
     async function openStartModal(requestId) {
       currentStartRequestId = requestId;
+      // Загружаем данные объявления для предзаполнения
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const activeResp = await fetch('/api/ads/requests/active', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (activeResp.ok) {
+          const deals = await activeResp.json();
+          const deal = deals.find(d => d.id === requestId);
+          if (deal) {
+            document.getElementById('modal-agreed-price').value = deal.ad_price || '';
+            document.getElementById('modal-agreed-time').value = deal.ad_preferred_time || '';
+            document.getElementById('modal-agreement-comment').value = deal.ad_terms || '';
+          }
+        }
+      } catch (e) { console.warn(e); }
       document.getElementById('start-work-modal').style.display = 'flex';
     }
 
@@ -948,54 +1066,258 @@
 
     async function submitStartWork() {
       if (!currentStartRequestId) return;
-      alert('Начать работу');
-      closeStartModal();
+      const agreedPrice = document.getElementById('modal-agreed-price').value;
+      const agreedTime = document.getElementById('modal-agreed-time').value;
+      const agreementComment = document.getElementById('modal-agreement-comment').value;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/requests/${currentStartRequestId}/start`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agreedPrice: agreedPrice ? Number(agreedPrice) : null,
+            agreedTime: agreedTime || null,
+            agreementComment: agreementComment || null
+          })
+        });
+        if (response.ok) {
+          showResult('Работа начата!', true);
+          closeStartModal();
+          loadActiveRequests();
+          loadDashboard();
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось начать'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
     }
 
+    // ---- Подтверждение выполнения ----
     async function confirmCompletion(requestId) {
       if (!confirm('Подтвердить выполнение работы?')) return;
-      alert('Выполнение подтверждено');
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/confirm`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        if (response.ok) {
+          showResult('Выполнение подтверждено!', true);
+          loadActiveRequests();
+          loadDashboard();
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось подтвердить'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
     }
 
+    // ---- Отмена договорённости (accepted) ----
     async function cancelAcceptedRequest(requestId) {
-      if (!confirm('Отменить договорённость?')) return;
-      alert('Договорённость отменена');
+      if (!confirm('Отменить договорённость? Объявление снова станет доступно.')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/cancel`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          showResult('Договорённость отменена', true);
+          loadActiveRequests();
+          loadDashboard();
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось отменить'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
     }
 
-    // Photo upload listener
+    // ---- Избранное ----
+    async function loadFavorites(type = '') {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        let url = '/api/favorites';
+        if (type) url += `?itemType=${type}`;
+        const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!response.ok) throw new Error();
+        let favorites = await response.json();
+        // Приводим к единому виду
+        favorites = favorites.map(fav => ({
+          id: fav.id,
+          item_type: fav.item_type,
+          item_id: fav.item_id,
+          title: fav.item?.title || fav.item?.item_name || 'Без названия',
+          created_at: fav.created_at
+        }));
+        const listDiv = document.getElementById('favorites-list');
+        if (!favorites.length) {
+          listDiv.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">Нет избранного</p>';
+          return;
+        }
+        listDiv.innerHTML = `
+          <div class="profile-table-wrapper">
+            <table class="profile-table">
+              <thead><tr><th>Название</th><th>Тип</th><th>Добавлено</th><th>Действия</th></tr></thead>
+              <tbody>
+                ${favorites.map(fav => `
+                  <tr>
+                    <td><strong>${escapeHtml(fav.title)}</strong></td>
+                    <td><span class="status-badge accepted">${fav.item_type === 'ad' ? 'Объявление' : 'Аренда'}</span></td>
+                    <td>${new Date(fav.created_at).toLocaleDateString()}</td>
+                    <td class="action-buttons">
+                      <button class="delete-btn" onclick="removeFavorite('${fav.item_type}', ${fav.item_id})">Удалить</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function removeFavorite(itemType, itemId) {
+      if (!confirm('Удалить из избранного?')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/favorites/${itemType}/${itemId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          showResult('Удалено из избранного', true);
+          loadFavorites();
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось удалить'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
+    }
+
+    async function clearFavorites() {
+      if (!confirm('Удалить всё из избранного?')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch('/api/favorites/all', {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          showResult('Избранное очищено', true);
+          loadFavorites();
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось очистить'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
+    }
+
+    // ---- Профиль, настройки, безопасность ----
+    async function saveProfile() {
+      const token = localStorage.getItem('sosedik_token');
+      const name = document.getElementById('user-name').value;
+      const apartment = document.getElementById('user-apartment').value;
+      const showApartment = document.getElementById('show-apartment').checked;
+      try {
+        const response = await fetch('/api/users/me', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ name, apartment, show_apartment: showApartment })
+        });
+        if (!response.ok) throw new Error();
+        showResult('Профиль обновлён', true);
+        loadProfile();
+      } catch (error) {
+        showResult('Ошибка сохранения', false);
+      }
+    }
+
+    function savePreferences() {
+      const notifyAds = document.getElementById('notify-ads').checked;
+      const notifyResponses = document.getElementById('notify-responses').checked;
+      localStorage.setItem('sosedik_notify_ads', notifyAds);
+      localStorage.setItem('sosedik_notify_responses', notifyResponses);
+      showResult('Предпочтения сохранены', true);
+    }
+
+    function loadPreferences() {
+      document.getElementById('notify-ads').checked = localStorage.getItem('sosedik_notify_ads') !== 'false';
+      document.getElementById('notify-responses').checked = localStorage.getItem('sosedik_notify_responses') !== 'false';
+    }
+
+    async function deleteAccount() {
+      if (!confirm('Вы уверены? Это необратимо!')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch('/api/users/me', {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          localStorage.removeItem('sosedik_token');
+          alert('Аккаунт удалён');
+          window.location.href = '/';
+        } else {
+          const data = await response.json();
+          showResult('Ошибка: ' + (data.message || 'Не удалось удалить'), false);
+        }
+      } catch (error) {
+        showResult('Ошибка: ' + error.message, false);
+      }
+    }
+
+    function goToMain() { window.location.href = '/'; }
+    function logout() { localStorage.removeItem('sosedik_token'); window.location.href = '/login.html'; }
+
+    // Helper для экранирования HTML
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+
+    // Фото профиля
     document.addEventListener('DOMContentLoaded', () => {
       const photoInput = document.getElementById('user-photo');
       if (photoInput) {
-        photoInput.addEventListener('change', function (e) {
+        photoInput.addEventListener('change', function(e) {
           const file = e.target.files[0];
           if (file) {
             const reader = new FileReader();
-            reader.onload = function (event) {
-              const photoData = event.target.result;
-              document.getElementById('user-avatar').innerHTML = `<img src="${photoData}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            reader.onload = function(ev) {
+              const photoData = ev.target.result;
+              document.getElementById('user-avatar').innerHTML = `<img src="${photoData}" style="width:100%;height:100%;object-fit:cover;">`;
               const userId = currentUserId || getUserIdFromToken();
-              if (userId) {
-                localStorage.setItem(`sosedik_photo_${userId}`, photoData);
-              }
+              if (userId) localStorage.setItem(`sosedik_photo_${userId}`, photoData);
             };
             reader.readAsDataURL(file);
           }
         });
       }
-
       loadProfile();
     });
   </script>
 
-  <!-- Footer -->
-  <footer>
-    <p>&copy; 2026 Соседик. Все права защищены.</p>
-  </footer>
-
   <!-- Модальное окно для уточнения условий -->
-  <div id="start-work-modal"
-    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-    <div style="background: white; padding: 1.5rem; border-radius: 8px; max-width: 500px; width: 90%;">
+  <div id="start-work-modal" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background: white; padding:1.5rem; border-radius:8px; max-width:500px; width:90%;">
       <h3>Уточните условия сделки</h3>
       <div class="form-group">
         <label>Цена (руб):</label>
@@ -1010,11 +1332,12 @@
         <textarea id="modal-agreement-comment" class="form-control" rows="3"></textarea>
       </div>
       <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-        <button onclick="closeStartModal()" style="background: #95a5a6;">Отмена</button>
-        <button onclick="submitStartWork()" style="background: #27ae60;">Начать работу</button>
+        <button onclick="closeStartModal()" style="background:#95a5a6;">Отмена</button>
+        <button onclick="submitStartWork()" style="background:#27ae60;">Начать работу</button>
       </div>
     </div>
   </div>
 </body>
 
 </html>
+```
