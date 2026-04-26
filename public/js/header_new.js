@@ -58,7 +58,7 @@ function initHeader() {
       document.body.classList.remove('mobile');
     }
   }
-  
+
   updateDeviceClass();
   window.addEventListener('resize', updateDeviceClass);
 
@@ -89,6 +89,16 @@ function initHeader() {
     authNav.classList.remove('hidden');
     if (notificationContainer) notificationContainer.classList.remove('hidden');
     loadNotifications(token);
+    if (token) {
+      guestNav.classList.add('hidden');
+      authNav.classList.remove('hidden');
+      if (notificationContainer) notificationContainer.classList.remove('hidden');
+      loadNotifications(token);
+      // Автообновление уведомлений каждые 3 секунды
+      setInterval(() => {
+        loadNotifications(token);
+      }, 3000);
+    }
   } else {
     guestNav.classList.remove('hidden');
     authNav.classList.add('hidden');

@@ -1414,6 +1414,32 @@
       }
       loadProfile();
     });
+
+    // Автоматическое обновление текущей вкладки (каждые 10 секунд)
+    let pollingInterval = null;
+
+    function startPolling() {
+      if (pollingInterval) clearInterval(pollingInterval);
+      pollingInterval = setInterval(() => {
+        const activeTab = document.querySelector('.profile-tab.active');
+        if (!activeTab) return;
+
+        const tabId = activeTab.id;
+        if (tabId === 'incoming-tab') {
+          loadIncomingRequests();
+        } else if (tabId === 'outgoing-tab') {
+          loadOutgoingRequests();
+        } else if (tabId === 'active-tab') {
+          loadActiveRequests();
+        } else if (tabId === 'myads-tab') {
+          loadMyAds();
+        } else if (tabId === 'favorites-tab') {
+          loadFavorites();
+        }
+      }, 3000); // 3 секунды
+    }
+
+    startPolling();
   </script>
 
   <!-- Модальное окно для уточнения условий -->
