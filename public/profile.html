@@ -1126,8 +1126,7 @@
                         <button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>
                       ` : ''}
                       ${req.status === 'in_progress' && req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили</span>` : ''}
-                      <a href="/request-chat.html?requestId=${req.id}" target="_blank" class="chat-link">💬 Чат сделки</a>
-                    </td>
+<a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>                    </td>
                   </tr>
                 `).join('')}
               </tbody>

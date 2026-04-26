@@ -1454,6 +1454,20 @@ body.desktop .notification-container {
   background: #1a252f;
 }
 
+.back-button {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+.back-button:hover {
+  background: #2980b9;
+}
+
 /* Mobile Notification Styles */
 @media (max-width: 768px) {
   .notification-popup {
