@@ -160,7 +160,8 @@ router.delete('/:id', verifyToken, async (req, res) => {
 // Создать запрос на принятие объявления
 router.post('/:id/request', verifyToken, async (req, res) => {
   try {
-    const ad = await Ad.getAdById(req.params.id);
+    const adId = req.params.id;
+    const ad = await Ad.getAdById(adId);
     if (!ad) return res.status(404).json({ message: 'Ad not found' });
     if (ad.user_id === req.user.id) return res.status(400).json({ message: 'Cannot request your own ad' });
 
@@ -169,26 +170,36 @@ router.post('/:id/request', verifyToken, async (req, res) => {
       SELECT id FROM ad_requests
       WHERE ad_id = $1 AND requester_id = $2
         AND status IN ('pending', 'accepted', 'in_progress')
-    `, [req.params.id, req.user.id]);
+    `, [adId, req.user.id]);
 
     if (activeRequest.rows.length > 0) {
       return res.status(409).json({ message: 'You already have an active request for this ad' });
     }
 
-    // 2. Защита от спама: нельзя отправлять новый запрос, если предыдущий был отклонён менее 30 секунд назад
+    // 2. Проверка на недавно отклонённый (rejected) запрос (30 секунд)
     const recentRejected = await pool.query(`
       SELECT id FROM ad_requests
       WHERE ad_id = $1 AND requester_id = $2 AND status = 'rejected'
         AND updated_at > NOW() - INTERVAL '30 seconds'
-    `, [req.params.id, req.user.id]);
+    `, [adId, req.user.id]);
 
     if (recentRejected.rows.length > 0) {
       return res.status(429).json({ message: 'You can send a new request only after 30 seconds since the last rejection' });
     }
 
-    // 3. Создаём новый запрос
+    // 3. Проверка на недавно отменённый (cancelled) запрос (30 секунд)
+    const recentCancelled = await pool.query(`
+      SELECT id FROM ad_requests
+      WHERE ad_id = $1 AND requester_id = $2 AND status = 'cancelled'
+        AND updated_at > NOW() - INTERVAL '30 seconds'
+    `, [adId, req.user.id]);
+
+    if (recentCancelled.rows.length > 0) {
+      return res.status(429).json({ message: 'You can send a new request only after 30 seconds since the last cancellation' });
+    }
+
     const { message } = req.body;
-    const request = await Ad.createAdRequest(req.params.id, req.user.id, message);
+    const request = await Ad.createAdRequest(adId, req.user.id, message);
     res.status(201).json({ message: 'Request sent', request });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -361,6 +372,33 @@ router.delete('/requests/:requestId/cancel', verifyToken, async (req, res) => {
     if (err.message.includes('Can only cancel pending')) {
       return res.status(400).json({ message: err.message });
     }
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Получить данные конкретного запроса (для чата)
+router.get('/requests/:requestId', verifyToken, async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.requestId);
+    const result = await pool.query(`
+      SELECT ar.*, 
+             ads.title as ad_title, ads.price as ad_price, ads.preferred_time as ad_time, ads.terms as ad_terms,
+             ads.user_id as ad_owner_id,
+             u1.name as requester_name, u2.name as creator_name
+      FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
+      JOIN users u1 ON ar.requester_id = u1.id
+      JOIN users u2 ON ads.user_id = u2.id
+      WHERE ar.id = $1
+    `, [requestId]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Request not found' });
+    const request = result.rows[0];
+    // Проверка участия
+    if (request.requester_id !== req.user.id && request.ad_owner_id !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    res.json(request);
+  } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });

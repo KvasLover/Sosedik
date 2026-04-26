@@ -1,4 +1,5 @@
 const pool = require('../database');
+const Notification = require('./Notification');
 
 // Get all active ads
 const getAds = async (filters = {}) => {
@@ -250,11 +251,11 @@ const acceptAdRequest = async (requestId, userId) => {
 
     // Обновляем статус принятого запроса
     const result = await pool.query(`
-      UPDATE ad_requests
-      SET status = 'accepted', updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      RETURNING *
-    `, [requestId]);
+  UPDATE ad_requests
+  SET status = 'accepted', updated_at = CURRENT_TIMESTAMP, accepted_at = CURRENT_TIMESTAMP
+  WHERE id = $1
+  RETURNING *
+`, [requestId]);
 
     // Обновляем статус объявления
     await pool.query(`
@@ -569,6 +570,53 @@ const hideAllRejectedRequests = async (userId, isIncoming) => {
   }
 };
 
+// Автоотмена зависших принятых запросов
+const autoCancelExpiredAcceptedRequests = async () => {
+  try {
+    // Находим все accepted-запросы, которые были приняты более 2 минут назад
+    const expired = await pool.query(`
+      SELECT ar.id, ar.ad_id, ar.requester_id, ar.accepted_at, ads.user_id as ad_owner_id, ads.title
+FROM ad_requests ar
+JOIN ads ON ar.ad_id = ads.id
+WHERE ar.status = 'accepted'
+  AND ar.accepted_at < NOW() - INTERVAL '2 minutes'
+    `);
+
+    for (const req of expired.rows) {
+      // Обновляем статус запроса
+      await pool.query(`
+        UPDATE ad_requests
+        SET status = 'cancelled', updated_at = NOW()
+        WHERE id = $1 AND status = 'accepted'
+      `, [req.id]);
+
+      // Разблокируем объявление
+      await pool.query(`
+        UPDATE ads
+        SET acceptance_status = 'open', accepted_by = NULL, accepted_at = NULL
+        WHERE id = $1
+      `, [req.ad_id]);
+
+      // Уведомления для обоих участников (функцию создадим позже)
+      await Notification.createNotification(
+        req.requester_id,
+        'request_auto_cancelled',
+        `Договорённость по объявлению "${req.title}" автоматически отменена из-за отсутствия активности`,
+        'Автоотмена'  // четвёртый параметр (title)
+      );
+      await Notification.createNotification(
+        req.ad_owner_id,
+        'request_auto_cancelled',
+        `Договорённость по объявлению "${req.title}" автоматически отменена из-за отсутствия активности`,
+        'Автоотмена'
+      );
+    }
+    return expired.rowCount;
+  } catch (err) {
+    console.error('Error in autoCancelExpiredAcceptedRequests:', err);
+  }
+};
+
 module.exports = {
   getAds,
   getAdById,
@@ -592,5 +640,6 @@ module.exports = {
   cancelAdRequest,
   startAdRequest,  // Новый метод для перехода accepted → in_progress
   hideRejectedRequest,
-  hideAllRejectedRequests
+  hideAllRejectedRequests,
+  autoCancelExpiredAcceptedRequests
 };

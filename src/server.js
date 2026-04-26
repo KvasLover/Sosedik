@@ -10,6 +10,7 @@ const rentalsRoutes = require('./routes/rentals');
 const favoritesRoutes = require('./routes/favorites');
 const notificationsRoutes = require('./routes/notifications');
 const requestMessagesRoutes = require('./routes/request-messages');
+const { autoCancelExpiredAcceptedRequests } = require('./models/Ad');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -48,3 +49,8 @@ app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   console.log(`Database connected to ${process.env.DATABASE_URL}`);
 });
+
+// ЗАПУСК АВТООТМЕНЫ (каждые 60 секунд)
+setInterval(() => {
+  autoCancelExpiredAcceptedRequests().catch(err => console.error('Ошибка в автоотмене:', err));
+}, 60000);
