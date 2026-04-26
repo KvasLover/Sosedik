@@ -98,17 +98,11 @@ function initHeader() {
     authNav.classList.remove('hidden');
     if (notificationContainer) notificationContainer.classList.remove('hidden');
     loadNotifications(token);
-    if (token) {
-      guestNav.classList.add('hidden');
-      authNav.classList.remove('hidden');
-      if (notificationContainer) notificationContainer.classList.remove('hidden');
-      loadNotifications(token);
-      // Автообновление уведомлений каждые 3 секунды
-      setInterval(() => {
+    // Автообновление уведомлений каждые 3 секунды
+    setInterval(() => {
         loadNotifications(token);
-      }, 3000);
-    }
-  } else {
+    }, 3000);
+} else {
     guestNav.classList.remove('hidden');
     authNav.classList.add('hidden');
     if (notificationContainer) notificationContainer.classList.add('hidden');
@@ -155,20 +149,14 @@ function initHeader() {
     notificationPopup.addEventListener('mouseleave', hidePopup);
   }
 
-  async function loadNotifications(tokenValue) {
+    async function loadNotifications(tokenValue) {
     if (!notificationList || !notificationCount) return;
 
     try {
       const response = await fetch('/api/notifications?limit=5', {
-        headers: {
-          'Authorization': `Bearer ${tokenValue}`
-        }
+        headers: { 'Authorization': `Bearer ${tokenValue}` }
       });
-
-      if (!response.ok) {
-        throw new Error('Не удалось загрузить уведомления');
-      }
-
+      if (!response.ok) throw new Error('Не удалось загрузить уведомления');
       const data = await response.json();
       const notifications = data.notifications || [];
       const unreadCount = data.unreadCount || 0;
@@ -185,25 +173,30 @@ function initHeader() {
         return;
       }
 
-            notificationList.innerHTML = notifications.map(notification => `
-        <div class="notification-item ${notification.is_read ? 'read' : 'unread'}">
-          <div class="notification-content">
-            <p>${escapeHtml(notification.message)}</p>
-            <small>${new Date(notification.created_at).toLocaleString()}</small>
+      notificationList.innerHTML = notifications.map(notification => `
+        <div class="notification-item ${notification.is_read ? 'read' : 'unread'}" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #edf2f7;">
+          <div class="notification-content" style="flex:1; font-size:0.85rem; color:#1a202c;">
+            ${escapeHtml(notification.message)}
+            <small style="display:block; font-size:0.7rem; color:#718096;">${new Date(notification.created_at).toLocaleString()}</small>
           </div>
-          <div class="notification-actions">
-            ${!notification.is_read ? `<button class="mark-read-popup" data-id="${notification.id}" style="background: #3498db; border: none; color: white; padding: 2px 5px; margin-right: 5px; cursor: pointer;">✓</button>` : ''}
-            <button class="delete-notif-popup" data-id="${notification.id}" style="background: #e74c3c; border: none; color: white; padding: 2px 5px; cursor: pointer;">✖</button>
+          <div class="notification-actions" style="display:flex; align-items:center; gap:8px; margin-left:12px;">
+            ${!notification.is_read ? `<span class="mark-read-popup" data-id="${notification.id}" style="font-size:0.75rem; color:#718096; cursor:pointer; text-decoration:none;">Отметить как прочитанное</span>` : ''}
+            <button class="delete-icon-popup" data-id="${notification.id}" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; align-items:center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
           ${!notification.is_read ? '<div class="unread-indicator"></div>' : ''}
         </div>
       `).join('');
 
-      // Обработчики для кнопок в попапе
-      document.querySelectorAll('.mark-read-popup').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+      // Обработчик для "Прочитано"
+      document.querySelectorAll('.mark-read-popup').forEach(el => {
+        el.addEventListener('click', async (e) => {
           e.stopPropagation();
-          const id = btn.dataset.id;
+          const id = el.dataset.id;
           await fetch(`/api/notifications/${id}/read`, {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${tokenValue}` }
@@ -211,7 +204,8 @@ function initHeader() {
           loadNotifications(tokenValue);
         });
       });
-      document.querySelectorAll('.delete-notif-popup').forEach(btn => {
+      // Обработчик для "Удалить"
+      document.querySelectorAll('.delete-icon-popup').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           e.stopPropagation();
           const id = btn.dataset.id;
@@ -222,11 +216,11 @@ function initHeader() {
           loadNotifications(tokenValue);
         });
       });
-    } catch (error) {
+        } catch (error) {
       notificationList.innerHTML = '<p class="no-notifications">Ошибка загрузки уведомлений</p>';
       console.error(error);
     }
-  }
-}
+  }   // закрытие loadNotifications
+}       // закрытие initHeader
 
 document.addEventListener('DOMContentLoaded', initHeader);

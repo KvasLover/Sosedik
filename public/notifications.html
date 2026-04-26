@@ -1,32 +1,85 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Уведомления - Соседик</title>
   <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    /* Локальные стили для уведомлений (минимализм) */
+    .notification-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e9ecef;
+      transition: background 0.2s;
+    }
+    .notification-item.unread {
+      background-color: #f8f9fa;
+    }
+    .notification-content {
+      flex: 1;
+      font-size: 0.9rem;
+      color: #212529;
+    }
+    .notification-content small {
+      display: block;
+      font-size: 0.75rem;
+      color: #6c757d;
+      margin-top: 4px;
+    }
+    .notification-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: 16px;
+    }
+    .mark-read-link {
+      font-size: 0.85rem;
+      color: #6c757d;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .mark-read-link:hover {
+      color: #495057;
+      text-decoration: underline;
+    }
+    .delete-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .delete-icon svg {
+      width: 16px;
+      height: 16px;
+      stroke: #9ca3af;
+      stroke-width: 2;
+      fill: none;
+      transition: stroke 0.2s;
+    }
+    .delete-icon:hover svg {
+      stroke: #ef4444;
+    }
+    .no-notifications {
+      text-align: center;
+      color: #6c757d;
+      padding: 32px;
+    }
+  </style>
 </head>
-
 <body>
-  <!-- Header -->
   <div id="header-root"></div>
-
-  <!-- Main -->
   <main>
     <h1>Уведомления</h1>
-
-    <div id="auth-check" class="hidden">
-      <p>Вы не авторизованы. <a href="/login.html">Войти</a></p>
-    </div>
-
-    <div id="notifications-container">
-      <div class="loading">Загрузка уведомлений...</div>
-    </div>
+    <div id="auth-check" class="hidden"><p>Вы не авторизованы. <a href="/login.html">Войти</a></p></div>
+    <div id="notifications-container"><div class="loading">Загрузка уведомлений...</div></div>
   </main>
-
-  <script src="js/header_new.js" defer></script>
-  <script src="js/app.js"></script>
+  <script src="js/header_new.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const token = localStorage.getItem('sosedik_token');
@@ -44,7 +97,7 @@
         const response = await fetch('/api/notifications', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!response.ok) throw new Error('Не удалось загрузить уведомления');
+        if (!response.ok) throw new Error('Ошибка загрузки');
         const data = await response.json();
         renderNotifications(data.notifications || []);
       } catch (error) {
@@ -55,33 +108,40 @@
     function renderNotifications(notifications) {
       const container = document.getElementById('notifications-container');
       if (!notifications || notifications.length === 0) {
-        container.innerHTML = '<p>У вас нет новых уведомлений</p>';
+        container.innerHTML = '<p class="no-notifications">У вас нет уведомлений</p>';
         return;
       }
+
       const html = notifications.map(notification => `
         <div class="notification-item ${notification.is_read ? 'read' : 'unread'}">
           <div class="notification-content">
-            <p>${escapeHtml(notification.message)}</p>
+            ${escapeHtml(notification.message)}
             <small>${new Date(notification.created_at).toLocaleString()}</small>
           </div>
           <div class="notification-actions">
-            ${!notification.is_read ? `<button class="mark-read-btn" data-id="${notification.id}" style="background: #3498db; border: none; color: white; padding: 5px 10px; margin-right: 5px; cursor: pointer;">✓ Прочитано</button>` : ''}
-            <button class="delete-notif-btn" data-id="${notification.id}" style="background: #e74c3c; border: none; color: white; padding: 5px 10px; cursor: pointer;">✖ Удалить</button>
+            ${!notification.is_read ? `<span class="mark-read-link" data-id="${notification.id}">Отметить как прочитанное</span>` : ''}
+            <button class="delete-icon" data-id="${notification.id}" title="Удалить уведомление">
+              <svg viewBox="0 0 24 24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
-          ${!notification.is_read ? '<div class="unread-indicator"></div>' : ''}
         </div>
       `).join('');
       container.innerHTML = html;
 
-      document.querySelectorAll('.mark-read-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+      // Кнопка "Прочитано" (ссылка)
+      document.querySelectorAll('.mark-read-link').forEach(link => {
+        link.addEventListener('click', async (e) => {
           e.stopPropagation();
-          const id = btn.dataset.id;
+          const id = link.dataset.id;
           await markAsRead(id);
           await refreshNotifications();
         });
       });
-      document.querySelectorAll('.delete-notif-btn').forEach(btn => {
+      // Кнопка "Удалить" (крестик)
+      document.querySelectorAll('.delete-icon').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           e.stopPropagation();
           const id = btn.dataset.id;
@@ -116,7 +176,6 @@
         return m;
       });
     }
-</script>
+  </script>
 </body>
-
 </html>

@@ -1501,3 +1501,49 @@ body.desktop .notification-container {
   }
 }
 
+/* Сброс визуальных эффектов при наведении на кнопки удаления уведомлений */
+/* ===== ПЕРЕОПРЕДЕЛЕНИЕ ДЛЯ КНОПОК УДАЛЕНИЯ УВЕДОМЛЕНИЙ ===== */
+/* Отмена анимации, тени и фона для крестиков */
+.delete-icon:hover,
+.delete-icon-popup:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  background: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+/* Красный крестик при наведении (страница уведомлений) */
+.delete-icon:hover svg {
+  stroke: #ef4444 !important;
+}
+
+/* Красный крестик при наведении (попап) */
+.delete-icon-popup:hover svg {
+  stroke: #ef4444 !important;
+}
+
+/* Гарантированное выравнивание текста уведомлений */
+.notification-item {
+  margin-bottom: 8px; /* отступ между уведомлениями */
+  align-items: flex-start; /* выравнивание по верхнему краю, чтобы избежать разрывов */
+}
+
+/* Фиксированная ширина блока действий, чтобы текст не прыгал */
+.notification-actions {
+  min-width: 90px; /* достаточно места для "Прочитано" + иконки */
+  flex-shrink: 0; /* блок не сжимается */
+  justify-content: flex-end; /* элементы прижаты к правому краю */
+  gap: 8px;
+}
+
+/* Если в уведомлении нет кнопки "Прочитано", блок действий всё равно сохранит ширину */
+.notification-actions:empty {
+  min-width: 90px;
+}
+
+/* Дополнительно: для попапа, где стили инлайн, переопределим */
+.notification-popup .notification-actions {
+  min-width: 70px; /* чуть меньше для компактности попапа */
+}
+
