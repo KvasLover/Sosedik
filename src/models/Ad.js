@@ -433,15 +433,15 @@ const confirmAdCompletion = async (requestId, userId) => {
   `, [requestId]);
 
       await Notification.createNotification(
-        updatedReq.requester_id,
+        req.requester_id,
         'request_completed',
-        `Сделка по объявлению "${updatedReq.title}" завершена`,
+        `Сделка по объявлению "${req.title}" завершена`,
         null
       );
       await Notification.createNotification(
-        updatedReq.ad_owner_id,
+        req.ad_owner_id,
         'request_completed',
-        `Сделка по объявлению "${updatedReq.title}" завершена`,
+        `Сделка по объявлению "${req.title}" завершена`,
         null
       );
 
