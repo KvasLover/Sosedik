@@ -217,13 +217,18 @@
       padding: 6px 10px;
       font-size: 12px;
       border-radius: 4px;
-      border: 1px solid #ddd;
+      border: 1px solid #1976d2;
+      /* синяя обводка */
       background: white;
+      color: #1976d2;
+      /* синий текст */
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .profile-table button:hover {
+      background: #e3f2fd;
+      /* светлосиняя заливка */
       border-color: #1976d2;
       color: #1976d2;
     }
@@ -235,6 +240,9 @@
 
     .profile-table button.delete-btn:hover {
       background: #ffebee;
+      /* светлокрасная заливка */
+      border-color: #d32f2f;
+      color: #d32f2f;
     }
 
     .profile-table .status-badge {
@@ -338,6 +346,88 @@
     .chat-link:hover {
       text-decoration: underline;
     }
+
+    /* ===== МОБИЛЬНАЯ АДАПТАЦИЯ ===== */
+    @media (max-width: 768px) {
+
+      /* Sidebar – вертикальный список, без горизонтального скролла */
+      .profile-sidebar {
+        position: static;
+        width: 100%;
+        max-height: none;
+        display: block !important;
+        margin-bottom: 20px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e0e0e0;
+      }
+
+      .menu-group {
+        border-bottom: 1px solid #e0e0e0;
+        border-right: none;
+      }
+
+      .menu-group:last-child {
+        border-bottom: none;
+      }
+
+      .menu-item {
+        padding: 14px 20px;
+        font-size: 16px;
+        text-align: center;
+        white-space: normal;
+        width: 100%;
+      }
+
+      /* Кнопки в таблицах – крупнее */
+      .profile-table button {
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+
+      .profile-table .action-buttons {
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      /* Шапка профиля – колонкой */
+      .profile-header {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .profile-avatar-block {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+      }
+
+      /* Кнопки в футере */
+      .profile-footer button {
+        padding: 12px;
+        font-size: 16px;
+      }
+
+      /* Модальное окно – почти на весь экран */
+      #start-work-modal>div {
+        width: 95% !important;
+        margin: 0 10px;
+        padding: 1rem;
+      }
+
+      /* Ссылка чата – как кнопка */
+      .chat-link {
+        display: inline-block;
+        margin-top: 8px;
+        font-size: 14px;
+      }
+
+      /* Отступы для заголовков */
+      .profile-tab>h2 {
+        font-size: 22px;
+      }
+    }
   </style>
 </head>
 
@@ -407,20 +497,25 @@
           <!-- Dashboard Tab -->
           <div id="dashboard-tab" class="profile-tab active">
             <h2>Dashboard</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
-              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <div
+              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
+              <div
+                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
                 <div style="font-size: 32px; font-weight: bold;" id="stat-ads">0</div>
                 <div style="font-size: 14px; opacity: 0.9;">Мои объявления</div>
               </div>
-              <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+              <div
+                style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
                 <div style="font-size: 32px; font-weight: bold;" id="stat-incoming">0</div>
                 <div style="font-size: 14px; opacity: 0.9;">Входящих запросов</div>
               </div>
-              <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+              <div
+                style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
                 <div style="font-size: 32px; font-weight: bold;" id="stat-active">0</div>
                 <div style="font-size: 14px; opacity: 0.9;">Активных сделок</div>
               </div>
-              <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+              <div
+                style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
                 <div style="font-size: 32px; font-weight: bold;" id="stat-favorites">0</div>
                 <div style="font-size: 14px; opacity: 0.9;">В избранном</div>
               </div>
@@ -440,8 +535,10 @@
           <!-- Incoming Requests Tab -->
           <div id="incoming-tab" class="profile-tab">
             <h2>Входящие запросы</h2>
-            <p style="color: #666; margin-bottom: 15px;">Запросы от других пользователей на принятие ваших объявлений</p>
-            <button onclick="hideAllRejected(true)" class="filter-btn" style="margin-bottom: 15px;">Убрать все отклонённые</button>
+            <p style="color: #666; margin-bottom: 15px;">Запросы от других пользователей на принятие ваших объявлений
+            </p>
+            <button onclick="hideAllRejected(true)" class="filter-btn" style="margin-bottom: 15px;">Убрать все
+              отклонённые</button>
             <div id="incoming-list"></div>
           </div>
 
@@ -449,7 +546,8 @@
           <div id="outgoing-tab" class="profile-tab">
             <h2>Исходящие запросы</h2>
             <p style="color: #666; margin-bottom: 15px;">Ваши запросы на принятие чужих объявлений</p>
-            <button onclick="hideAllRejected(false)" class="filter-btn" style="margin-bottom: 15px;">Убрать все отклонённые</button>
+            <button onclick="hideAllRejected(false)" class="filter-btn" style="margin-bottom: 15px;">Убрать все
+              отклонённые</button>
             <div id="outgoing-list"></div>
           </div>
 
@@ -469,7 +567,8 @@
               <button onclick="loadFavorites('rental')" class="filter-btn" id="filter-rentals">Только аренда</button>
             </div>
             <div style="margin-bottom: 20px; text-align: center;">
-              <button onclick="clearFavorites()" class="filter-btn" id="clear-all" style="border-color: #d32f2f; color: #d32f2f;">Убрать все из избранного</button>
+              <button onclick="clearFavorites()" class="filter-btn" id="clear-all"
+                style="border-color: #d32f2f; color: #d32f2f;">Убрать все из избранного</button>
             </div>
             <div id="favorites-list"></div>
           </div>
@@ -524,10 +623,13 @@
           <!-- Security Tab -->
           <div id="security-tab" class="profile-tab">
             <h2>Безопасность</h2>
-            <div class="form-container" style="border: 1px solid #d32f2f; background: #ffebee; padding: 15px; border-radius: 4px;">
+            <div class="form-container"
+              style="border: 1px solid #d32f2f; background: #ffebee; padding: 15px; border-radius: 4px;">
               <h3 style="color: #d32f2f; margin-top: 0;">Удаление аккаунта</h3>
-              <p style="color: #666; margin-bottom: 15px;">Внимание! Это действие необратимо. Все ваши данные, объявления и история активности будут удалены.</p>
-              <button onclick="deleteAccount()" style="border: 1px solid #d32f2f; color: #d32f2f;">Удалить аккаунт</button>
+              <p style="color: #666; margin-bottom: 15px;">Внимание! Это действие необратимо. Все ваши данные,
+                объявления и история активности будут удалены.</p>
+              <button onclick="deleteAccount()" style="border: 1px solid #d32f2f; color: #d32f2f;">Удалить
+                аккаунт</button>
             </div>
           </div>
 
@@ -996,7 +1098,7 @@
           const otherParty = req.requester_id === currentUserId ? req.creator_name : req.requester_name;
           const otherId = req.requester_id === currentUserId ? req.ad_owner_id : req.requester_id;
           const userConfirmed = (req.requester_id === currentUserId && req.requester_confirmed) ||
-                                 (req.ad_owner_id === currentUserId && req.creator_confirmed);
+            (req.ad_owner_id === currentUserId && req.creator_confirmed);
           return { ...req, other_party_name: otherParty || 'Пользователь', other_party_id: otherId, userConfirmed };
         });
         const listDiv = document.getElementById('active-list');
@@ -1285,7 +1387,7 @@
     // Helper для экранирования HTML
     function escapeHtml(str) {
       if (!str) return '';
-      return str.replace(/[&<>]/g, function(m) {
+      return str.replace(/[&<>]/g, function (m) {
         if (m === '&') return '&amp;';
         if (m === '<') return '&lt;';
         if (m === '>') return '&gt;';
@@ -1297,11 +1399,11 @@
     document.addEventListener('DOMContentLoaded', () => {
       const photoInput = document.getElementById('user-photo');
       if (photoInput) {
-        photoInput.addEventListener('change', function(e) {
+        photoInput.addEventListener('change', function (e) {
           const file = e.target.files[0];
           if (file) {
             const reader = new FileReader();
-            reader.onload = function(ev) {
+            reader.onload = function (ev) {
               const photoData = ev.target.result;
               document.getElementById('user-avatar').innerHTML = `<img src="${photoData}" style="width:100%;height:100%;object-fit:cover;">`;
               const userId = currentUserId || getUserIdFromToken();
@@ -1316,7 +1418,8 @@
   </script>
 
   <!-- Модальное окно для уточнения условий -->
-  <div id="start-work-modal" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+  <div id="start-work-modal"
+    style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
     <div style="background: white; padding:1.5rem; border-radius:8px; max-width:500px; width:90%;">
       <h3>Уточните условия сделки</h3>
       <div class="form-group">
