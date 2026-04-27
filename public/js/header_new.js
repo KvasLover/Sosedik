@@ -264,10 +264,20 @@ function initHeader() {
 
       const bulkDiv = document.createElement('div');
       bulkDiv.className = 'notification-bulk-actions';
-      bulkDiv.style.cssText = 'display: flex; justify-content: space-between; padding: 8px 16px; border-top: 1px solid #edf2f7; margin-top: 4px;';
+      bulkDiv.style.cssText = 'display: flex; gap: 8px; padding: 8px 16px; border-top: 1px solid #edf2f7; margin-top: 4px; justify-content: flex-end;';
       bulkDiv.innerHTML = `
-  <button id="mark-all-read-popup" style="background: none; border: 1px solid #d1d5db; border-radius: 4px; padding: 4px 8px; font-size: 12px; color: #6b7280; cursor: pointer;">Отметить все как прочитанные</button>
-  <button id="clear-all-popup" style="background: none; border: none; color: #ef4444; font-size: 12px; cursor: pointer;">Очистить</button>
+  <button id="mark-all-read-popup" class="btn-action btn-action-secondary" style="font-size: 12px; padding: 6px 12px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="margin-right: 4px; display: inline;">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    Прочитанные
+  </button>
+  <button id="clear-all-popup" class="btn-action btn-action-danger" style="font-size: 12px; padding: 6px 12px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="margin-right: 4px; display: inline;">
+      <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    </svg>
+    Очистить
+  </button>
 `;
       const footer = document.querySelector('.notification-footer');
       if (footer) {

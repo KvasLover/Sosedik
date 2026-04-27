@@ -105,13 +105,19 @@
   <div id="header-root"></div>
   <main>
     <h1>Уведомления</h1>
-    <div style="display: flex; gap: 16px; margin-bottom: 20px;">
-      <button id="mark-all-read-page"
-        style="background: none; border: 1px solid #d1d5db; border-radius: 4px; padding: 6px 12px; font-size: 14px; color: #6b7280; cursor: pointer;">Отметить
-        все как прочитанные</button>
-      <button id="clear-all-page"
-        style="background: none; border: none; color: #ef4444; font-size: 14px; cursor: pointer;">Очистить
-        уведомления</button>
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; justify-content: flex-end;">
+      <button id="mark-all-read-page" class="btn-action btn-action-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="margin-right: 6px; display: inline;">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        Прочитанные
+      </button>
+      <button id="clear-all-page" class="btn-action btn-action-danger">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="margin-right: 6px; display: inline;">
+          <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        Очистить
+      </button>
     </div>
     <div id="auth-check" class="hidden">
       <p>Вы не авторизованы. <a href="/login.html">Войти</a></p>
