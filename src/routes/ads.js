@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../database');
 const Ad = require('../models/Ad');
+const Notification = require('../models/Notification');
 const { verifyToken, checkLevel } = require('../middleware/auth');
 
 // Get all ads (public, level 0+)
@@ -200,6 +201,15 @@ router.post('/:id/request', verifyToken, async (req, res) => {
 
     const { message } = req.body;
     const request = await Ad.createAdRequest(adId, req.user.id, message);
+
+    // Уведомление автору объявления
+    await Notification.createNotification(
+      ad.user_id,
+      'new_request',
+      `Новый запрос на ваше объявление "${ad.title}"`,
+      null
+    );
+
     res.status(201).json({ message: 'Request sent', request });
   } catch (err) {
     res.status(500).json({ message: err.message });
