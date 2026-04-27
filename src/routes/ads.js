@@ -207,7 +207,9 @@ router.post('/:id/request', verifyToken, async (req, res) => {
       ad.user_id,
       'new_request',
       `Новый запрос на ваше объявление "${ad.title}"`,
-      null
+      null,
+      request.id,          // related_id
+      'request'            // related_type
     );
 
     res.status(201).json({ message: 'Request sent', request });

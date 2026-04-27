@@ -174,7 +174,11 @@ function initHeader() {
       }
 
       notificationList.innerHTML = notifications.map(notification => `
-        <div class="notification-item ${notification.is_read ? 'read' : 'unread'}" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #edf2f7;">
+        <div class="notification-item ${notification.is_read ? 'read' : 'unread'}" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #edf2f7;"
+          data-id="${notification.id}"  
+          data-type="${notification.type}"
+          data-related-id="${notification.related_id || ''}"
+          data-related-type="${notification.related_type || ''}">
           <div class="notification-content" style="flex:1; font-size:0.85rem; color:#1a202c;">
             ${escapeHtml(notification.message)}
             <small style="display:block; font-size:0.7rem; color:#718096;">${new Date(notification.created_at).toLocaleString()}</small>
@@ -218,6 +222,40 @@ function initHeader() {
           loadNotifications(tokenValue);
           // Отправить событие для синхронизации страницы уведомлений
           window.dispatchEvent(new CustomEvent('notifications-updated'));
+        });
+      });
+
+      // Обработчик клика по карточке уведомления в попапе
+      document.querySelectorAll('.notification-item').forEach(card => {
+        card.addEventListener('click', async (e) => {
+          if (e.target.closest('.delete-icon-popup') || e.target.closest('.mark-read-popup')) return;
+          const id = card.dataset.id;
+          const type = card.dataset.type;
+          const relatedId = card.dataset.relatedId;
+          // Отметить прочитанным
+          if (!card.classList.contains('read')) {
+            await fetch(`/api/notifications/${id}/read`, {
+              method: 'PUT',
+              headers: { 'Authorization': `Bearer ${tokenValue}` }
+            });
+            card.classList.remove('unread');
+            // Даём серверу время обработать запрос
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          // переход
+
+          // Переход
+          if (type === 'new_message' || type === 'request_completed') {
+            window.location.href = relatedId ? `/request-chat.html?requestId=${relatedId}` : '/profile.html';
+          } else if (type === 'new_request') {
+            window.location.href = '/profile.html?tab=incoming';
+          } else if (['request_accepted', 'request_started', 'request_pending_completion'].includes(type)) {
+            window.location.href = '/profile.html?tab=active';
+          } else if (type === 'request_rejected') {
+            window.location.href = '/profile.html?tab=outgoing';
+          } else {
+            window.location.href = '/profile.html';
+          }
         });
       });
 

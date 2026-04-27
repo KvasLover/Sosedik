@@ -84,7 +84,9 @@ router.post('/', verifyToken, async (req, res) => {
           otherUserId,
           'new_message',
           `Новое сообщение в сделке`,
-          null
+          null,
+          requestId,          // related_id
+          'request'           // related_type
         );
       }
     } catch (notifErr) {

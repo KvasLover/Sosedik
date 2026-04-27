@@ -269,7 +269,9 @@ const acceptAdRequest = async (requestId, userId) => {
       req.requester_id,
       'request_accepted',
       `Ваш запрос на объявление "${req.title}" принят`,
-      'Запрос принят'
+      null,
+      requestId,          // related_id
+      'request'           // related_type
     );
 
     return result.rows[0];
@@ -332,11 +334,14 @@ const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime 
     `, [req.ad_id]);
 
     const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
+
     await Notification.createNotification(
       otherUserId,
       'request_started',
       `Сделка по объявлению "${req.title}" начата`,
-      'Сделка начата'
+      null,
+      requestId,          // related_id
+      'request'           // related_type
     );
 
     return result.rows[0];
@@ -436,7 +441,9 @@ const confirmAdCompletion = async (requestId, userId) => {
         firstConfirmerId,
         'request_completed',
         `Сделка по объявлению "${req.title}" завершена`,
-        null
+        null,
+        requestId,          // related_id
+        'request'           // related_type
       );
 
       await pool.query(`
@@ -453,7 +460,9 @@ const confirmAdCompletion = async (requestId, userId) => {
         otherUserId,
         'request_pending_completion',
         `Партнёр подтвердил выполнение. Пожалуйста, подтвердите и вы, чтобы завершить сделку.`,
-        null
+        null,
+        requestId,          // related_id
+        'request'           // related_type
       );
     }
 
@@ -562,7 +571,9 @@ const cancelAdRequest = async (requestId, userId) => {
       otherUserId,
       'request_cancelled_by_user',
       `Договорённость по объявлению "${req.title}" отменена другой стороной`,
-      null
+      null,
+      requestId,          // related_id
+      'request'           // related_type
     );
 
     return result.rows[0];
@@ -643,13 +654,17 @@ WHERE ar.status = 'accepted'
         req.requester_id,
         'request_auto_cancelled',
         `Договорённость по объявлению "${req.title}" автоматически отменена из-за отсутствия активности`,
-        'Автоотмена'  // четвёртый параметр (title)
+        null,
+        req.id,             // related_id
+        'request'           // related_type
       );
       await Notification.createNotification(
         req.ad_owner_id,
         'request_auto_cancelled',
         `Договорённость по объявлению "${req.title}" автоматически отменена из-за отсутствия активности`,
-        'Автоотмена'
+        null,
+        req.id,
+        'request'
       );
     }
     return expired.rowCount;

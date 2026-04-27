@@ -649,6 +649,11 @@
     let currentUserId = null;
     let currentStartRequestId = null;
 
+    function getUrlParameter(name) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    }
+
     // Получение userId из токена
     function getUserIdFromToken() {
       const token = localStorage.getItem('sosedik_token');
@@ -764,6 +769,12 @@
 
         document.getElementById('auth-check').classList.add('hidden');
         document.getElementById('profile-content').classList.remove('hidden');
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab');
+        if (tab && typeof showProfileTab === 'function') {
+          showProfileTab(tab);
+        }
       } catch (error) {
         showResult('Ошибка загрузки профиля: ' + error.message, false);
       }
@@ -1170,6 +1181,8 @@
 
     async function submitStartWork() {
       if (!currentStartRequestId) return;
+      const startBtn = document.querySelector('#start-work-modal button[onclick="submitStartWork()"]');
+      if (startBtn) startBtn.disabled = true;
       const agreedPrice = document.getElementById('modal-agreed-price').value;
       const agreedTime = document.getElementById('modal-agreed-time').value;
       const agreementComment = document.getElementById('modal-agreement-comment').value;
@@ -1191,10 +1204,19 @@
           loadDashboard();
         } else {
           const data = await response.json();
-          showResult('Ошибка: ' + (data.message || 'Не удалось начать'), false);
+          // Если ошибка "Can only start accepted requests", но статус уже изменился, просто игнорируем
+          if (data.message === 'Can only start accepted requests') {
+            console.warn('Запрос уже запущен, игнорируем ошибку');
+            closeStartModal();
+            loadActiveRequests();
+          } else {
+            showResult('Ошибка: ' + (data.message || 'Не удалось начать'), false);
+          }
         }
       } catch (error) {
         showResult('Ошибка: ' + error.message, false);
+      } finally {
+        if (startBtn) startBtn.disabled = false;
       }
     }
 

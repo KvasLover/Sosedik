@@ -130,7 +130,7 @@
         return;
       }
       await refreshNotifications();
-      
+
       // Кнопки массовых действий
       document.getElementById('mark-all-read-page').addEventListener('click', async () => {
         const token = localStorage.getItem('sosedik_token');
@@ -173,7 +173,11 @@
       }
 
       const html = notifications.map(notification => `
-        <div class="notification-item ${notification.is_read ? 'read' : 'unread'}">
+        <div class="notification-item ${notification.is_read ? 'read' : 'unread'}"
+          data-id="${notification.id}"  
+          data-type="${notification.type}"
+          data-related-type="${notification.related_type || ''}"
+          data-related-id="${notification.related_id || ''}">
           <div class="notification-content">
             ${escapeHtml(notification.message)}
             <small>${new Date(notification.created_at).toLocaleString()}</small>
@@ -190,6 +194,36 @@
         </div>
       `).join('');
       container.innerHTML = html;
+
+      // Обработчик клика по уведомлению (переход)
+      document.querySelectorAll('.notification-item').forEach(card => {
+        card.addEventListener('click', async (e) => {
+          // Если клик был по кнопке удаления – не обрабатываем
+          if (e.target.closest('.delete-notification') || e.target.closest('.delete-icon') || e.target.closest('.delete-notif-btn')) return;
+          const id = card.dataset.id;
+          const type = card.dataset.type;
+          const relatedId = card.dataset.relatedId;
+          // Отметить как прочитанное (если ещё не прочитано)
+          if (!card.classList.contains('read')) {
+            await markAsRead(id);
+            card.classList.remove('unread');
+            card.classList.add('read');
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          // Переход
+          if (type === 'new_message' || type === 'request_completed') {
+            window.location.href = relatedId ? `/request-chat.html?requestId=${relatedId}` : '/profile.html';
+          } else if (type === 'new_request') {
+            window.location.href = '/profile.html?tab=incoming';
+          } else if (['request_accepted', 'request_started', 'request_pending_completion'].includes(type)) {
+            window.location.href = '/profile.html?tab=active';
+          } else if (type === 'request_rejected') {
+            window.location.href = '/profile.html?tab=outgoing';
+          } else {
+            window.location.href = '/profile.html';
+          }
+        });
+      });
 
       // Кнопка "Прочитано" (ссылка)
       document.querySelectorAll('.mark-read-link').forEach(link => {
