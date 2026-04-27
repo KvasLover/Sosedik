@@ -348,36 +348,34 @@ const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime 
 // Отклонить запрос на объявление (статус: pending → rejected)
 const declineAdRequest = async (requestId, userId, reason) => {
   try {
-    // Проверяем, что пользователь - владелец объявления
     const request = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status, ads.title
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       WHERE ar.id = $1
     `, [requestId]);
 
-    if (request.rows.length === 0) {
-      throw new Error('Request not found');
-    }
-
+    if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
 
-    if (req.ad_owner_id !== userId) {
-      throw new Error('Not authorized to decline this request');
-    }
+    if (req.ad_owner_id !== userId) throw new Error('Not authorized to decline this request');
+    if (req.current_status !== 'pending') throw new Error('Can only decline pending requests');
 
-    // Проверяем, что запрос в статусе pending
-    if (req.current_status !== 'pending') {
-      throw new Error('Can only decline pending requests');
-    }
-
-    // Обновляем статус запроса
     const result = await pool.query(`
       UPDATE ad_requests
       SET status = 'rejected', decline_reason = $2, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
       RETURNING *
     `, [requestId, reason]);
+
+    console.log(req.title)
+    // Уведомление отправителю запроса
+    await Notification.createNotification(
+      req.requester_id,
+      'request_rejected',
+      `Ваш запрос на объявление "${req.title}" был отклонён. Причина: "${reason}"`,
+      null
+    );
 
     return result.rows[0];
   } catch (err) {
