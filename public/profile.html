@@ -1099,7 +1099,10 @@
           const otherId = req.requester_id === currentUserId ? req.ad_owner_id : req.requester_id;
           const userConfirmed = (req.requester_id === currentUserId && req.requester_confirmed) ||
             (req.ad_owner_id === currentUserId && req.creator_confirmed);
-          return { ...req, other_party_name: otherParty || 'Пользователь', other_party_id: otherId, userConfirmed };
+          const partnerConfirmed = (req.requester_id === currentUserId && req.creator_confirmed) ||
+            (req.ad_owner_id === currentUserId && req.requester_confirmed);
+          const pendingBadge = (!userConfirmed && partnerConfirmed) ? '<span style="background: #f97316; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-right: 8px;">⚠️ Ожидает вашего подтверждения</span>' : '';
+          return { ...req, other_party_name: otherParty || 'Пользователь', other_party_id: otherId, userConfirmed, pendingBadge };
         });
         const listDiv = document.getElementById('active-list');
         if (!requests.length) {
@@ -1118,15 +1121,15 @@
                     <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
                     <td>${new Date(req.created_at).toLocaleDateString()}</td>
                     <td class="action-buttons">
+                      ${req.pendingBadge}
                       ${req.status === 'accepted' ? `
                         <button onclick="openStartModal(${req.id})">Начать работу</button>
                         <button class="delete-btn" onclick="cancelAcceptedRequest(${req.id})">Отменить договорённость</button>
                       ` : ''}
-                      ${req.status === 'in_progress' && !req.userConfirmed ? `
-                        <button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>
-                      ` : ''}
-                      ${req.status === 'in_progress' && req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили</span>` : ''}
-<a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>                    </td>
+                      ${req.status === 'in_progress' && !req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
+                      ${req.status === 'in_progress' && req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили. Собеседник получит уведомление</span>` : ''}
+                      <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
