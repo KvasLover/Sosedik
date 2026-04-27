@@ -174,21 +174,20 @@ function initHeader() {
       }
 
       notificationList.innerHTML = notifications.map(notification => `
-        <div class="notification-item ${notification.is_read ? 'read' : 'unread'}" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #edf2f7;">
-          <div class="notification-content" style="flex:1; font-size:0.85rem; color:#1a202c;">
+        <div class="notification-item ${notification.is_read ? 'read' : 'unread'}">
+          <div class="notification-content">
             ${escapeHtml(notification.message)}
-            <small style="display:block; font-size:0.7rem; color:#718096;">${new Date(notification.created_at).toLocaleString()}</small>
+            <small>${new Date(notification.created_at).toLocaleString()}</small>
           </div>
-          <div class="notification-actions" style="display:flex; align-items:center; gap:8px; margin-left:12px;">
-            ${!notification.is_read ? `<span class="mark-read-popup" data-id="${notification.id}" style="font-size:0.75rem; color:#718096; cursor:pointer; text-decoration:none;">Отметить как прочитанное</span>` : ''}
-            <button class="delete-icon-popup" data-id="${notification.id}" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; align-items:center;">
+          <div class="notification-actions">
+            ${!notification.is_read ? `<span class="mark-read-popup" data-id="${notification.id}">Отметить как прочитанное</span>` : ''}
+            <button class="delete-icon-popup" data-id="${notification.id}">
               <svg width="14" height="14" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
             </button>
           </div>
-          ${!notification.is_read ? '<div class="unread-indicator"></div>' : ''}
         </div>
       `).join('');
 

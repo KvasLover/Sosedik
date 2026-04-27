@@ -1297,8 +1297,12 @@ body.desktop .notification-container {
 }
 
 .notification-item {
-  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 20px;
   border-bottom: 1px solid #f1f5f9;
+  gap: 12px;
   transition: background-color 0.2s ease;
   position: relative;
 }
@@ -1320,6 +1324,14 @@ body.desktop .notification-container {
   background-color: #dbeafe;
 }
 
+.notification-content {
+  flex: 1;
+  width: 100%;
+  font-size: 0.9rem;
+  color: #2d3748;
+  line-height: 1.4;
+}
+
 .notification-content p {
   margin: 0 0 8px 0;
   font-size: 0.9rem;
@@ -1328,8 +1340,50 @@ body.desktop .notification-container {
 }
 
 .notification-content small {
+  display: block;
   color: #718096;
   font-size: 0.8rem;
+  margin-top: 8px;
+}
+
+.notification-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.mark-read-popup {
+  font-size: 0.85rem;
+  color: #718096;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mark-read-popup:hover {
+  color: #667eea;
+  text-decoration: underline;
+}
+
+.delete-icon-popup {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.delete-icon-popup svg {
+  stroke: #9ca3af;
+  transition: stroke 0.2s;
+}
+
+.delete-icon-popup:hover svg {
+  stroke: #ef4444;
 }
 
 .unread-indicator {
