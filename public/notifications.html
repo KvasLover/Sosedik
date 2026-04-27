@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -99,12 +100,17 @@
     }
   </style>
 </head>
+
 <body>
   <div id="header-root"></div>
   <main>
     <h1>Уведомления</h1>
-    <div id="auth-check" class="hidden"><p>Вы не авторизованы. <a href="/login.html">Войти</a></p></div>
-    <div id="notifications-container"><div class="loading">Загрузка уведомлений...</div></div>
+    <div id="auth-check" class="hidden">
+      <p>Вы не авторизованы. <a href="/login.html">Войти</a></p>
+    </div>
+    <div id="notifications-container">
+      <div class="loading">Загрузка уведомлений...</div>
+    </div>
   </main>
   <script src="js/header_new.js"></script>
   <script>
@@ -196,13 +202,19 @@
 
     function escapeHtml(str) {
       if (!str) return '';
-      return str.replace(/[&<>]/g, function(m) {
+      return str.replace(/[&<>]/g, function (m) {
         if (m === '&') return '&amp;';
         if (m === '<') return '&lt;';
         if (m === '>') return '&gt;';
         return m;
       });
     }
+
+    window.addEventListener('notifications-updated', () => {
+      console.log('Обновляем уведомления по событию из попапа');
+      refreshNotifications();
+    });
   </script>
 </body>
+
 </html>
