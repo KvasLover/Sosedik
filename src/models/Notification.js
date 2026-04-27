@@ -74,11 +74,18 @@ const deleteNotification = async (notificationId, userId) => {
   }
 };
 
+// Удалить все уведомления пользователя
+const deleteAllForUser = async (userId) => {
+  const result = await pool.query('DELETE FROM notifications WHERE user_id = $1 RETURNING id', [userId]);
+  return result.rowCount;
+};
+
 module.exports = {
   getUserNotifications,
   getUnreadCount,
   createNotification,
   markAsRead,
   markAllAsRead,
-  deleteNotification
+  deleteNotification,
+  deleteAllForUser
 };

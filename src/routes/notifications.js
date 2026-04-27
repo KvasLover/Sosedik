@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Notification = require('../models/Notification');
 const { verifyToken } = require('../middleware/auth');
+const pool = require('../database');
 
 // Get user notifications
 router.get('/', verifyToken, async (req, res) => {
@@ -62,6 +63,21 @@ router.put('/read-all', verifyToken, async (req, res) => {
     const notifications = await Notification.markAllAsRead(userId);
     res.json({ message: 'All notifications marked as read', count: notifications.length });
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Удалить все уведомления пользователя
+router.delete('/clear', verifyToken, async (req, res) => {
+  console.log('DELETE /notifications/clear hit');
+  try {
+    const userId = req.user.id;
+    console.log('userId:', userId);
+    const pool = require('../database');
+    await pool.query('DELETE FROM notifications WHERE user_id = $1', [userId]);
+    res.json({ message: 'Cleared' });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 });

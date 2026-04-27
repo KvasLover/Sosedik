@@ -220,6 +220,37 @@ function initHeader() {
           window.dispatchEvent(new CustomEvent('notifications-updated'));
         });
       });
+
+      const existingBulk = document.querySelector('.notification-bulk-actions');
+      if (existingBulk) existingBulk.remove();
+
+      const bulkDiv = document.createElement('div');
+      bulkDiv.className = 'notification-bulk-actions';
+      bulkDiv.style.cssText = 'display: flex; justify-content: space-between; padding: 8px 16px; border-top: 1px solid #edf2f7; margin-top: 4px;';
+      bulkDiv.innerHTML = `
+  <button id="mark-all-read-popup" style="background: none; border: 1px solid #d1d5db; border-radius: 4px; padding: 4px 8px; font-size: 12px; color: #6b7280; cursor: pointer;">Отметить все как прочитанные</button>
+  <button id="clear-all-popup" style="background: none; border: none; color: #ef4444; font-size: 12px; cursor: pointer;">Очистить</button>
+`;
+      const footer = document.querySelector('.notification-footer');
+      if (footer) {
+        footer.parentNode.insertBefore(bulkDiv, footer);
+      }
+
+      document.getElementById('mark-all-read-popup')?.addEventListener('click', async () => {
+        await fetch('/api/notifications/read-all', {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${tokenValue}` }
+        });
+        loadNotifications(tokenValue);
+      });
+
+      document.getElementById('clear-all-popup')?.addEventListener('click', async () => {
+        await fetch('/api/notifications/clear', {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${tokenValue}` }
+        });
+        loadNotifications(tokenValue);
+      });
     } catch (error) {
       notificationList.innerHTML = '<p class="no-notifications">Ошибка загрузки уведомлений</p>';
       console.error(error);

@@ -105,6 +105,14 @@
   <div id="header-root"></div>
   <main>
     <h1>Уведомления</h1>
+    <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+      <button id="mark-all-read-page"
+        style="background: none; border: 1px solid #d1d5db; border-radius: 4px; padding: 6px 12px; font-size: 14px; color: #6b7280; cursor: pointer;">Отметить
+        все как прочитанные</button>
+      <button id="clear-all-page"
+        style="background: none; border: none; color: #ef4444; font-size: 14px; cursor: pointer;">Очистить
+        уведомления</button>
+    </div>
     <div id="auth-check" class="hidden">
       <p>Вы не авторизованы. <a href="/login.html">Войти</a></p>
     </div>
@@ -122,6 +130,25 @@
         return;
       }
       await refreshNotifications();
+      
+      // Кнопки массовых действий
+      document.getElementById('mark-all-read-page').addEventListener('click', async () => {
+        const token = localStorage.getItem('sosedik_token');
+        await fetch('/api/notifications/read-all', {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        await refreshNotifications();
+      });
+
+      document.getElementById('clear-all-page').addEventListener('click', async () => {
+        const token = localStorage.getItem('sosedik_token');
+        await fetch('/api/notifications/clear', {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        await refreshNotifications();
+      });
     });
 
     async function refreshNotifications() {
