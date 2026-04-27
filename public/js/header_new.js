@@ -242,6 +242,7 @@ function initHeader() {
           headers: { 'Authorization': `Bearer ${tokenValue}` }
         });
         loadNotifications(tokenValue);
+        window.dispatchEvent(new CustomEvent('notifications-updated'));
       });
 
       document.getElementById('clear-all-popup')?.addEventListener('click', async () => {
@@ -250,6 +251,7 @@ function initHeader() {
           headers: { 'Authorization': `Bearer ${tokenValue}` }
         });
         loadNotifications(tokenValue);
+        window.dispatchEvent(new CustomEvent('notifications-updated'));
       });
     } catch (error) {
       notificationList.innerHTML = '<p class="no-notifications">Ошибка загрузки уведомлений</p>';
