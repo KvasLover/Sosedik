@@ -422,35 +422,30 @@ const confirmAdCompletion = async (requestId, userId) => {
     const updated = await pool.query(`SELECT * FROM ad_requests WHERE id = $1`, [requestId]);
     const updatedReq = updated.rows[0];
 
-    // Если оба подтвердили → завершаем сделку
+    // Если оба подтвердили → завершаем сделку, уведомление - только первому подтвердившему
     if (updatedReq.requester_confirmed && updatedReq.creator_confirmed) {
       await pool.query(`
-        UPDATE ad_requests
-        SET status = 'completed', completed_at = CURRENT_TIMESTAMP
-        WHERE id = $1
-      `, [requestId]);
+    UPDATE ad_requests
+    SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+  `, [requestId]);
 
-      // Уведомление о завершении (оба получат – позже исправим в пункте 4/5)
+      // Уведомление о завершении получает только первый подтвердивший (не текущий пользователь)
+      const firstConfirmerId = (userId === updatedReq.requester_id) ? req.ad_owner_id : updatedReq.requester_id;
       await Notification.createNotification(
-        req.requester_id,
-        'request_completed',
-        `Сделка по объявлению "${req.title}" завершена`,
-        null
-      );
-      await Notification.createNotification(
-        req.ad_owner_id,
+        firstConfirmerId,
         'request_completed',
         `Сделка по объявлению "${req.title}" завершена`,
         null
       );
 
       await pool.query(`
-        UPDATE ads
-        SET acceptance_status = 'open',
-            accepted_by = NULL,
-            accepted_at = NULL
-        WHERE id = $1
-      `, [req.ad_id]);
+    UPDATE ads
+    SET acceptance_status = 'open',
+        accepted_by = NULL,
+        accepted_at = NULL
+    WHERE id = $1
+  `, [req.ad_id]);
     } else {
       // Только один подтвердил → уведомляем другую сторону о первом подтверждении
       const otherUserId = (userId === updatedReq.requester_id) ? req.ad_owner_id : updatedReq.requester_id;
