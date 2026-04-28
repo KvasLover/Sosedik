@@ -542,21 +542,22 @@ const deleteDeclinedRequest = async (requestId, userId) => {
 
 const cancelAdRequest = async (requestId, userId) => {
   try {
-    // Получаем запрос и данные объявления
     const request = await pool.query(`
-  SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status, ads.title
-  FROM ad_requests ar
-  JOIN ads ON ar.ad_id = ads.id
-  WHERE ar.id = $1
-`, [requestId]);
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status, ads.title
+      FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
+      WHERE ar.id = $1
+    `, [requestId]);
 
     if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
 
-    if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized');
-
-    // Разрешаем отмену для pending и accepted
-    if (!['pending', 'accepted'].includes(req.current_status)) {
+    // Проверка прав и допустимых статусов
+    if (req.current_status === 'pending') {
+      if (req.requester_id !== userId) throw new Error('Only requester can cancel a pending request');
+    } else if (req.current_status === 'accepted') {
+      if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized to cancel this accepted request');
+    } else {
       throw new Error('Can only cancel pending or accepted requests');
     }
 
@@ -577,15 +578,43 @@ const cancelAdRequest = async (requestId, userId) => {
       `, [req.ad_id]);
     }
 
-    const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
-    await Notification.createNotification(
-      otherUserId,
-      'request_cancelled_by_user',
-      `Договорённость по объявлению "${req.title}" отменена другой стороной`,
-      null,
-      requestId,          // related_id
-      'request'           // related_type
-    );
+    // Отправка уведомления
+    let otherUserId = null;
+    let message = '';
+    let type = '';
+
+    if (req.current_status === 'pending') {
+      // Отменяет requester → уведомляем автора объявления
+      if (userId === req.requester_id) {
+        otherUserId = req.ad_owner_id;
+        type = 'pending_request_cancelled';
+        message = `Пользователь ${userId === req.requester_id ? 'отменил свой запрос' : 'отменил запрос'} на объявление "${req.title}"`;
+        // Уточним имя отправителя? Можно получить имя, но для простоты так.
+        // Лучше: const requesterName = ...; но у нас нет имени в req. Можно сделать отдельный запрос.
+        // Пока оставим общий текст.
+        message = `Пользователь отменил свой запрос на объявление "${req.title}"`;
+      } else {
+        // Если бы автор отменял pending (но мы запретили), но на всякий случай:
+        otherUserId = req.requester_id;
+        type = 'pending_request_cancelled_by_author';
+        message = `Владелец объявления отменил ваш запрос на "${req.title}"`;
+      }
+    } else if (req.current_status === 'accepted') {
+      otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
+      type = 'request_cancelled_by_user';
+      message = `Договорённость по объявлению "${req.title}" отменена другой стороной`;
+    }
+
+    if (otherUserId) {
+      await Notification.createNotification(
+        otherUserId,
+        type,
+        message,
+        null,
+        requestId,
+        'request'
+      );
+    }
 
     return result.rows[0];
   } catch (err) {
