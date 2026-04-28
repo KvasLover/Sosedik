@@ -21,14 +21,14 @@
     <div id="rentals-content">
       <!-- Button to open create rental form -->
       <div style="margin-bottom: 20px;">
-        <button onclick="toggleCreateForm()" style="background: #27ae60;">+ Сдать в аренду</button>
+        <button class="btn-success" onclick="toggleCreateForm()">+ Сдать в аренду</button>
       </div>
 
       <!-- Form to create new rental (hidden by default) -->
       <div id="create-form" class="form-container hidden">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <h2>Сдать вещь в аренду</h2>
-          <button onclick="toggleCreateForm()" style="background: #95a5a6; padding: 5px 10px;">✕</button>
+          <button class="btn-sm btn-secondary" onclick="toggleCreateForm()">✕</button>
         </div>
         <div class="form-group">
           <label for="rental-item-name">Название вещи:</label>
@@ -63,7 +63,7 @@
           <input type="file" id="rental-photo" accept="image/*" style="margin-bottom: 10px;">
           <div id="photo-preview" style="margin-top: 10px;"></div>
         </div>
-        <button onclick="createRental()" style="background: #3498db;">Создать объявление</button>
+        <button class="btn-primary" onclick="createRental()"><u041aреать объявление</button>
       </div>
 
       <!-- Filters -->
@@ -214,7 +214,7 @@
           '';
 
         // Delete button for owner
-        const deleteButton = isOwner ? `<button onclick="event.stopPropagation(); deleteRental(${rental.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; margin-top: 10px;">Удалить</button>` : '';
+        const deleteButton = isOwner ? `<button class="btn-sm btn-danger" onclick="event.stopPropagation(); deleteRental(${rental.id})\" style=\"margin-top: 10px;\">Удалить</button>` : '';
 
         rentalDiv.innerHTML = `
           <div style="display: flex; align-items: flex-start; justify-content: space-between;">

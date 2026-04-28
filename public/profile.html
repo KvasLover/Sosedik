@@ -595,7 +595,7 @@
                 Показывать номер квартиры другим пользователям
               </label>
             </div>
-            <button onclick="saveProfile()">Сохранить изменения</button>
+            <button class="btn-primary" onclick="saveProfile()">Сохранить изменения</button>
             <div id="result-message" class="result hidden"></div>
           </div>
 
@@ -616,7 +616,7 @@
                   Уведомлять об ответах на объявления
                 </label>
               </div>
-              <button onclick="savePreferences()">Сохранить предпочтения</button>
+              <button class="btn-secondary" onclick="savePreferences()">Сохранить предпочтения</button>
             </div>
           </div>
 
@@ -628,15 +628,14 @@
               <h3 style="color: #d32f2f; margin-top: 0;">Удаление аккаунта</h3>
               <p style="color: #666; margin-bottom: 15px;">Внимание! Это действие необратимо. Все ваши данные,
                 объявления и история активности будут удалены.</p>
-              <button onclick="deleteAccount()" style="border: 1px solid #d32f2f; color: #d32f2f;">Удалить
-                аккаунт</button>
+              <button class="btn-danger" onclick="deleteAccount()">Удалить аккаунт</button>
             </div>
           </div>
 
           <!-- Footer buttons -->
           <div class="profile-footer">
-            <button onclick="goToMain()">← Вернуться на главную</button>
-            <button class="logout" onclick="logout()">Выйти из аккаунта</button>
+            <button class="btn-secondary" onclick="goToMain()">← Вернуться на главную</button>
+            <button class="btn-danger logout" onclick="logout()">Выйти из аккаунта</button>
           </div>
         </div>
       </div>
@@ -859,8 +858,8 @@
                     <td>${ad.type === 'offer' ? 'Предложение' : 'Запрос'}</td>
                     <td>${new Date(ad.created_at).toLocaleDateString()}</td>
                     <td class="action-buttons">
-                      <button onclick="viewAd(${ad.id})">Просмотр</button>
-                      <button class="delete-btn" onclick="deleteAd(${ad.id})">Удалить</button>
+                      <button class="btn-sm btn-primary" onclick="viewAd(${ad.id})">Просмотр</button>
+                      <button class="btn-sm btn-danger" onclick="deleteAd(${ad.id})">Удалить</button>
                     </td>
                   </tr>
                 `).join('')}
@@ -1485,8 +1484,8 @@
         <textarea id="modal-agreement-comment" class="form-control" rows="3"></textarea>
       </div>
       <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-        <button onclick="closeStartModal()" style="background:#95a5a6;">Отмена</button>
-        <button onclick="submitStartWork()" style="background:#27ae60;">Начать работу</button>
+        <button class="btn-secondary" onclick="closeStartModal()">Отмена</button>
+        <button class="btn-success" onclick="submitStartWork()">Начать работу</button>
       </div>
     </div>
   </div>

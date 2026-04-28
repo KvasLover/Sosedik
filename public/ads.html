@@ -23,14 +23,14 @@
     <div id="ads-content">
       <!-- Button to open create ad form -->
       <div style="margin-bottom: 20px;">
-        <button onclick="toggleCreateForm()" style="background: #27ae60;">+ Создать объявление</button>
+        <button class="btn-success" onclick="toggleCreateForm()">+ Создать объявление</button>
       </div>
 
       <!-- Form to create new ad (hidden by default) -->
       <div id="create-form" class="form-container hidden">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <h2>Создать объявление</h2>
-          <button onclick="toggleCreateForm()" style="background: #95a5a6; padding: 5px 10px;">✕</button>
+          <button class="btn-sm btn-secondary" onclick="toggleCreateForm()">✕</button>
         </div>
         <div class="form-group">
           <label for="ad-category">Категория:</label>
@@ -68,7 +68,7 @@
           <textarea id="ad-terms" placeholder="Дополнительные условия: нужна дрель, требуются грузчики и т.п."
             rows="2"></textarea>
         </div>
-        <button onclick="createAd()">Создать</button>
+        <button class="btn-primary" onclick="createAd()">Создать</button>
         <div id="create-message" class="result hidden"></div>
       </div>
 
@@ -92,7 +92,7 @@
             </select>
           </div>
         </div>
-        <button onclick="applyFilters()">Применить фильтры</button>
+        <button class="btn-secondary" onclick="applyFilters()">Применить фильтры</button>
       </div>
 
       <!-- My ads filter -->
@@ -225,7 +225,7 @@
 
         let deleteButton = '';
         if (currentUserId && parseInt(ad.user_id) === parseInt(currentUserId)) {
-          deleteButton = `<button onclick="event.stopPropagation(); deleteAd(${ad.id})" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; margin-top: 10px;">Удалить</button>`;
+          deleteButton = `<button class="btn-sm btn-danger" onclick="event.stopPropagation(); deleteAd(${ad.id})" style="margin-top: 10px;">Удалить</button>`;
         }
 
         let favoriteButton = '';
@@ -236,7 +236,7 @@
         let acceptButton = '';
         if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
           if (!ad.accepted_by) {
-            acceptButton = `<button onclick="event.stopPropagation(); requestAd(${ad.id}, this)" style="background: #3498db; color: white; border: none; padding: 5px 10px; margin-top: 10px; margin-right: 10px;">Отправить запрос</button>`;
+            acceptButton = `<button class="btn-sm btn-primary" onclick="event.stopPropagation(); requestAd(${ad.id}, this)" style="margin-top: 10px; margin-right: 10px;">Отправить запрос</button>`;
           } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
             acceptButton = `<span style="color: #27ae60; margin-top: 10px; display: inline-block;">✓ Принято вами</span>`;
           } else {
