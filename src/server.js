@@ -11,6 +11,7 @@ const favoritesRoutes = require('./routes/favorites');
 const notificationsRoutes = require('./routes/notifications');
 const requestMessagesRoutes = require('./routes/request-messages');
 const { autoCancelExpiredAcceptedRequests } = require('./models/Ad');
+const reputationRoutes = require('./routes/reputation');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -28,6 +29,7 @@ app.use('/api/rentals', rentalsRoutes);
 app.use('/api/favorites', favoritesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/request-messages', requestMessagesRoutes);
+app.use('/api', reputationRoutes);
 
 // Test database connection
 app.get('/api/health', async (req, res) => {

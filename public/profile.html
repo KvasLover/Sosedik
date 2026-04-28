@@ -480,6 +480,10 @@
             <button class="menu-item" onclick="showProfileTab('active')">Активные сделки</button>
           </div>
           <div class="menu-group">
+            <div class="menu-group-title">📋 История</div>
+            <button class="menu-item" onclick="showProfileTab('deals')">Сделки</button>
+          </div>
+          <div class="menu-group">
             <div class="menu-group-title">⭐ Сохраненное</div>
             <button class="menu-item" onclick="showProfileTab('favorites')">Избранное</button>
           </div>
@@ -493,7 +497,11 @@
 
         <!-- Main Content -->
         <div class="profile-main">
-
+          <!-- Deals Tab -->
+          <div id="deals-tab" class="profile-tab">
+            <h2>Мои сделки</h2>
+            <div id="deals-list"></div>
+          </div>
           <!-- Dashboard Tab -->
           <div id="dashboard-tab" class="profile-tab active">
             <h2>Dashboard</h2>
@@ -520,12 +528,19 @@
                 <div style="font-size: 14px; opacity: 0.9;">В избранном</div>
               </div>
             </div>
+            <div
+              style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-top: 20px;">
+              <h3>Моя репутация</h3>
+              <p>✔ Завершено сделок: <span id="rep-total">0</span></p>
+              <p>🟢 Успешно: <span id="rep-success">0</span></p>
+              <p>🟠 Были сложности: <span id="rep-problem">0</span></p>
+              <p>🔴 Сделка не удалась: <span id="rep-failed">0</span></p>
+            </div>
             <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
               <h3 style="margin-top: 0;">Последняя активность</h3>
               <div id="dashboard-activity" style="color: #666;">Загрузка...</div>
             </div>
           </div>
-
           <!-- My Ads Tab -->
           <div id="myads-tab" class="profile-tab">
             <h2>Мои объявления</h2>
@@ -720,6 +735,7 @@
         case 'active': loadActiveRequests(); break;
         case 'myads': loadMyAds(); break;
         case 'favorites': loadFavorites(); break;
+        case 'deals': loadDeals(); break;
       }
     }
 
@@ -819,6 +835,17 @@
               <span style="font-size:12px;color:#999;">${act.time.toLocaleDateString()}</span>
             </div>
           `).join('');
+          // Загрузка репутации
+          const repRes = await fetch(`/api/users/${currentUserId}/reputation`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (repRes.ok) {
+            const rep = await repRes.json();
+            document.getElementById('rep-total').innerText = rep.total_completed || 0;
+            document.getElementById('rep-success').innerText = rep.success_count || 0;
+            document.getElementById('rep-problem').innerText = rep.problem_count || 0;
+            document.getElementById('rep-failed').innerText = rep.failed_count || 0;
+          }
         }
       } catch (error) {
         console.error('Dashboard error:', error);
@@ -1105,23 +1132,23 @@
         let requests = await response.json();
         // Для каждой сделки определим имя партнёра и роль текущего пользователя
         requests = requests.map(req => {
-  const otherParty = req.requester_id === currentUserId ? req.creator_name : req.requester_name;
-  const otherId = req.requester_id === currentUserId ? req.ad_owner_id : req.requester_id;
-  const userConfirmed = (req.requester_id === currentUserId && req.requester_confirmed) ||
-    (req.ad_owner_id === currentUserId && req.creator_confirmed);
-  const partnerConfirmed = (req.requester_id === currentUserId && req.creator_confirmed) ||
-    (req.ad_owner_id === currentUserId && req.requester_confirmed);
-  const pendingBadge = (!userConfirmed && partnerConfirmed) ? '<span style="background: #f97316; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-right: 8px;">⚠️ Ожидает вашего подтверждения</span>' : '';
-  return { ...req, other_party_name: otherParty || 'Пользователь', other_party_id: otherId, userConfirmed, pendingBadge };
-});
+          const otherParty = req.requester_id === currentUserId ? req.creator_name : req.requester_name;
+          const otherId = req.requester_id === currentUserId ? req.ad_owner_id : req.requester_id;
+          const userConfirmed = (req.requester_id === currentUserId && req.requester_confirmed) ||
+            (req.ad_owner_id === currentUserId && req.creator_confirmed);
+          const partnerConfirmed = (req.requester_id === currentUserId && req.creator_confirmed) ||
+            (req.ad_owner_id === currentUserId && req.requester_confirmed);
+          const pendingBadge = (!userConfirmed && partnerConfirmed) ? '<span style="background: #f97316; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-right: 8px;">⚠️ Ожидает вашего подтверждения</span>' : '';
+          return { ...req, other_party_name: otherParty || 'Пользователь', other_party_id: otherId, userConfirmed, pendingBadge };
+        });
 
-const listDiv = document.getElementById('active-list');
-if (!requests.length) {
-  listDiv.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">Активных сделок нет</p>';
-  return;
-}
+        const listDiv = document.getElementById('active-list');
+        if (!requests.length) {
+          listDiv.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">Активных сделок нет</p>';
+          return;
+        }
 
-listDiv.innerHTML = `
+        listDiv.innerHTML = `
   <div class="profile-table-wrapper">
     <table class="profile-table">
       <thead>
@@ -1260,9 +1287,27 @@ listDiv.innerHTML = `
           body: JSON.stringify({})
         });
         if (response.ok) {
+          const data = await response.json();
           showResult('Выполнение подтверждено!', true);
           loadActiveRequests();
           loadDashboard();
+          loadDeals();
+
+          // Проверяем, завершена ли сделка
+          if (data.request && data.request.status === 'completed') {
+            openReviewModalForDeal(requestId);
+          } else {
+            // Если статус ещё не обновился (редко), делаем повторную проверку через секунду
+            setTimeout(async () => {
+              const checkRes = await fetch(`/api/ads/requests/${requestId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              const checkData = await checkRes.json();
+              if (checkData.status === 'completed') {
+                openReviewModalForDeal(requestId);
+              }
+            }, 1000);
+          }
         } else {
           const data = await response.json();
           showResult('Ошибка: ' + (data.message || 'Не удалось подтвердить'), false);
@@ -1525,6 +1570,92 @@ listDiv.innerHTML = `
     }
 
     startPolling();
+
+    async function loadDeals() {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch('/api/deals', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+        const deals = data.deals;
+        const container = document.getElementById('deals-list');
+        if (!deals.length) {
+          container.innerHTML = '<p>У вас нет завершённых сделок</p>';
+          return;
+        }
+        container.innerHTML = deals.map(deal => `
+      <div class="deal-item" style="border:1px solid #e0e0e0; padding:12px; margin-bottom:8px; border-radius:8px;">
+        <strong>${escapeHtml(deal.title)}</strong><br>
+        Роль: ${deal.role === 'requester' ? 'Запросивший' : 'Автор'}<br>
+        Статус оценки: ${deal.review_done ? 'Оценено' : (deal.review_phase_closed ? 'Фаза оценки закрыта' : `<button onclick="openReviewModalForDeal(${deal.request_id})">Оценить</button>`)}
+      </div>
+    `).join('');
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    let currentReviewRequestId = null;
+
+    function openReviewModalForDeal(requestId) {
+      currentReviewRequestId = requestId;
+      document.getElementById('review-modal').style.display = 'flex';
+    }
+
+    function closeReviewModal() {
+      document.getElementById('review-modal').style.display = 'none';
+      currentReviewRequestId = null;
+    }
+
+    async function submitReview(result, reason, comment) {
+      const token = localStorage.getItem('sosedik_token');
+      const response = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: currentReviewRequestId, result, reason, comment })
+      });
+      if (response.ok) {
+        alert('Спасибо за оценку!');
+        closeReviewModal();
+        loadDeals();
+        loadDashboard(); // обновить репутацию
+      } else {
+        const err = await response.json();
+        alert('Ошибка: ' + err.message);
+      }
+    }
+
+    // обработчики формы
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('review-form');
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const result = document.querySelector('input[name="result"]:checked').value;
+          const reason = document.querySelector('input[name="reason"]').value;
+          const comment = document.querySelector('textarea[name="comment"]').value;
+          submitReview(result, reason, comment);
+        });
+        document.getElementById('skip-review-btn')?.addEventListener('click', async () => {
+          const token = localStorage.getItem('sosedik_token');
+          const response = await fetch('/api/reviews/skip', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestId: currentReviewRequestId })
+          });
+          if (response.ok) {
+            alert('Вы пропустили оценку');
+            closeReviewModal();
+            loadDeals();
+          } else {
+            const err = await response.json();
+            alert('Ошибка: ' + err.message);
+          }
+        });
+      }
+    });
   </script>
 
   <!-- Модальное окно для уточнения условий -->
@@ -1548,6 +1679,23 @@ listDiv.innerHTML = `
         <button class="btn-secondary" onclick="closeStartModal()">Отмена</button>
         <button class="btn-success" onclick="submitStartWork()">Начать работу</button>
       </div>
+    </div>
+  </div>
+
+  <div id="review-modal"
+    style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background: white; padding:1.5rem; border-radius:8px; max-width:500px; width:90%;">
+      <h3>Как прошла сделка?</h3>
+      <form id="review-form">
+        <label><input type="radio" name="result" value="success" required> Всё прошло хорошо</label><br>
+        <label><input type="radio" name="result" value="problem"> Были сложности</label><br>
+        <label><input type="radio" name="result" value="failed"> Сделка не удалась</label><br>
+        <label>Причина (опционально): <input type="text" name="reason" style="width:100%"></label><br>
+        <label>Комментарий (опционально): <textarea name="comment" rows="3" style="width:100%"></textarea></label><br>
+        <button type="submit">Отправить</button>
+        <button type="button" id="skip-review-btn">Пропустить</button>
+        <button type="button" onclick="closeReviewModal()">Отмена</button>
+      </form>
     </div>
   </div>
 </body>

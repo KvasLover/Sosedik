@@ -166,10 +166,7 @@ const getUserAds = async (userId) => {
 const createAdRequest = async (adId, requesterId, message = '') => {
   try {
     // First, delete any completed requests from this user for this ad
-    await pool.query(`
-      DELETE FROM ad_requests
-      WHERE ad_id = $1 AND requester_id = $2 AND status = 'completed'
-    `, [adId, requesterId]);
+    
 
     const result = await pool.query(`
       INSERT INTO ad_requests (ad_id, requester_id, message)
@@ -450,11 +447,11 @@ const confirmAdCompletion = async (requestId, userId) => {
       const firstConfirmerId = (userId === updatedReq.requester_id) ? req.ad_owner_id : updatedReq.requester_id;
       await Notification.createNotification(
         firstConfirmerId,
-        'request_completed',
-        `Сделка по объявлению "${req.title}" завершена`,
+        'review_reminder',
+        `Сделка по объявлению "${req.title}" завершена. Оцените результат.`,
         null,
-        requestId,          // related_id
-        'request'           // related_type
+        requestId,
+        'request'
       );
 
       await pool.query(`
