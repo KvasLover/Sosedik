@@ -1105,47 +1105,77 @@
         let requests = await response.json();
         // Для каждой сделки определим имя партнёра и роль текущего пользователя
         requests = requests.map(req => {
-          const otherParty = req.requester_id === currentUserId ? req.creator_name : req.requester_name;
-          const otherId = req.requester_id === currentUserId ? req.ad_owner_id : req.requester_id;
-          const userConfirmed = (req.requester_id === currentUserId && req.requester_confirmed) ||
-            (req.ad_owner_id === currentUserId && req.creator_confirmed);
-          const partnerConfirmed = (req.requester_id === currentUserId && req.creator_confirmed) ||
-            (req.ad_owner_id === currentUserId && req.requester_confirmed);
-          const pendingBadge = (!userConfirmed && partnerConfirmed) ? '<span style="background: #f97316; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-right: 8px;">⚠️ Ожидает вашего подтверждения</span>' : '';
-          return { ...req, other_party_name: otherParty || 'Пользователь', other_party_id: otherId, userConfirmed, pendingBadge };
-        });
-        const listDiv = document.getElementById('active-list');
-        if (!requests.length) {
-          listDiv.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">Активных сделок нет</p>';
-          return;
-        }
-        listDiv.innerHTML = `
-          <div class="profile-table-wrapper">
-            <table class="profile-table">
-              <thead><tr><th>Объявление</th><th>Участник</th><th>Статус</th><th>Начало</th><th>Действия</th></tr></thead>
-              <tbody>
-                ${requests.map(req => `
-                  <tr>
-                    <td><strong>${escapeHtml(req.title)}</strong></td>
-                    <td>${escapeHtml(req.other_party_name)}</td>
-                    <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
-                    <td>${new Date(req.created_at).toLocaleDateString()}</td>
-                    <td class="action-buttons">
-                      ${req.pendingBadge}
-                      ${req.status === 'accepted' ? `
-                        <button onclick="openStartModal(${req.id})">Начать работу</button>
-                        <button class="delete-btn" onclick="cancelAcceptedRequest(${req.id})">Отменить договорённость</button>
-                      ` : ''}
-                      ${req.status === 'in_progress' && !req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
-                      ${req.status === 'in_progress' && req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили. Собеседник получит уведомление</span>` : ''}
-                      <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        `;
+  const otherParty = req.requester_id === currentUserId ? req.creator_name : req.requester_name;
+  const otherId = req.requester_id === currentUserId ? req.ad_owner_id : req.requester_id;
+  const userConfirmed = (req.requester_id === currentUserId && req.requester_confirmed) ||
+    (req.ad_owner_id === currentUserId && req.creator_confirmed);
+  const partnerConfirmed = (req.requester_id === currentUserId && req.creator_confirmed) ||
+    (req.ad_owner_id === currentUserId && req.requester_confirmed);
+  const pendingBadge = (!userConfirmed && partnerConfirmed) ? '<span style="background: #f97316; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-right: 8px;">⚠️ Ожидает вашего подтверждения</span>' : '';
+  return { ...req, other_party_name: otherParty || 'Пользователь', other_party_id: otherId, userConfirmed, pendingBadge };
+});
+
+const listDiv = document.getElementById('active-list');
+if (!requests.length) {
+  listDiv.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">Активных сделок нет</p>';
+  return;
+}
+
+listDiv.innerHTML = `
+  <div class="profile-table-wrapper">
+    <table class="profile-table">
+      <thead>
+        <tr><th>Объявление</th><th>Участник</th><th>Статус</th><th>Начало</th><th>Действия</th></tr>
+      </thead>
+      <tbody>
+        ${requests.map(req => {
+          let showStartButton = (req.status === 'accepted' && !req.proposed_by);
+          let showProposalMessage = false;
+          let proposalHtml = '';
+
+          if (req.proposed_by) {
+            const isProposalFromMe = (req.proposed_by === currentUserId);
+            if (!isProposalFromMe) {
+              proposalHtml = `
+                <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
+                  <strong>Предложенные условия:</strong><br>
+                  Цена: ${req.proposed_price || '—'}<br>
+                  Время: ${req.proposed_time || '—'}<br>
+                  Комментарий: ${req.proposed_comment || '—'}<br>
+                  <button onclick="acceptProposal(${req.id})" style="margin-top: 5px;">Принять</button>
+                  <button onclick="declineProposal(${req.id})" style="margin-top: 5px; margin-left: 5px;">Отклонить</button>
+                </div>
+              `;
+              showStartButton = false;
+            } else {
+              // отправитель предложения
+              proposalHtml = '<div style="margin-top: 8px; color: #666;">Вы отправили предложение. Ожидайте ответа.</div>';
+              showStartButton = false;
+            }
+          }
+
+          return `
+            <tr>
+              <td><strong>${escapeHtml(req.title)}</strong></td>
+              <td>${escapeHtml(req.other_party_name)}</td>
+              <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
+              <td>${new Date(req.created_at).toLocaleDateString()}</td>
+              <td class="action-buttons">
+                ${req.pendingBadge}
+                ${proposalHtml}
+                ${showStartButton ? `<button onclick="openStartModal(${req.id})">Начать работу</button>` : ''}
+                ${req.status === 'accepted' ? `<button class="delete-btn" onclick="cancelAcceptedRequest(${req.id})">Отменить договорённость</button>` : ''}
+                ${req.status === 'in_progress' && !req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
+                ${req.status === 'in_progress' && req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили</span>` : ''}
+                <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>
+`;
       } catch (error) {
         console.error(error);
       }
@@ -1239,6 +1269,37 @@
         }
       } catch (error) {
         showResult('Ошибка: ' + error.message, false);
+      }
+    }
+
+    async function acceptProposal(requestId) {
+      const token = localStorage.getItem('sosedik_token');
+      const response = await fetch(`/api/ads/requests/${requestId}/accept-proposal`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        alert('Условия приняты, работа начата!');
+        loadActiveRequests();
+      } else {
+        const data = await response.json();
+        alert('Ошибка: ' + data.message);
+      }
+    }
+
+    async function declineProposal(requestId) {
+      const token = localStorage.getItem('sosedik_token');
+      const response = await fetch(`/api/ads/requests/${requestId}/start`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agreedPrice: null, agreedTime: null, agreementComment: null })
+      });
+      if (response.ok) {
+        alert('Предложение отклонено');
+        loadActiveRequests();
+      } else {
+        const data = await response.json();
+        alert('Ошибка: ' + data.message);
       }
     }
 

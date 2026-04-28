@@ -286,65 +286,76 @@ const acceptAdRequest = async (requestId, userId) => {
 
 const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime = null, agreementComment = null) => {
   try {
-    // Получаем запрос и связанное объявление
     const request = await pool.query(`
-  SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status,
-         ads.price as ad_price, ads.preferred_time as ad_time, ads.terms as ad_terms,
-         ads.title
-  FROM ad_requests ar
-  JOIN ads ON ar.ad_id = ads.id
-  WHERE ar.id = $1
-`, [requestId]);
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status,
+             ads.price as ad_price, ads.preferred_time as ad_time, ads.terms as ad_terms,
+             ads.title
+      FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
+      WHERE ar.id = $1
+    `, [requestId]);
 
     if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
 
-    // Проверка прав и статуса
     if (req.current_status !== 'accepted') throw new Error('Can only start accepted requests');
-    if (req.ad_owner_id !== userId && req.requester_id !== userId) throw new Error('Not authorized to start this request');
+    if (req.ad_owner_id !== userId && req.requester_id !== userId) throw new Error('Not authorized');
 
-    // Определяем значения для agreed_* (только если они ещё не установлены)
-    // Для цены: если передан agreedPrice, используем его, иначе из объявления, иначе NULL
-    let newAgreedPrice = (agreedPrice !== null && agreedPrice !== undefined) ? agreedPrice : req.ad_price;
-    let newAgreedTime = (agreedTime !== null && agreedTime !== undefined) ? agreedTime : req.ad_time;
-    let newAgreedComment = (agreementComment !== null && agreementComment !== undefined) ? agreementComment : req.ad_terms;
+    // Проверяем, является ли вызов сбросом предложения
+    const isClearProposal = (agreedPrice === null || agreedPrice === undefined) &&
+      (agreedTime === null || agreedTime === undefined) &&
+      (agreementComment === null || agreementComment === undefined);
 
-    // Защита от перезаписи: используем COALESCE, чтобы не менять уже установленные значения
-    const result = await pool.query(`
-      UPDATE ad_requests
-      SET status = 'in_progress',
-          updated_at = CURRENT_TIMESTAMP,
-          agreed_price = COALESCE(agreed_price, $2),
-          agreed_time = COALESCE(agreed_time, $3),
-          agreement_comment = COALESCE(agreement_comment, $4)
-      WHERE id = $1 AND status = 'accepted'
-      RETURNING *
-    `, [requestId, newAgreedPrice, newAgreedTime, newAgreedComment]);
+    if (isClearProposal) {
+      // Сброс предложения (отклонение)
+      await pool.query(`
+    UPDATE ad_requests
+    SET proposed_price = NULL,
+        proposed_time = NULL,
+        proposed_comment = NULL,
+        proposed_by = NULL,
+        proposal_created_at = NULL,
+        updated_at = NOW()
+    WHERE id = $1
+  `, [requestId]);
 
-    // Если ни одна строка не обновлена, значит статус уже не accepted (гонка)
-    if (result.rows.length === 0) {
-      throw new Error('Request already started or invalid state');
+      // Уведомление автору предложения (тому, кто его создал)
+      if (req.proposed_by) {
+        await Notification.createNotification(
+          req.proposed_by,
+          'request_proposal_declined',
+          `Ваше предложение условий было отклонено.`,
+          null,
+          requestId,
+          'request'
+        );
+      }
+    } else {
+      // Сохраняем предложение
+      await pool.query(`
+        UPDATE ad_requests
+        SET proposed_price = $2,
+            proposed_time = $3,
+            proposed_comment = $4,
+            proposed_by = $5,
+            proposal_created_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+      `, [requestId, agreedPrice, agreedTime, agreementComment, userId]);
+
+      // Отправляем уведомление другой стороне
+      const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
+      await Notification.createNotification(
+        otherUserId,
+        'request_proposal_created',
+        `Пользователь предложил условия: цена ${agreedPrice || 'не указана'}, время ${agreedTime || 'не указано'}, комментарий: ${agreementComment || 'нет'}`,
+        null,
+        requestId,
+        'request'
+      );
     }
 
-    // Обновляем статус объявления
-    await pool.query(`
-      UPDATE ads
-      SET acceptance_status = 'in_progress'
-      WHERE id = $1
-    `, [req.ad_id]);
-
-    const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
-
-    await Notification.createNotification(
-      otherUserId,
-      'request_started',
-      `Сделка по объявлению "${req.title}" начата`,
-      null,
-      requestId,          // related_id
-      'request'           // related_type
-    );
-
-    return result.rows[0];
+    return { status: isClearProposal ? 'proposal_cleared' : 'proposal_created', requestId };
   } catch (err) {
     throw err;
   }
@@ -673,6 +684,55 @@ WHERE ar.status = 'accepted'
   }
 };
 
+const acceptProposal = async (requestId, userId) => {
+  try {
+    const request = await pool.query(`
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status,
+             ar.proposed_price, ar.proposed_time, ar.proposed_comment, ar.proposed_by,
+             ads.title
+      FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
+      WHERE ar.id = $1
+    `, [requestId]);
+
+    if (request.rows.length === 0) throw new Error('Request not found');
+    const req = request.rows[0];
+
+    if (req.current_status !== 'accepted') throw new Error('Can only accept proposal for accepted request');
+    if (req.ad_owner_id !== userId && req.requester_id !== userId) throw new Error('Not authorized');
+    if (req.proposed_by === userId) throw new Error('You cannot accept your own proposal');
+    if (!req.proposed_price && !req.proposed_time && !req.proposed_comment) throw new Error('No active proposal');
+
+    await pool.query(`
+      UPDATE ad_requests
+      SET status = 'in_progress',
+          agreed_price = proposed_price,
+          agreed_time = proposed_time,
+          agreement_comment = proposed_comment,
+          proposed_price = NULL,
+          proposed_time = NULL,
+          proposed_comment = NULL,
+          proposed_by = NULL,
+          proposal_created_at = NULL,
+          updated_at = NOW()
+      WHERE id = $1 AND status = 'accepted'
+    `, [requestId]);
+
+    await Notification.createNotification(
+      req.proposed_by,
+      'request_proposal_accepted',
+      `Ваше предложение принято, работа начата`,
+      null,
+      requestId,
+      'request'
+    );
+
+    return { status: 'in_progress', requestId };
+  } catch (err) {
+    throw err;
+  }
+};
+
 module.exports = {
   getAds,
   getAdById,
@@ -697,5 +757,6 @@ module.exports = {
   startAdRequest,  // Новый метод для перехода accepted → in_progress
   hideRejectedRequest,
   hideAllRejectedRequests,
-  autoCancelExpiredAcceptedRequests
+  autoCancelExpiredAcceptedRequests,
+  acceptProposal
 };

@@ -107,14 +107,17 @@
     <h1>Уведомления</h1>
     <div style="display: flex; gap: 12px; margin-bottom: 20px; justify-content: flex-end;">
       <button id="mark-all-read-page" class="btn-action btn-action-secondary">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="margin-right: 6px; display: inline;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          style="margin-right: 6px; display: inline;">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
         Прочитанные
       </button>
       <button id="clear-all-page" class="btn-action btn-action-danger">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="margin-right: 6px; display: inline;">
-          <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          style="margin-right: 6px; display: inline;">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
         </svg>
         Очистить
       </button>
@@ -225,6 +228,10 @@
             window.location.href = '/profile.html?tab=active';
           } else if (type === 'request_rejected') {
             window.location.href = '/profile.html?tab=outgoing';
+          } else if (type === 'request_proposal_created' || type === 'request_proposal_accepted') {
+            window.location.href = '/profile.html?tab=active';
+          } else if (type === 'request_proposal_declined') {
+            window.location.href = '/profile.html?tab=active';
           } else {
             window.location.href = '/profile.html';
           }

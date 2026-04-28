@@ -253,6 +253,10 @@ function initHeader() {
             window.location.href = '/profile.html?tab=active';
           } else if (type === 'request_rejected') {
             window.location.href = '/profile.html?tab=outgoing';
+          } else if (type === 'request_proposal_created' || type === 'request_proposal_accepted') {
+            window.location.href = '/profile.html?tab=active';
+          } else if (type === 'request_proposal_declined') {
+            window.location.href = '/profile.html?tab=active';
           } else {
             window.location.href = '/profile.html';
           }

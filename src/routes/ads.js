@@ -308,6 +308,19 @@ router.post('/requests/:requestId/start', verifyToken, async (req, res) => {
   }
 });
 
+// Принять предложение условий
+router.post('/requests/:requestId/accept-proposal', verifyToken, async (req, res) => {
+  try {
+    const result = await Ad.acceptProposal(req.params.requestId, req.user.id);
+    res.json({ message: 'Proposal accepted, deal started', result });
+  } catch (err) {
+    if (err.message.includes('Not authorized')) return res.status(403).json({ message: err.message });
+    if (err.message.includes('not found')) return res.status(404).json({ message: err.message });
+    if (err.message.includes('Can only accept')) return res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Подтвердить выполнение работы
 router.post('/requests/:requestId/confirm', verifyToken, async (req, res) => {
   try {
