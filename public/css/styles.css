@@ -483,6 +483,65 @@ input[type="checkbox"] {
   font-size: 0.85rem;
 }
 
+/* Структура карточки объявления */
+.ad-header {
+  margin-bottom: 12px;
+}
+
+.ad-header h3 {
+  margin: 0 !important;
+  color: #1a202c;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.ad-content {
+  flex: 1;
+  overflow: hidden;
+  cursor: pointer !important;
+  padding: 0;
+  margin: 0;
+}
+
+.ad-content p {
+  margin: 8px 0 !important;
+  color: #718096;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.ad-content strong {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.ad-content small {
+  color: #a0aec0;
+  font-size: 0.85rem;
+}
+
+.ad-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ad-footer button {
+  margin-top: 0 !important;
+  margin-right: 0 !important;
+  flex-shrink: 0;
+}
+
+.ad-footer .favorite-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .ad-item button {
   align-self: flex-start;
   margin-top: auto;
@@ -566,6 +625,91 @@ input[type="checkbox"] {
   height: 180px;
   object-fit: cover;
   border-radius: 10px;
+}
+
+/* Структура карточки аренды */
+.rental-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+
+.rental-photo {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.rental-title-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rental-title-section h3 {
+  margin: 0 !important;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.owner-badge {
+  background: #3498db;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rental-content {
+  flex: 1;
+  cursor: pointer !important;
+  padding: 0;
+  margin: 0;
+}
+
+.rental-content p {
+  font-size: 0.9rem;
+  color: #718096;
+  margin: 6px 0;
+  line-height: 1.5;
+}
+
+.rental-content strong {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.rental-content small {
+  color: #a0aec0;
+  font-size: 0.85rem;
+}
+
+.rental-footer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rental-footer button {
+  margin-top: 0 !important;
+  flex-shrink: 0;
+}
+
+.rental-footer .favorite-btn {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* Filter Sections */

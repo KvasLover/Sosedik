@@ -193,57 +193,83 @@
       rentals.forEach(rental => {
         const rentalDiv = document.createElement('div');
         rentalDiv.className = 'rental-item';
-        rentalDiv.style.cssText = `
-          position: relative;
-          border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px;
-          background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;
-          transition: background 0.2s;
-          overflow: hidden;
-        `;
         rentalDiv.onclick = () => {
           window.location.href = `/rental-details.html?id=${rental.id}`;
         };
 
         const isOwner = rental.owner_id === currentUserId;
-        const ownerLabel = isOwner ? '<span style="background: #3498db; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 10px;">Ваше объявление</span>' : '';
 
-        // Load photo from localStorage
+        // Header с название и фото
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'rental-header';
         const storedPhoto = localStorage.getItem(`sosedik_rental_photo_${rental.id}`);
-        const photosHtml = storedPhoto ?
-          `<img src="${storedPhoto}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px; margin-right: 15px;">` :
-          '';
+        if (storedPhoto) {
+          const photoImg = document.createElement('img');
+          photoImg.src = storedPhoto;
+          photoImg.className = 'rental-photo';
+          headerDiv.appendChild(photoImg);
+        }
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'rental-title-section';
+        const titleH3 = document.createElement('h3');
+        titleH3.textContent = rental.item_name;
+        titleDiv.appendChild(titleH3);
+        if (isOwner) {
+          const ownerBadge = document.createElement('span');
+          ownerBadge.className = 'owner-badge';
+          ownerBadge.textContent = 'Ваше объявление';
+          titleDiv.appendChild(ownerBadge);
+        }
+        headerDiv.appendChild(titleDiv);
 
-        // Delete button for owner
-        const deleteButton = isOwner ? `<button class="btn-sm btn-danger" onclick="event.stopPropagation(); deleteRental(${rental.id})\" style=\"margin-top: 10px;\">Удалить</button>` : '';
-
-        rentalDiv.innerHTML = `
-          <div style="display: flex; align-items: flex-start; justify-content: space-between;">
-            <div style="display: flex; flex: 1;">
-              ${photosHtml}
-              <div style="flex: 1;">
-                <h3 style="margin: 0 0 10px 0;">${rental.item_name}${ownerLabel}</h3>
-                <p style="margin: 5px 0; color: #666;"><strong>Категория:</strong> ${rental.category}</p>
-                <p style="margin: 5px 0; color: #666;"><strong>Ценность:</strong> ${getValueLabel(rental.value_category)}</p>
-                ${rental.rental_terms ? `<p style="margin: 5px 0;"><strong>Условия:</strong> ${rental.rental_terms.substring(0, 100)}${rental.rental_terms.length > 100 ? '...' : ''}</p>` : ''}
-                <p style="margin: 5px 0; font-size: 12px; color: #999;">Добавлено: ${new Date(rental.created_at).toLocaleDateString()}</p>
-                ${deleteButton}
-              </div>
-            </div>
-            ${!isOwner ? `<button onclick="event.stopPropagation(); toggleFavorite('rental', ${rental.id}, this)" class="favorite-btn" style="background: rgba(255,255,255,0.95); box-shadow: 0 1px 8px rgba(0,0,0,0.08); color: #333; font-size: 20px; cursor: pointer; padding: 6px 8px; border-radius: 8px; border: none; width: auto; flex-shrink: 0; margin-left: 15px;">♡</button>` : ''}
-          </div>
+        // Content с информацией
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'rental-content';
+        contentDiv.innerHTML = `
+          <p><strong>Категория:</strong> ${rental.category}</p>
+          <p><strong>Ценность:</strong> ${getValueLabel(rental.value_category)}</p>
+          ${rental.rental_terms ? `<p><strong>Условия:</strong> ${rental.rental_terms.substring(0, 100)}${rental.rental_terms.length > 100 ? '...' : ''}</p>` : ''}
+          <p><small>Добавлено: ${new Date(rental.created_at).toLocaleDateString()}</small></p>
         `;
 
-        // Проверить статус избранного и обновить кнопку
-        if (!isOwner) {
-          const favBtn = rentalDiv.querySelector('.favorite-btn');
+        // Footer с кнопками
+        const footerDiv = document.createElement('div');
+        footerDiv.className = 'rental-footer';
+
+        // Кнопка удаления для владельца
+        if (isOwner) {
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'btn-sm btn-danger';
+          deleteBtn.textContent = 'Удалить';
+          deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteRental(rental.id);
+          };
+          footerDiv.appendChild(deleteBtn);
+        } else {
+          // Кнопка избранного для других пользователей
+          const favBtn = document.createElement('button');
+          favBtn.className = 'favorite-btn';
+          favBtn.textContent = '♡';
+          favBtn.onclick = (e) => {
+            e.stopPropagation();
+            toggleFavorite('rental', rental.id, favBtn);
+          };
+          footerDiv.appendChild(favBtn);
+
+          // Проверить статус избранного и обновить кнопку
           checkFavoriteStatus('rental', rental.id).then(isFavorite => {
             if (isFavorite) {
               favBtn.classList.add('active');
-              favBtn.innerHTML = '♥';
+              favBtn.textContent = '♥';
             }
           });
         }
 
+        // Собрать карточку
+        rentalDiv.appendChild(headerDiv);
+        rentalDiv.appendChild(contentDiv);
+        rentalDiv.appendChild(footerDiv);
         rentalsList.appendChild(rentalDiv);
       });
     }

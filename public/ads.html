@@ -221,34 +221,19 @@
         const adDiv = document.createElement('div');
         adDiv.className = 'ad-item';
         adDiv.style.cursor = 'pointer';
-        adDiv.onclick = () => window.location.href = `/ad-details.html?id=${ad.id}`;
 
-        let deleteButton = '';
-        if (currentUserId && parseInt(ad.user_id) === parseInt(currentUserId)) {
-          deleteButton = `<button class="btn-sm btn-danger" onclick="event.stopPropagation(); deleteAd(${ad.id})" style="margin-top: 10px;">Удалить</button>`;
-        }
-
-        let favoriteButton = '';
-        if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
-          favoriteButton = `<button onclick="event.stopPropagation(); toggleFavorite('ad', ${ad.id}, this)" class="favorite-btn" style="background: rgba(255,255,255,0.95); box-shadow: 0 1px 8px rgba(0,0,0,0.08); color: #333; font-size: 20px; cursor: pointer; margin-top: 10px; float: right; padding: 6px 8px; border-radius: 8px; border: none;">♡</button>`;
-        }
-
-        let acceptButton = '';
-        if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
-          if (!ad.accepted_by) {
-            acceptButton = `<button class="btn-sm btn-primary" onclick="event.stopPropagation(); requestAd(${ad.id}, this)" style="margin-top: 10px; margin-right: 10px;">Отправить запрос</button>`;
-          } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
-            acceptButton = `<span style="color: #27ae60; margin-top: 10px; display: inline-block;">✓ Принято вами</span>`;
-          } else {
-            acceptButton = `<span style="color: #95a5a6; margin-top: 10px; display: inline-block;">Принято другим пользователем</span>`;
-          }
-        }
-
+        // Header с названием
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'ad-header';
         const isOwner = currentUserId && ad.user_id === currentUserId;
         const titleWithBadge = isOwner ? `${ad.title} <span style="color: #27ae60; font-size: 12px;">(Ваше)</span>` : ad.title;
+        headerDiv.innerHTML = `<h3>${titleWithBadge}</h3>`;
 
-        adDiv.innerHTML = '<h3>' + titleWithBadge + '</h3>' +
-          '<p><strong>Автор:</strong> ' + (ad.author_name || ('Пользователь #' + ad.user_id)) + '</p>' +
+        // Content с информацией
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'ad-content';
+        contentDiv.onclick = () => window.location.href = `/ad-details.html?id=${ad.id}`;
+        contentDiv.innerHTML = '<p><strong>Автор:</strong> ' + (ad.author_name || ('Пользователь #' + ad.user_id)) + '</p>' +
           '<p><strong>Категория:</strong> ' + ad.category + '</p>' +
           '<p>' + ad.description + '</p>' +
           (ad.price ? '<p><strong>Цена:</strong> ' + ad.price + ' руб.</p>' : '') +
@@ -256,25 +241,69 @@
           (ad.preferred_time ? '<p><strong>Желаемое время/дата:</strong> ' + ad.preferred_time + '</p>' : '') +
           (ad.terms ? '<p><strong>Условия:</strong> ' + ad.terms.substring(0, 100) + (ad.terms.length > 100 ? '...' : '') + '</p>' : '') +
           '<p><small>Создано: ' + new Date(ad.created_at).toLocaleDateString() + '</small></p>' +
-          (isOwner && ad.accepted_by ? '<p style="color: #27ae60; font-weight: bold;">Принято пользователем ' + (ad.acceptor_name || ('#' + ad.accepted_by)) + '</p>' : '') +
-          acceptButton +
-          deleteButton;
+          (isOwner && ad.accepted_by ? '<p style="color: #27ae60; font-weight: bold;">Принято пользователем ' + (ad.acceptor_name || ('#' + ad.accepted_by)) + '</p>' : '');
 
-        // Добавить кнопку избранного после создания innerHTML
-        if (favoriteButton) {
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = favoriteButton;
-          const favBtn = tempDiv.firstElementChild;
-          adDiv.appendChild(favBtn);
+        // Footer с кнопками
+        const footerDiv = document.createElement('div');
+        footerDiv.className = 'ad-footer';
+
+        // Кнопка действия (запрос или удаление)
+        if (currentUserId && parseInt(ad.user_id) === parseInt(currentUserId)) {
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'btn-sm btn-danger';
+          deleteBtn.textContent = 'Удалить';
+          deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteAd(ad.id);
+          };
+          footerDiv.appendChild(deleteBtn);
+        } else if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
+          if (!ad.accepted_by) {
+            const requestBtn = document.createElement('button');
+            requestBtn.className = 'btn-sm btn-primary';
+            requestBtn.textContent = 'Отправить запрос';
+            requestBtn.onclick = (e) => {
+              e.stopPropagation();
+              requestAd(ad.id, requestBtn);
+            };
+            footerDiv.appendChild(requestBtn);
+          } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
+            const statusSpan = document.createElement('span');
+            statusSpan.style.color = '#27ae60';
+            statusSpan.textContent = '✓ Принято вами';
+            footerDiv.appendChild(statusSpan);
+          } else {
+            const statusSpan = document.createElement('span');
+            statusSpan.style.color = '#95a5a6';
+            statusSpan.textContent = 'Принято другим пользователем';
+            footerDiv.appendChild(statusSpan);
+          }
+        }
+
+        // Кнопка избранного (сердечко)
+        if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
+          const favBtn = document.createElement('button');
+          favBtn.className = 'favorite-btn';
+          favBtn.textContent = '♡';
+          favBtn.onclick = (e) => {
+            e.stopPropagation();
+            toggleFavorite('ad', ad.id, favBtn);
+          };
+          footerDiv.appendChild(favBtn);
 
           // Проверить статус избранного и обновить кнопку
           checkFavoriteStatus('ad', ad.id).then(isFavorite => {
             if (isFavorite) {
               favBtn.classList.add('active');
-              favBtn.innerHTML = '♥';
+              favBtn.textContent = '♥';
             }
           });
         }
+
+        // Собрать карточку
+        adDiv.appendChild(headerDiv);
+        adDiv.appendChild(contentDiv);
+        adDiv.appendChild(footerDiv);
 
         adsList.appendChild(adDiv);
 
