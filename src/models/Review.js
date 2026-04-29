@@ -66,7 +66,11 @@ const getCompletedDealsForUser = async (userId) => {
   const deals = await pool.query(`
     SELECT ar.id as request_id, ar.status, ar.creator_review_done, ar.requester_review_done, ar.review_phase_closed,
            ads.title, ads.user_id as ad_owner_id, ar.requester_id,
-           (ar.requester_id = $1) as is_requester
+           (ar.requester_id = $1) as is_requester,
+           EXISTS (
+             SELECT 1 FROM reviews r 
+             WHERE r.request_id = ar.id AND r.reviewer_id = $1
+           ) as user_reviewed
     FROM ad_requests ar
     JOIN ads ON ar.ad_id = ads.id
     WHERE (ar.requester_id = $1 OR ads.user_id = $1) AND ar.status = 'completed'
@@ -78,7 +82,8 @@ const getCompletedDealsForUser = async (userId) => {
     role: row.is_requester ? 'requester' : 'creator',
     review_done: row.is_requester ? row.requester_review_done : row.creator_review_done,
     review_phase_closed: row.review_phase_closed,
-    completed_at: row.completed_at
+    completed_at: row.completed_at,
+    user_reviewed: row.user_reviewed    // добавляем новое поле
   }));
 };
 

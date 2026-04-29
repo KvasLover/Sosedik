@@ -1292,22 +1292,6 @@
           loadActiveRequests();
           loadDashboard();
           loadDeals();
-
-          // Проверяем, завершена ли сделка
-          if (data.request && data.request.status === 'completed') {
-            openReviewModalForDeal(requestId);
-          } else {
-            // Если статус ещё не обновился (редко), делаем повторную проверку через секунду
-            setTimeout(async () => {
-              const checkRes = await fetch(`/api/ads/requests/${requestId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
-              const checkData = await checkRes.json();
-              if (checkData.status === 'completed') {
-                openReviewModalForDeal(requestId);
-              }
-            }, 1000);
-          }
         } else {
           const data = await response.json();
           showResult('Ошибка: ' + (data.message || 'Не удалось подтвердить'), false);
@@ -1586,14 +1570,34 @@
           return;
         }
         container.innerHTML = deals.map(deal => `
-      <div class="deal-item" style="border:1px solid #e0e0e0; padding:12px; margin-bottom:8px; border-radius:8px;">
-        <strong>${escapeHtml(deal.title)}</strong><br>
-        Роль: ${deal.role === 'requester' ? 'Запросивший' : 'Автор'}<br>
-        Статус оценки: ${deal.review_done ? 'Оценено' : (deal.review_phase_closed ? 'Фаза оценки закрыта' : `<button onclick="openReviewModalForDeal(${deal.request_id})">Оценить</button>`)}
-      </div>
-    `).join('');
+  <div class="deal-item" style="border:1px solid #e0e0e0; padding:12px; margin-bottom:8px; border-radius:8px;">
+    <strong>${escapeHtml(deal.title)}</strong><br>
+    Ваша роль: ${deal.role === 'requester' ? 'Запросивший' : 'Автор'}<br>
+    Статус оценки: ${deal.user_reviewed ? 'Оценено' : (deal.review_done ? 'Не оценено' : (deal.review_phase_closed ? 'Фаза оценки закрыта' : `
+  <button onclick="openReviewModalForDeal(${deal.request_id})">Оценить</button>
+  <button onclick="skipDealReview(${deal.request_id})" style="margin-left: 8px;">Не оценивать</button>
+`))}
+  </div>
+`).join('');
       } catch (error) {
         console.error(error);
+      }
+    }
+
+    async function skipDealReview(requestId) {
+      const token = localStorage.getItem('sosedik_token');
+      const response = await fetch('/api/reviews/skip', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId })
+      });
+      if (response.ok) {
+        alert('Вы пропустили оценку');
+        loadDeals();
+        loadDashboard(); // обновить репутацию (хотя она не изменится)
+      } else {
+        const err = await response.json();
+        alert('Ошибка: ' + err.message);
       }
     }
 
@@ -1638,22 +1642,6 @@
           const comment = document.querySelector('textarea[name="comment"]').value;
           submitReview(result, reason, comment);
         });
-        document.getElementById('skip-review-btn')?.addEventListener('click', async () => {
-          const token = localStorage.getItem('sosedik_token');
-          const response = await fetch('/api/reviews/skip', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ requestId: currentReviewRequestId })
-          });
-          if (response.ok) {
-            alert('Вы пропустили оценку');
-            closeReviewModal();
-            loadDeals();
-          } else {
-            const err = await response.json();
-            alert('Ошибка: ' + err.message);
-          }
-        });
       }
     });
   </script>
@@ -1693,7 +1681,6 @@
         <label>Причина (опционально): <input type="text" name="reason" style="width:100%"></label><br>
         <label>Комментарий (опционально): <textarea name="comment" rows="3" style="width:100%"></textarea></label><br>
         <button type="submit">Отправить</button>
-        <button type="button" id="skip-review-btn">Пропустить</button>
         <button type="button" onclick="closeReviewModal()">Отмена</button>
       </form>
     </div>

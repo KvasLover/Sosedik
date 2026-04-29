@@ -166,7 +166,7 @@ const getUserAds = async (userId) => {
 const createAdRequest = async (adId, requesterId, message = '') => {
   try {
     // First, delete any completed requests from this user for this ad
-    
+
 
     const result = await pool.query(`
       INSERT INTO ad_requests (ad_id, requester_id, message)
@@ -443,12 +443,19 @@ const confirmAdCompletion = async (requestId, userId) => {
     WHERE id = $1
   `, [requestId]);
 
-      // Уведомление о завершении получает только первый подтвердивший (не текущий пользователь)
-      const firstConfirmerId = (userId === updatedReq.requester_id) ? req.ad_owner_id : updatedReq.requester_id;
+      // Уведомления обоим участникам
       await Notification.createNotification(
-        firstConfirmerId,
+        req.requester_id,
         'review_reminder',
-        `Сделка по объявлению "${req.title}" завершена. Оцените результат.`,
+        `Сделка по объявлению "${req.title}" завершена. Оцените результат во вкладке «Сделки» в Профиле.`,
+        null,
+        requestId,
+        'request'
+      );
+      await Notification.createNotification(
+        req.ad_owner_id,
+        'review_reminder',
+        `Сделка по объявлению "${req.title}" завершена. Оцените результат во вкладке «Сделки» в Профиле.`,
         null,
         requestId,
         'request'

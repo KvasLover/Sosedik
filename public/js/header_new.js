@@ -259,6 +259,8 @@ function initHeader() {
             window.location.href = '/profile.html?tab=active';
           } else if (type === 'pending_request_cancelled') {
             window.location.href = '/profile.html'; // или на вкладку объявления? Лучше на профиль
+          } else if (type === 'review_reminder') {
+            window.location.href = '/profile.html?tab=deals';
           } else {
             window.location.href = '/profile.html';
           }
