@@ -12,21 +12,48 @@
 
   <!-- Main -->
   <main>
-    <div id="rental-details">
-      <button onclick="history.back()" class="btn-ghost">← Назад</button>
-      <div id="rental-content">
-        <h1 id="rental-title">Загрузка...</h1>
-        <p><strong>Категория:</strong> <span id="rental-category"></span></p>
-        <p><strong>Ценность вещи:</strong> <span id="rental-value"></span></p>
-        <p id="rental-terms"></p>
-        <p><strong>Владелец:</strong> <span id="rental-owner"></span></p>
-        <p><small>Создано: <span id="rental-created"></span></small></p>
+    <div id="rental-details" style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
+      <button onclick="history.back()" class="btn-ghost" style="margin-bottom: 20px;">← Назад</button>
+      
+      <div id="rental-content" class="detail-card">
+        <h1 id="rental-title" class="detail-title">Загрузка...</h1>
+        
+        <div class="detail-meta">
+          <span class="meta-badge" id="rental-category">Категория</span>
+          <span class="meta-separator">•</span>
+          <span class="meta-date" id="rental-created">Дата</span>
+        </div>
 
-        <div id="rental-photos" style="margin: 20px 0;">
+        <div id="rental-photos" class="detail-photos">
           <!-- Photos will be displayed here -->
         </div>
 
-        <div id="rental-actions" style="margin-top: 20px;">
+        <div class="detail-section-grid">
+          <div class="detail-section">
+            <h3 class="section-label">Ценность вещи</h3>
+            <p class="section-content" id="rental-value">-</p>
+          </div>
+
+          <div class="detail-section">
+            <h3 class="section-label">Статус</h3>
+            <p class="section-content" id="rental-status">Доступна</p>
+          </div>
+        </div>
+
+        <div class="detail-section" id="rental-terms-section" style="display: none;">
+          <h3 class="section-label">Условия аренды</h3>
+          <p class="section-content" id="rental-terms">-</p>
+        </div>
+
+        <div class="detail-divider"></div>
+
+        <div class="detail-author-section">
+          <h3 class="section-title">Владелец вещи</h3>
+          <p><strong>Имя:</strong> <span id="rental-owner"></span></p>
+          <p><strong>Контакт:</strong> <span id="rental-contact">Не указан</span></p>
+        </div>
+
+        <div id="rental-actions" class="detail-actions">
         </div>
       </div>
     </div>
@@ -103,37 +130,34 @@
 
     // Display rental details
     function displayRentalDetails(rental) {
+      const isOwner = currentUserId === rental.owner_id;
+      
       document.getElementById('rental-title').textContent = rental.item_name;
       document.getElementById('rental-category').textContent = rental.category;
       document.getElementById('rental-value').textContent = getValueLabel(rental.value_category);
       document.getElementById('rental-owner').textContent = 'Загрузка...';
       document.getElementById('rental-created').textContent = new Date(rental.created_at).toLocaleDateString();
 
-      // Add "Your rental" label if owner
-      const isOwner = currentUserId === rental.owner_id;
-      const titleElement = document.getElementById('rental-title');
-      if (isOwner) {
-        titleElement.innerHTML += ' <span style="background: #3498db; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">Ваше объявление</span>';
-      }
-
       if (rental.rental_terms) {
-        document.getElementById('rental-terms').innerHTML = '<strong>Условия аренды:</strong><br>' + rental.rental_terms;
-      } else {
-        document.getElementById('rental-terms').innerHTML = '<strong>Условия аренды:</strong> Не указаны';
+        document.getElementById('rental-terms-section').style.display = 'block';
+        document.getElementById('rental-terms').textContent = rental.rental_terms;
       }
 
       // Display photos from localStorage
       const photosDiv = document.getElementById('rental-photos');
       const storedPhoto = localStorage.getItem(`sosedik_rental_photo_${rental.id}`);
       if (storedPhoto) {
-        photosDiv.innerHTML = `<img src="${storedPhoto}" style="max-width: 400px; border-radius: 8px;">`;
+        const photoImg = document.createElement('img');
+        photoImg.src = storedPhoto;
+        photoImg.className = 'detail-photo';
+        photosDiv.appendChild(photoImg);
       }
 
       // Load owner info
       loadOwnerInfo(rental.owner_id);
 
       // Display actions
-      displayRentalActions(rental);
+      displayRentalActions(rental, isOwner);
     }
 
     // Load owner information
@@ -149,6 +173,7 @@
         if (response.ok) {
           const owner = await response.json();
           document.getElementById('rental-owner').textContent = owner.name || 'Соседик без имени';
+          document.getElementById('rental-contact').textContent = owner.phone || 'Не указан';
         }
       } catch (error) {
         document.getElementById('rental-owner').textContent = 'Ошибка загрузки';
@@ -156,24 +181,28 @@
     }
 
     // Display rental actions
-    function displayRentalActions(rental) {
+    function displayRentalActions(rental, isOwner) {
       const actionsDiv = document.getElementById('rental-actions');
       actionsDiv.innerHTML = '';
 
-      if (currentUserId === rental.owner_id) {
+      if (isOwner) {
         // Owner actions
         const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-danger';
         deleteBtn.textContent = 'Удалить объявление об аренде';
-        deleteBtn.style.cssText = 'background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;';
-        deleteBtn.onclick = () => deleteRental(rental.id);
+        deleteBtn.onclick = () => {
+          if (confirm('Вы уверены, что хотите удалить это объявление об аренде?')) {
+            deleteRentalFromDetails(rental.id);
+          }
+        };
         actionsDiv.appendChild(deleteBtn);
       } else {
         // Other user actions
         // Кнопка "В избранное"
         const favoriteBtn = document.createElement('button');
         favoriteBtn.id = 'favorite-btn';
-        favoriteBtn.innerHTML = '♡ В избранное';
-        favoriteBtn.style.cssText = 'background: white; color: #333; border: 2px solid #ccc; padding: 8px 12px; margin-right: 10px; cursor: pointer; border-radius: 4px;';
+        favoriteBtn.className = 'btn-secondary';
+        favoriteBtn.textContent = '♡ В избранное';
         favoriteBtn.onclick = () => toggleFavorite('rental', rental.id, favoriteBtn);
         actionsDiv.appendChild(favoriteBtn);
 
@@ -181,32 +210,28 @@
         checkFavoriteStatus('rental', rental.id).then(isFavorite => {
           if (isFavorite) {
             favoriteBtn.classList.add('active');
-            favoriteBtn.innerHTML = '♥ В избранном';
-            favoriteBtn.style.borderColor = '#e74c3c';
-            favoriteBtn.style.color = '#e74c3c';
+            favoriteBtn.textContent = '♥ В избранном';
           }
         });
 
         const requestBtn = document.createElement('button');
+        requestBtn.className = 'btn-primary';
         requestBtn.textContent = 'Запросить аренду';
-        requestBtn.style.cssText = 'background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px;';
-        requestBtn.onclick = () => requestRental(rental.id);
+        requestBtn.onclick = () => requestRental(rental.id, requestBtn);
         actionsDiv.appendChild(requestBtn);
 
         const contactBtn = document.createElement('button');
-        contactBtn.textContent = 'Связаться с автором';
-        contactBtn.style.cssText = 'background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;';
-        contactBtn.onclick = () => contactOwner(rental.owner_id);
+        contactBtn.className = 'btn-success';
+        contactBtn.textContent = 'Связаться с владельцем';
+        contactBtn.onclick = () => {
+          window.location.href = `/chat.html?partnerId=${rental.owner_id}`;
+        };
         actionsDiv.appendChild(contactBtn);
       }
     }
 
     // Delete rental
-    async function deleteRental(rentalId) {
-      if (!confirm('Вы уверены, что хотите удалить это объявление об аренде?')) {
-        return;
-      }
-
+    async function deleteRentalFromDetails(rentalId) {
       const token = localStorage.getItem('sosedik_token');
       try {
         const response = await fetch(`/api/rentals/${rentalId}`, {
@@ -217,7 +242,7 @@
         });
 
         if (response.ok) {
-          alert('Объявление удалено');
+          alert('Объявление об аренде удалено');
           window.location.href = '/rentals.html';
         } else {
           const data = await response.json();
@@ -229,13 +254,34 @@
     }
 
     // Request rental
-    function requestRental(rentalId) {
-      alert('Функция запроса аренды будет реализована позже');
-    }
+    function requestRental(rentalId, buttonElement) {
+      const message = prompt('Введите сообщение владельцу (опционально):', '');
+      if (message === null) return;
 
-    // Contact owner
-    function contactOwner(ownerId) {
-      window.location.href = `/chat.html?with=${ownerId}`;
+      const token = localStorage.getItem('sosedik_token');
+      fetch('/api/rentals/requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          rental_id: rentalId,
+          message: message
+        })
+      })
+      .then(response => {
+        if (response.ok) {
+          alert('Запрос аренды отправлен');
+          if (buttonElement) {
+            buttonElement.textContent = 'Запрос отправлен';
+            buttonElement.disabled = true;
+          }
+        } else {
+          alert('Ошибка отправки запроса');
+        }
+      })
+      .catch(error => alert('Ошибка: ' + error.message));
     }
 
     // Get value label

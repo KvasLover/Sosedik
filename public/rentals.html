@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Аренда - Соседик</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
+
 <body>
   <!-- Header -->
   <div id="header-root"></div>
@@ -63,7 +65,8 @@
           <input type="file" id="rental-photo" accept="image/*" style="margin-bottom: 10px;">
           <div id="photo-preview" style="margin-top: 10px;"></div>
         </div>
-        <button class="btn-primary" onclick="createRental()"><u041aреать объявление</button>
+        <button class="btn-primary" onclick="createRental()">
+          <u041aреать объявление</button>
       </div>
 
       <!-- Filters -->
@@ -119,12 +122,12 @@
 
     // Setup photo input listener using event delegation
     function setupPhotoInputListener() {
-      document.addEventListener('change', function(e) {
+      document.addEventListener('change', function (e) {
         if (e.target.id === 'rental-photo') {
           const file = e.target.files[0];
           if (file) {
             const reader = new FileReader();
-            reader.onload = function(event) {
+            reader.onload = function (event) {
               currentPhotoData = event.target.result; // Store as base64
               const previewDiv = document.getElementById('photo-preview');
               previewDiv.innerHTML = `<img src="${currentPhotoData}" style="max-width: 200px; max-height: 200px; border-radius: 4px;">`;
@@ -180,6 +183,37 @@
       }
     }
 
+    // Request rental
+    function requestRental(rentalId, buttonElement) {
+      const message = prompt('Введите сообщение владельцу (опционально):', '');
+      if (message === null) return;
+
+      const token = localStorage.getItem('sosedik_token');
+      fetch('/api/rentals/requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          rental_id: rentalId,
+          message: message
+        })
+      })
+        .then(response => {
+          if (response.ok) {
+            alert('Запрос аренды отправлен');
+            if (buttonElement) {
+              buttonElement.textContent = 'Запрос отправлен';
+              buttonElement.disabled = true;
+            }
+          } else {
+            alert('Ошибка отправки запроса');
+          }
+        })
+        .catch(error => alert('Ошибка: ' + error.message));
+    }
+
     // Отобразить аренды
     function displayRentals(rentals) {
       const rentalsList = document.getElementById('rentals-list');
@@ -199,7 +233,7 @@
 
         const isOwner = rental.owner_id === currentUserId;
 
-        // Header с название и фото
+        // Header с фото
         const headerDiv = document.createElement('div');
         headerDiv.className = 'rental-header';
         const storedPhoto = localStorage.getItem(`sosedik_rental_photo_${rental.id}`);
@@ -209,6 +243,8 @@
           photoImg.className = 'rental-photo';
           headerDiv.appendChild(photoImg);
         }
+
+        // Title section с названием и бейджем
         const titleDiv = document.createElement('div');
         titleDiv.className = 'rental-title-section';
         const titleH3 = document.createElement('h3');
@@ -264,6 +300,15 @@
               favBtn.textContent = '♥';
             }
           });
+
+          const requestBtn = document.createElement('button');
+          requestBtn.className = 'btn-primary btn-sm';
+          requestBtn.textContent = 'Запросить аренду';
+          requestBtn.onclick = (e) => {
+            e.stopPropagation();
+            requestRental(rental.id, requestBtn);
+          };
+          footerDiv.appendChild(requestBtn);
         }
 
         // Собрать карточку
@@ -399,12 +444,12 @@
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           return data.isFavorite;
         }
-        
+
         return false;
       } catch (error) {
         console.error('Error checking favorite status:', error);
@@ -455,4 +500,5 @@
 
   </script>
 </body>
+
 </html>

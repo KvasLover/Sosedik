@@ -14,24 +14,59 @@
 
   <!-- Main -->
   <main>
-    <div id="ad-details">
-      <button class="btn-ghost" onclick="history.back()">← Назад</button>
-      <div id="ad-content">
-        <h1 id="ad-title">Загрузка...</h1>
-        <p><strong>Категория:</strong> <span id="ad-category"></span></p>
-        <p><strong>Тип:</strong> <span id="ad-type"></span></p>
-        <p id="ad-description"></p>
-        <p id="ad-price" style="display: none;"><strong>Цена:</strong> <span id="price-value"></span> руб.</p>
-        <p id="ad-preferred-time" style="display: none;"><strong>Желаемое время/дата:</strong> <span
-            id="preferred-time-value"></span></p>
-        <p id="ad-terms" style="display: none;"><strong>Условия:</strong> <span id="terms-value"></span></p>
-        <p id="ad-urgency" style="display: none;"><strong>Срочность:</strong> <span id="urgency-value"></span></p>
-        <p id="ad-location" style="display: none;"><strong>Местоположение:</strong> <span id="location-value"></span>
-        </p>
-        <p><strong>Автор:</strong> <span id="ad-author"></span></p>
-        <p><small>Создано: <span id="ad-created"></span></small></p>
+    <div id="ad-details" style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
+      <button class="btn-ghost" onclick="history.back()" style="margin-bottom: 20px;">← Назад</button>
+      
+      <div id="ad-content" class="detail-card">
+        <h1 id="ad-title" class="detail-title">Загрузка...</h1>
+        
+        <div class="detail-meta">
+          <span class="meta-badge" id="ad-category">Категория</span>
+          <span class="meta-separator">•</span>
+          <span class="meta-date" id="ad-created">Дата</span>
+        </div>
 
-        <div id="ad-actions" style="margin-top: 20px;">
+        <div class="detail-section">
+          <h2 class="section-title">Описание</h2>
+          <p id="ad-description" class="section-content"></p>
+        </div>
+
+        <div class="detail-section" id="ad-price-section" style="display: none;">
+          <h3 class="section-label">Цена</h3>
+          <p class="section-content price-highlight" id="price-value">-</p>
+        </div>
+
+        <div class="detail-section-grid">
+          <div class="detail-section" id="ad-preferred-time-section" style="display: none;">
+            <h3 class="section-label">Желаемое время/дата</h3>
+            <p class="section-content" id="preferred-time-value">-</p>
+          </div>
+
+          <div class="detail-section" id="ad-location-section" style="display: none;">
+            <h3 class="section-label">Местоположение</h3>
+            <p class="section-content" id="location-value">-</p>
+          </div>
+        </div>
+
+        <div class="detail-section" id="ad-terms-section" style="display: none;">
+          <h3 class="section-label">Условия</h3>
+          <p class="section-content" id="terms-value">-</p>
+        </div>
+
+        <div class="detail-section" id="ad-urgency-section" style="display: none;">
+          <h3 class="section-label">Срочность</h3>
+          <p class="section-content" id="urgency-value">-</p>
+        </div>
+
+        <div class="detail-divider"></div>
+
+        <div class="detail-author-section">
+          <h3 class="section-title">Контакт с автором</h3>
+          <p><strong>Автор:</strong> <span id="ad-author"></span></p>
+          <p><strong>Контакт:</strong> <span id="ad-contact">Не указан</span></p>
+        </div>
+
+        <div id="ad-actions" class="detail-actions">
         </div>
       </div>
     </div>
@@ -107,35 +142,35 @@
 
           document.getElementById('ad-title').textContent = ad.title + (isOwner ? ' (Ваше объявление)' : '');
           document.getElementById('ad-category').textContent = ad.category;
-          document.getElementById('ad-type').textContent = ad.type === 'offer' ? 'Предложение' : 'Запрос';
           document.getElementById('ad-description').textContent = ad.description;
 
           if (ad.price) {
-            document.getElementById('ad-price').style.display = 'block';
-            document.getElementById('price-value').textContent = ad.price;
+            document.getElementById('ad-price-section').style.display = 'block';
+            document.getElementById('price-value').textContent = ad.price + ' руб.';
           }
 
           if (ad.preferred_time) {
-            document.getElementById('ad-preferred-time').style.display = 'block';
+            document.getElementById('ad-preferred-time-section').style.display = 'block';
             document.getElementById('preferred-time-value').textContent = ad.preferred_time;
           }
           if (ad.terms) {
-            document.getElementById('ad-terms').style.display = 'block';
+            document.getElementById('ad-terms-section').style.display = 'block';
             document.getElementById('terms-value').textContent = ad.terms;
           }
 
           if (ad.urgency) {
-            document.getElementById('ad-urgency').style.display = 'block';
+            document.getElementById('ad-urgency-section').style.display = 'block';
             document.getElementById('urgency-value').textContent = ad.urgency ? 'Срочно' : 'Не срочно';
           }
 
           if (ad.location) {
-            document.getElementById('ad-location').style.display = 'block';
+            document.getElementById('ad-location-section').style.display = 'block';
             document.getElementById('location-value').textContent = ad.location;
           }
 
           document.getElementById('ad-author').textContent = ad.author_name || `Пользователь ${ad.user_id}`;
-          document.getElementById('ad-created').textContent = new Date(ad.created_at).toLocaleString();
+          document.getElementById('ad-contact').textContent = ad.contact || 'Не указан';
+          document.getElementById('ad-created').textContent = new Date(ad.created_at).toLocaleDateString();
           currentAdOwnerId = ad.user_id;
 
           // Если владелец и объявление принято, показать информацию
@@ -152,83 +187,59 @@
           actionsDiv.innerHTML = ''; // Очистить существующие кнопки
 
           // Кнопки для чужих объявлений
+                    // Кнопки для чужих объявлений
           if (!isOwner) {
             // Кнопка "В избранное"
             const favoriteBtn = document.createElement('button');
             favoriteBtn.id = 'favorite-btn';
-            favoriteBtn.innerHTML = '♡ В избранное';
-            favoriteBtn.style.background = 'white';
-            favoriteBtn.style.color = '#333';
-            favoriteBtn.style.border = '2px solid #ccc';
-            favoriteBtn.style.padding = '8px 12px';
-            favoriteBtn.style.marginRight = '10px';
-            favoriteBtn.style.cursor = 'pointer';
-            favoriteBtn.style.borderRadius = '4px';
+            favoriteBtn.className = 'btn-secondary';
+            favoriteBtn.textContent = '♡ В избранное';
             favoriteBtn.onclick = () => toggleFavorite('ad', adId, favoriteBtn);
             actionsDiv.appendChild(favoriteBtn);
 
-            // Проверить статус избранного
             checkFavoriteStatus('ad', adId).then(isFavorite => {
               if (isFavorite) {
                 favoriteBtn.classList.add('active');
-                favoriteBtn.innerHTML = '♥ В избранном';
-                favoriteBtn.style.borderColor = '#e74c3c';
-                favoriteBtn.style.color = '#e74c3c';
+                favoriteBtn.textContent = '♥ В избранном';
               }
             });
 
-            // Кнопка "Отправить запрос" или статус
             if (!ad.accepted_by) {
               const requestBtn = document.createElement('button');
+              requestBtn.className = 'btn-primary';
               requestBtn.textContent = 'Отправить запрос';
-              requestBtn.style.background = '#3498db';
-              requestBtn.style.color = 'white';
-              requestBtn.style.border = 'none';
-              requestBtn.style.padding = '10px 15px';
-              requestBtn.style.marginRight = '10px';
-              requestBtn.style.cursor = 'pointer';
               requestBtn.onclick = () => requestAd(adId, requestBtn);
               actionsDiv.appendChild(requestBtn);
-
-              // После добавления кнопки проверим, есть ли уже активный запрос
               checkActiveRequestForAd(adId, requestBtn);
             } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
               const statusSpan = document.createElement('span');
               statusSpan.textContent = '✓ Принято вами';
-              statusSpan.style.color = '#27ae60';
-              statusSpan.style.fontWeight = 'bold';
-              statusSpan.style.marginRight = '10px';
+              statusSpan.style.cssText = 'color: #27ae60; font-weight: bold; display: inline-block; padding: 10px 16px; border-radius: 6px; background: #f0fdf4;';
               actionsDiv.appendChild(statusSpan);
             } else {
               const statusSpan = document.createElement('span');
               statusSpan.textContent = 'Принято другим пользователем';
-              statusSpan.style.color = '#95a5a6';
-              statusSpan.style.marginRight = '10px';
+              statusSpan.style.cssText = 'color: #95a5a6; display: inline-block; padding: 10px 16px; border-radius: 6px; background: #f1f5f9;';
               actionsDiv.appendChild(statusSpan);
             }
 
-            // Кнопка "Связаться с автором"
             const contactBtn = document.createElement('button');
+            contactBtn.className = 'btn-success';
             contactBtn.textContent = 'Связаться с автором';
-            contactBtn.style.background = '#3498db';
-            contactBtn.style.color = 'white';
-            contactBtn.style.border = 'none';
-            contactBtn.style.padding = '10px 15px';
-            contactBtn.style.cursor = 'pointer';
-            contactBtn.onclick = contactAuthor;
+            contactBtn.onclick = () => {
+              window.location.href = `/chat.html?partnerId=${ad.user_id}`;
+            };
             actionsDiv.appendChild(contactBtn);
-          }
-
-          // Кнопка "Удалить объявление" только если владелец
-          if (isOwner) {
+          } else {
+            // Кнопка "Удалить" для владельца
             const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-danger';
             deleteBtn.textContent = 'Удалить объявление';
-            deleteBtn.style.background = '#e74c3c';
-            deleteBtn.style.color = 'white';
-            deleteBtn.style.border = 'none';
-            deleteBtn.style.padding = '10px 15px';
-            deleteBtn.style.cursor = 'pointer';
-            deleteBtn.onclick = () => deleteAd(adId);
+            deleteBtn.onclick = () => {
+              if (confirm('Вы уверены, что хотите удалить это объявление?')) {
+                deleteAdFromDetails(adId);
+              }
+            };
             actionsDiv.appendChild(deleteBtn);
           }
         } else {
@@ -236,6 +247,28 @@
         }
       } catch (error) {
         document.getElementById('ad-content').innerHTML = '<p>Ошибка загрузки: ' + error.message + '</p>';
+      }
+    }
+
+    // Удалить объявление
+    async function deleteAdFromDetails(adId) {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/${adId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          alert('Объявление удалено');
+          window.location.href = '/ads.html';
+        } else {
+          alert('Ошибка удаления объявления');
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
       }
     }
 

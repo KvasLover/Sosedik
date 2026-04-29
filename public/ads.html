@@ -137,17 +137,15 @@
     }
 
     // Проверить авторизацию и загрузить объявления при загрузке страницы
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const token = localStorage.getItem('sosedik_token');
       if (!token) {
         document.getElementById('auth-check').classList.remove('hidden');
         document.getElementById('ads-content').classList.add('hidden');
       } else {
-        // Get current user ID and load ads
-        getCurrentUserId().then(() => {
-          loadAds();
-          loadPendingRequestsState();
-        });
+        await getCurrentUserId();
+        await loadAds();                // Ждём, пока объявления загрузятся и отрисуются
+        await loadPendingRequestsState(); // Теперь кнопки существуют, можно обновлять
       }
     });
 
@@ -262,6 +260,7 @@
             const requestBtn = document.createElement('button');
             requestBtn.className = 'btn-sm btn-primary';
             requestBtn.textContent = 'Отправить запрос';
+            requestBtn.setAttribute('data-ad-id', ad.id);           // <-- добавить эту строку
             requestBtn.onclick = (e) => {
               e.stopPropagation();
               requestAd(ad.id, requestBtn);
@@ -603,40 +602,27 @@
 
       try {
         const response = await fetch('/api/ads/requests/outgoing', {
-          headers: {
-            'Authorization': `Bearer ${token}`
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) return;
+        const outgoingRequests = await response.json();
+        const requestedAdIds = new Set();
+        outgoingRequests.forEach(req => {
+          if (req.status === 'pending' || req.status === 'accepted') {
+            requestedAdIds.add(req.ad_id);
           }
         });
 
-        if (response.ok) {
-          const outgoingRequests = await response.json();
-          const requestedAdIds = new Set();
-
-          // Collect ad IDs that have pending or accepted requests
-          outgoingRequests.forEach(req => {
-            if (req.status === 'pending' || req.status === 'accepted') {
-              requestedAdIds.add(req.ad_id);
-            }
-          });
-
-          // Update all request buttons
-          document.querySelectorAll('button').forEach(button => {
-            // Look for buttons with text "Отправить запрос"
-            if (button.textContent.includes('Отправить запрос')) {
-              // Try to find the parent ad item and extract ad ID from the onclick handler
-              const onClickHandler = button.getAttribute('onclick');
-              const adIdMatch = onClickHandler.match(/requestAd\((\d+)/);
-              if (adIdMatch) {
-                const adId = parseInt(adIdMatch[1]);
-                if (requestedAdIds.has(adId)) {
-                  button.textContent = 'Запрос отправлен';
-                  button.style.background = '#27ae60';
-                  button.disabled = true;
-                }
-              }
-            }
-          });
-        }
+        // Ищем кнопки с data-ad-id
+        const requestButtons = document.querySelectorAll('.ad-footer button[data-ad-id]');
+        requestButtons.forEach(button => {
+          const adId = parseInt(button.dataset.adId);
+          if (requestedAdIds.has(adId)) {
+            button.textContent = 'Запрос отправлен';
+            button.style.background = '#27ae60';
+            button.disabled = true;
+          }
+        });
       } catch (error) {
         console.error('Ошибка загрузки состояния запросов:', error.message);
       }
@@ -644,6 +630,7 @@
 
     // Проверить, есть ли активный запрос от текущего пользователя на данное объявление
     async function checkActiveRequestForAd(adId, buttonElement) {
+      // эта функция уже получает кнопку, не нужно искать по селектору
       const token = localStorage.getItem('sosedik_token');
       if (!token) return;
 
@@ -667,7 +654,6 @@
         console.error('Ошибка проверки запроса:', error);
       }
     }
-
 
   </script>
 </body>
