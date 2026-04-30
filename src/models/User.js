@@ -96,7 +96,7 @@ const deleteUser = async (id) => {
   }
 };
 
-const getPublicProfileData = async (userId) => {
+const getPublicProfileData = async (userId, currentUserId = null) => {
   try {
     const userResult = await pool.query(
       'SELECT id, name, created_at FROM users WHERE id = $1',
@@ -133,13 +133,32 @@ const getPublicProfileData = async (userId) => {
       [userId]
     );
 
+    let hasCommonDeals = false;
+    if (currentUserId) {
+      const commonRes = await pool.query(
+        `SELECT EXISTS (
+         SELECT 1 FROM ad_requests ar
+         JOIN ads ON ar.ad_id = ads.id
+         WHERE ar.status = 'completed'
+           AND (
+             (ar.requester_id = $1 AND ads.user_id = $2)
+             OR
+             (ar.requester_id = $2 AND ads.user_id = $1)
+           )
+       ) AS has_common`,
+        [userId, currentUserId]
+      );
+      hasCommonDeals = commonRes.rows[0].has_common;
+    }
+
     return {
       id: user.id,
       name: user.name || 'Пользователь',
       createdAt: user.created_at,
       completedCount,
       hasPositive,
-      activeAds: adsResult.rows
+      activeAds: adsResult.rows,
+      hasCommonDeals
     };
   } catch (err) {
     throw err;

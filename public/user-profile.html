@@ -72,6 +72,11 @@
     <main>
         <button onclick="history.back()" style="margin-bottom: 20px;">← Назад</button>
         <div id="profile-container" class="profile-container">Загрузка...</div>
+        <div id="common-deals" class="stat-item"></div>
+        <div id="friend-section">
+            <button id="friend-btn">Добавить в друзья</button>
+            <button id="write-btn" style="display: none; margin-left: 10px;">Написать</button>
+        </div>
     </main>
     <script src="js/header_new.js"></script>
     <script>
@@ -109,6 +114,30 @@
         <div class="stats-section"><h3>Статистика</h3>${statsHtml}</div>
         <div class="ads-list"><h3>Активные объявления</h3>${adsHtml}</div>
       `;
+
+            // Отображение общих сделок
+            const commonDealsDiv = document.getElementById('common-deals');
+            commonDealsDiv.textContent = profile.hasCommonDeals ? '✓ У вас есть общие сделки' : '✗ У вас нет общих сделок';
+
+            // Логика кнопки "Добавить в друзья" (без бэкенда)
+            const friendBtn = document.getElementById('friend-btn');
+            const writeBtn = document.getElementById('write-btn');
+            let isFriend = false; // временное состояние, не сохраняется
+
+            friendBtn.addEventListener('click', () => {
+                isFriend = !isFriend;
+                if (isFriend) {
+                    friendBtn.textContent = 'Удалить из друзей';
+                    writeBtn.style.display = 'inline-block';
+                } else {
+                    friendBtn.textContent = 'Добавить в друзья';
+                    writeBtn.style.display = 'none';
+                }
+            });
+
+            writeBtn.addEventListener('click', () => {
+                window.location.href = `/chat.html?with=${profile.id}`;
+            });
         }
 
         function escapeHtml(str) {
