@@ -258,9 +258,11 @@ function initHeader() {
           } else if (type === 'request_proposal_declined') {
             window.location.href = '/profile.html?tab=active';
           } else if (type === 'pending_request_cancelled') {
-            window.location.href = '/profile.html'; // или на вкладку объявления? Лучше на профиль
+            window.location.href = '/profile.html';
           } else if (type === 'review_reminder') {
             window.location.href = '/profile.html?tab=deals';
+          } else if (type === 'dispute_resolved') {
+            window.location.href = '/profile.html?tab=active';
           } else {
             window.location.href = '/profile.html';
           }

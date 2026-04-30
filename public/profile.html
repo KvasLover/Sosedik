@@ -1170,11 +1170,17 @@
           if (req.status === 'disputed') {
             const initiatorName = (req.dispute_initiator_id === currentUserId) ? 'Вы' : (req.dispute_initiator_id === req.requester_id ? req.requester_name : req.creator_name);
             disputeInfo = `
-      <div style="margin-top: 8px; padding: 8px; background: #fef3c7; border-radius: 6px;">
-        ⚠️ Спор открыт пользователем ${initiatorName || 'неизвестным'}.<br>
-        Причина: ${req.dispute_reason || 'не указана'}
-      </div>
-    `;
+    <div style="margin-top: 8px; padding: 8px; background: #fef3c7; border-radius: 6px;">
+      ⚠️ Спор открыт пользователем ${initiatorName || 'неизвестным'}.<br>
+      Причина: ${req.dispute_reason || 'не указана'}
+    </div>
+  `;
+            // Кнопки для управления спором
+            actionButtonsHtml = `
+    <button onclick="resolveDispute(${req.id})" style="background: #27ae60; margin-right: 5px;">Снять спор</button>
+    <button onclick="cancelDisputedDeal(${req.id})" class="delete-btn">Отменить сделку</button>
+    <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
+  `;
           }
 
           // Обработка предложений (если есть)
@@ -1205,18 +1211,22 @@
       <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
       <td>${new Date(req.created_at).toLocaleDateString()}</td>
       <td class="action-buttons">
-        ${req.pendingBadge}
-        ${proposalHtml}
-        ${disputeInfo}
-        ${req.status !== 'disputed' ? `
-          ${showStartButton ? `<button onclick="openStartModal(${req.id})">Начать работу</button>` : ''}
-          ${req.status === 'accepted' ? `<button class="delete-btn" onclick="cancelAcceptedRequest(${req.id})">Отменить договорённость</button>` : ''}
-          ${req.status === 'in_progress' && !req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
-          ${req.status === 'in_progress' ? `<button onclick="openDispute(${req.id})" style="background: #f39c12; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Открыть спор</button>` : ''}
-          ${req.status === 'in_progress' && req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили</span>` : ''}
-        ` : ''}
-        <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
-      </td>
+  ${req.pendingBadge}
+  ${proposalHtml}
+  ${disputeInfo}
+  ${req.status === 'disputed' ? `
+    <button onclick="resolveDispute(${req.id})" style="background: #27ae60; margin-right: 5px;">Снять спор</button>
+    <button onclick="cancelDisputedDeal(${req.id})" class="delete-btn">Отменить сделку</button>
+    <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
+  ` : `
+    ${showStartButton ? `<button onclick="openStartModal(${req.id})">Начать работу</button>` : ''}
+    ${req.status === 'accepted' ? `<button class="delete-btn" onclick="cancelAcceptedRequest(${req.id})">Отменить договорённость</button>` : ''}
+    ${req.status === 'in_progress' && !req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
+    ${req.status === 'in_progress' ? `<button onclick="openDispute(${req.id})" style="background: #f39c12; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Открыть спор</button>` : ''}
+    ${req.status === 'in_progress' && req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили</span>` : ''}
+    <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
+  `}
+</td>
     </tr>
   `;
         }).join('')}
@@ -1688,6 +1698,36 @@
       }
     }
 
+    async function resolveDispute(requestId) {
+      const token = localStorage.getItem('sosedik_token');
+      const response = await fetch(`/api/ads/requests/${requestId}/resolve-dispute`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        alert('Спор снят, сделка возвращена в работу');
+        loadActiveRequests();
+      } else {
+        const data = await response.json();
+        alert('Ошибка: ' + data.message);
+      }
+    }
+
+    async function cancelDisputedDeal(requestId) {
+      if (!confirm('Отменить сделку из-за спора? Объявление снова станет доступно.')) return;
+      const token = localStorage.getItem('sosedik_token');
+      const response = await fetch(`/api/ads/requests/${requestId}/cancel`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        alert('Сделка отменена');
+        loadActiveRequests();
+      } else {
+        const data = await response.json();
+        alert('Ошибка: ' + data.message);
+      }
+    }
   </script>
 
   <!-- Модальное окно для уточнения условий -->

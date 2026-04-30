@@ -565,8 +565,10 @@ const cancelAdRequest = async (requestId, userId) => {
       if (req.requester_id !== userId) throw new Error('Only requester can cancel a pending request');
     } else if (req.current_status === 'accepted') {
       if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized to cancel this accepted request');
+    } else if (req.current_status === 'disputed') {
+      if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized to cancel this disputed deal');
     } else {
-      throw new Error('Can only cancel pending or accepted requests');
+      throw new Error('Can only cancel pending, accepted or disputed requests');
     }
 
     // Обновляем статус запроса на cancelled
@@ -584,6 +586,19 @@ const cancelAdRequest = async (requestId, userId) => {
         SET acceptance_status = 'open', accepted_by = NULL, accepted_at = NULL
         WHERE id = $1
       `, [req.ad_id]);
+    } else if (req.current_status === 'disputed') {
+      // Разблокируем объявление
+      await pool.query(`
+    UPDATE ads
+    SET acceptance_status = 'open', accepted_by = NULL, accepted_at = NULL
+    WHERE id = $1
+  `, [req.ad_id]);
+
+      // Системное сообщение в чат
+      await pool.query(`
+    INSERT INTO request_messages (request_id, sender_id, text)
+    VALUES ($1, $2, $3)
+  `, [requestId, userId, 'Сделка отменена из-за спора.']);
     }
 
     // Отправка уведомления
@@ -611,6 +626,10 @@ const cancelAdRequest = async (requestId, userId) => {
       otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
       type = 'request_cancelled_by_user';
       message = `Договорённость по объявлению "${req.title}" отменена другой стороной`;
+    } else if (req.current_status === 'disputed') {
+      otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
+      type = 'request_cancelled_by_user';
+      message = `Сделка по объявлению "${req.title}" отменена из-за спора`;
     }
 
     if (otherUserId) {
@@ -811,6 +830,63 @@ const openDispute = async (requestId, userId, reason) => {
       'request'
     );
 
+    // Системное сообщение в чат
+    await pool.query(`
+  INSERT INTO request_messages (request_id, sender_id, text)
+  VALUES ($1, $2, $3)
+`, [requestId, userId, 'Открыт спор по сделке.']);
+
+    return result.rows[0];
+  } catch (err) {
+    throw err;
+  }
+};
+
+const resolveDispute = async (requestId, userId) => {
+  try {
+    // 1. Проверяем существование и права
+    const check = await pool.query(`
+      SELECT ar.id, ar.status, ar.requester_id, ads.user_id as ad_owner_id
+      FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
+      WHERE ar.id = $1
+    `, [requestId]);
+    if (check.rows.length === 0) throw new Error('Request not found');
+    const req = check.rows[0];
+    if (req.status !== 'disputed') throw new Error('Cannot resolve dispute: request not disputed');
+    if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized');
+
+    // 2. Обновляем статус
+    const result = await pool.query(`
+      UPDATE ad_requests
+      SET status = 'in_progress',
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `, [requestId]);
+
+    // 3. Отправляем уведомление и системное сообщение
+    // (получаем title для уведомления)
+    const titleRes = await pool.query(`
+      SELECT title FROM ads WHERE id = (SELECT ad_id FROM ad_requests WHERE id = $1)
+    `, [requestId]);
+    const title = titleRes.rows[0]?.title || 'сделка';
+    const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
+
+    await Notification.createNotification(
+      otherUserId,
+      'dispute_resolved',
+      `Спор по сделке "${title}" снят. Можно продолжить выполнение.`,
+      null,
+      requestId,
+      'request'
+    );
+
+    await pool.query(`
+      INSERT INTO request_messages (request_id, sender_id, text)
+      VALUES ($1, $2, $3)
+    `, [requestId, userId, 'Спор снят. Стороны продолжили выполнение сделки.']);
+
     return result.rows[0];
   } catch (err) {
     throw err;
@@ -843,5 +919,6 @@ module.exports = {
   hideAllRejectedRequests,
   autoCancelExpiredAcceptedRequests,
   acceptProposal,
-  openDispute
+  openDispute,
+  resolveDispute
 };

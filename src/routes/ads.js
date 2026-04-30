@@ -440,4 +440,15 @@ router.post('/requests/:requestId/dispute', verifyToken, async (req, res) => {
   }
 });
 
+// Снять спор
+router.post('/requests/:requestId/resolve-dispute', verifyToken, async (req, res) => {
+  try {
+    const updated = await Ad.resolveDispute(req.params.requestId, req.user.id);
+    res.json({ message: 'Dispute resolved', request: updated });
+  } catch (err) {
+    if (err.message.includes('Cannot resolve dispute')) return res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
