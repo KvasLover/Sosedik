@@ -96,6 +96,56 @@ const deleteUser = async (id) => {
   }
 };
 
+const getPublicProfileData = async (userId) => {
+  try {
+    const userResult = await pool.query(
+      'SELECT id, name, created_at FROM users WHERE id = $1',
+      [userId]
+    );
+    if (userResult.rows.length === 0) return null;
+    const user = userResult.rows[0];
+
+    const completedResult = await pool.query(
+      `SELECT COUNT(DISTINCT ar.id) AS count
+       FROM ad_requests ar
+       JOIN ads ON ar.ad_id = ads.id
+       WHERE (ar.requester_id = $1 OR ads.user_id = $1)
+         AND ar.status = 'completed'`,
+      [userId]
+    );
+    const completedCount = parseInt(completedResult.rows[0].count) || 0;
+
+    const positiveResult = await pool.query(
+      `SELECT EXISTS (
+         SELECT 1 FROM reviews
+         WHERE reviewed_user_id = $1 AND result = 'success'
+       ) AS has_positive`,
+      [userId]
+    );
+    const hasPositive = positiveResult.rows[0].has_positive;
+
+    const adsResult = await pool.query(
+      `SELECT id, title, price, category
+       FROM ads
+       WHERE user_id = $1 AND active = true
+       ORDER BY created_at DESC
+       LIMIT 10`,
+      [userId]
+    );
+
+    return {
+      id: user.id,
+      name: user.name || 'Пользователь',
+      createdAt: user.created_at,
+      completedCount,
+      hasPositive,
+      activeAds: adsResult.rows
+    };
+  } catch (err) {
+    throw err;
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
@@ -104,5 +154,6 @@ module.exports = {
   updateUserLevel,
   updateUserProfile,
   addPoints,
-  deleteUser
+  deleteUser,
+  getPublicProfileData
 };

@@ -231,7 +231,7 @@
         const contentDiv = document.createElement('div');
         contentDiv.className = 'ad-content';
         contentDiv.onclick = () => window.location.href = `/ad-details.html?id=${ad.id}`;
-        contentDiv.innerHTML = '<p><strong>Автор:</strong> ' + (ad.author_name || ('Пользователь #' + ad.user_id)) + '</p>' +
+        contentDiv.innerHTML = '<p><strong>Автор:</strong> <a href="/user-profile.html?userId=' + ad.user_id + '">' + (ad.author_name || ('Пользователь #' + ad.user_id)) + '</a></p>' +
           '<p><strong>Категория:</strong> ' + ad.category + '</p>' +
           '<p>' + ad.description + '</p>' +
           (ad.price ? '<p><strong>Цена:</strong> ' + ad.price + ' руб.</p>' : '') +

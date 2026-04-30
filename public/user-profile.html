@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль пользователя - Соседик</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .profile-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .profile-name {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .profile-meta {
+            color: #718096;
+            margin-bottom: 24px;
+        }
+
+        .stat-item {
+            margin: 8px 0;
+        }
+
+        .ads-list {
+            margin-top: 24px;
+        }
+
+        .ad-card {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ad-card:hover {
+            background: #f7fafc;
+            border-color: #667eea;
+        }
+
+        .ad-title {
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .ad-details {
+            font-size: 14px;
+            color: #4a5568;
+            margin-top: 6px;
+        }
+
+        .no-ads {
+            color: #718096;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="header-root"></div>
+    <main>
+        <button onclick="history.back()" style="margin-bottom: 20px;">← Назад</button>
+        <div id="profile-container" class="profile-container">Загрузка...</div>
+    </main>
+    <script src="js/header_new.js"></script>
+    <script>
+        const userId = new URLSearchParams(window.location.search).get('userId');
+        if (!userId) {
+            document.getElementById('profile-container').innerHTML = '<p>Не указан пользователь</p>';
+        } else {
+            fetch(`/api/users/${userId}/profile`)
+                .then(res => { if (!res.ok) throw new Error('Пользователь не найден'); return res.json(); })
+                .then(profile => renderProfile(profile))
+                .catch(err => { document.getElementById('profile-container').innerHTML = `<p>Ошибка: ${err.message}</p>`; });
+        }
+
+        function renderProfile(profile) {
+            let statsHtml = '';
+            if (profile.completedCount === 0) {
+                statsHtml = '<div class="stat-item">✨ Новый пользователь</div>';
+            } else {
+                statsHtml = `<div class="stat-item">✔ Завершено: ${profile.completedCount}</div>`;
+                if (profile.hasPositive) statsHtml += '<div class="stat-item">✔ Есть положительные отзывы</div>';
+            }
+
+            const adsHtml = profile.activeAds?.length
+                ? profile.activeAds.map(ad => `
+          <div class="ad-card" onclick="location.href='/ad-details.html?id=${ad.id}'">
+            <div class="ad-title">${escapeHtml(ad.title)}</div>
+            <div class="ad-details">Категория: ${escapeHtml(ad.category)}${ad.price ? ` • ${ad.price} руб.` : ''}</div>
+          </div>
+        `).join('')
+                : '<div class="no-ads">Нет активных объявлений</div>';
+
+            document.getElementById('profile-container').innerHTML = `
+        <div class="profile-name">${escapeHtml(profile.name)}</div>
+        <div class="profile-meta">На сайте с ${new Date(profile.createdAt).toLocaleDateString()}</div>
+        <div class="stats-section"><h3>Статистика</h3>${statsHtml}</div>
+        <div class="ads-list"><h3>Активные объявления</h3>${adsHtml}</div>
+      `;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
+        }
+    </script>
+</body>
+
+</html>

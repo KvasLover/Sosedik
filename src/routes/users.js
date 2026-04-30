@@ -74,4 +74,16 @@ router.delete('/me', verifyToken, async (req, res) => {
   }
 });
 
+router.get('/:userId/profile', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) return res.status(400).json({ message: 'Invalid user ID' });
+    const profile = await User.getPublicProfileData(userId);
+    if (!profile) return res.status(404).json({ message: 'User not found' });
+    res.json(profile);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

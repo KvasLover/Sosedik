@@ -12,6 +12,10 @@
   <main>
     <button class="btn-ghost" onclick="history.back()">← Назад</button>
     <h1>Чат сделки</h1>
+    <div class="chat-header">
+      <div class="chat-avatar"><span>?</span></div>
+      <div id="partner-link" style="font-weight: bold; margin-left: 10px;"></div>
+    </div>
     <div id="deal-info" style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
       <p><strong>Статус:</strong> <span id="deal-status"></span></p>
       <p><strong>Цена:</strong> <span id="deal-price"></span></p>
@@ -29,45 +33,81 @@
     if (!requestId) {
       document.body.innerHTML = '<p>Ошибка: не указан requestId</p>';
     } else {
-      let token = localStorage.getItem('sosedik_token');
+      const token = localStorage.getItem('sosedik_token');
       if (!token) window.location.href = '/login.html';
 
-      function loadMessages() {
-        fetch(`/api/request-messages?requestId=${requestId}`, {
+      let currentUserId = null;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        currentUserId = payload.id;
+      } catch (e) { }
+
+      // Функция загрузки информации о сделке
+      async function loadDealAndPartner() {
+        const response = await fetch(`/api/ads/requests/${requestId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
-        })
-          .then(r => r.json())
-          .then(data => {
-            const container = document.getElementById('chat-messages');
-            container.innerHTML = '';
-            if (data.messages && data.messages.length) {
-              data.messages.forEach(msg => {
-                const div = document.createElement('div');
-                div.innerHTML = `<strong>${msg.sender_name || 'Пользователь'}:</strong> ${msg.text} <small>${new Date(msg.created_at).toLocaleString()}</small>`;
-                container.appendChild(div);
-              });
-              container.scrollTop = container.scrollHeight;
-            } else {
-              container.innerHTML = '<p>Нет сообщений</p>';
-            }
-          }).catch(console.error);
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Отображаем статус и условия
+          document.getElementById('deal-status').innerText = getStatusName(data.status);
+          const price = data.agreed_price ?? data.ad_price ?? '—';
+          const time = data.agreed_time ?? data.ad_time ?? '—';
+          const comment = data.agreement_comment ?? data.ad_terms ?? '—';
+          document.getElementById('deal-price').innerText = price;
+          document.getElementById('deal-time').innerText = time;
+          document.getElementById('deal-comment').innerText = comment;
+
+          // Ссылка на профиль партнёра
+          const otherUserId = (currentUserId === data.requester_id) ? data.ad_owner_id : data.requester_id;
+          const otherName = (currentUserId === data.requester_id) ? data.creator_name : data.requester_name;
+          const linkEl = document.getElementById('partner-link');
+          if (linkEl) {
+            linkEl.innerHTML = `<a href="/user-profile.html?userId=${otherUserId}">${escapeHtml(otherName)}</a>`;
+          }
+        } else {
+          console.error('Ошибка загрузки данных сделки');
+        }
       }
 
-      function sendMessage() {
+      // Функция загрузки сообщений
+      async function loadMessages() {
+        const response = await fetch(`/api/request-messages?requestId=${requestId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const container = document.getElementById('chat-messages');
+          container.innerHTML = '';
+          if (data.messages && data.messages.length) {
+            data.messages.forEach(msg => {
+              const div = document.createElement('div');
+              div.innerHTML = `<strong>${escapeHtml(msg.sender_name || 'Пользователь')}:</strong> ${escapeHtml(msg.text)} <small>${new Date(msg.created_at).toLocaleString()}</small>`;
+              container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+          } else {
+            container.innerHTML = '<p>Нет сообщений</p>';
+          }
+        }
+      }
+
+      async function sendMessage() {
         const textarea = document.getElementById('message-text');
         const text = textarea.value.trim();
         if (!text) return alert('Введите текст');
-        fetch('/api/request-messages', {
+        const response = await fetch('/api/request-messages', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ requestId, text })
-        })
-          .then(r => r.json())
-          .then(() => {
-            textarea.value = '';
-            loadMessages();
-          })
-          .catch(console.error);
+        });
+        if (response.ok) {
+          textarea.value = '';
+          loadMessages();
+        } else {
+          const err = await response.json();
+          alert('Ошибка: ' + err.message);
+        }
       }
 
       function getStatusName(status) {
@@ -82,36 +122,21 @@
         return statuses[status] || status;
       }
 
-      async function loadDealInfo() {
-        const requestId = new URLSearchParams(window.location.search).get('requestId');
-        if (!requestId) return;
-        const token = localStorage.getItem('sosedik_token');
-        try {
-          const response = await fetch(`/api/ads/requests/${requestId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (response.ok) {
-            const data = await response.json();
-            // Устанавливаем русский статус (одна строка)
-            document.getElementById('deal-status').innerText = getStatusName(data.status);
-
-            // Показываем согласованные условия, если есть, иначе из объявления
-            const price = data.agreed_price ?? data.ad_price ?? '—';
-            const time = data.agreed_time ?? data.ad_time ?? '—';
-            const comment = data.agreement_comment ?? data.ad_terms ?? '—';
-            document.getElementById('deal-price').textContent = price;
-            document.getElementById('deal-time').textContent = time;
-            document.getElementById('deal-comment').textContent = comment;
-          }
-        } catch (err) {
-          console.error('Ошибка загрузки информации о сделке:', err);
-        }
+      function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function (m) {
+          if (m === '&') return '&amp;';
+          if (m === '<') return '&lt;';
+          if (m === '>') return '&gt;';
+          return m;
+        });
       }
 
-      loadDealInfo();
-      document.getElementById('send-btn').addEventListener('click', sendMessage);
+      // Запуск
+      loadDealAndPartner();
       loadMessages();
-      setInterval(loadMessages, 5000); // polling каждые 5 секунд
+      setInterval(loadMessages, 5000);
+      document.getElementById('send-btn').addEventListener('click', sendMessage);
     }
   </script>
 </body>
