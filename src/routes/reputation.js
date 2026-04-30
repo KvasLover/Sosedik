@@ -20,6 +20,11 @@ router.post('/reviews', verifyToken, async (req, res) => {
     `, [requestId]);
     if (deal.rows.length === 0) return res.status(404).json({ message: 'Request not found' });
     const reqData = deal.rows[0];
+
+    if (reqData.status === 'disputed') {
+      return res.status(400).json({ message: 'Cannot review disputed request' });
+    }
+    
     if (reqData.status !== 'completed') return res.status(400).json({ message: 'Deal not completed' });
     if (reqData.review_phase_closed) return res.status(400).json({ message: 'Review phase closed' });
 

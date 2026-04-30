@@ -428,4 +428,16 @@ router.get('/requests/:requestId', verifyToken, async (req, res) => {
   }
 });
 
+// Открыть спор по сделке
+router.post('/requests/:requestId/dispute', verifyToken, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const updated = await Ad.openDispute(req.params.requestId, req.user.id, reason);
+    res.json({ message: 'Dispute opened', request: updated });
+  } catch (err) {
+    if (err.message.includes('Cannot open dispute')) return res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

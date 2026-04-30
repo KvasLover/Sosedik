@@ -407,6 +407,10 @@ const confirmAdCompletion = async (requestId, userId) => {
     if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
 
+    if (req.current_status === 'disputed') {
+      throw new Error('Cannot complete disputed request');
+    }
+
     // Автоматически определяем, кто подтверждает
     let isRequester = false;
     if (req.requester_id === userId) isRequester = true;
@@ -499,7 +503,7 @@ const getActiveRequests = async (userId) => {
     JOIN users u1 ON ar.requester_id = u1.id
     JOIN users u2 ON ads.user_id = u2.id
     WHERE (ar.requester_id = $1 OR ads.user_id = $1)
-      AND ar.status IN ('accepted', 'in_progress')
+      AND ar.status IN ('accepted', 'in_progress', 'disputed')
     ORDER BY ar.updated_at DESC
   `, [userId]);
   return result.rows;
@@ -766,6 +770,53 @@ const acceptProposal = async (requestId, userId) => {
   }
 };
 
+const openDispute = async (requestId, userId, reason) => {
+  try {
+    // 1. Проверяем существование и права
+    const requestCheck = await pool.query(`
+      SELECT ar.id, ar.status, ar.requester_id, ads.user_id as ad_owner_id
+      FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
+      WHERE ar.id = $1
+    `, [requestId]);
+    if (requestCheck.rows.length === 0) throw new Error('Request not found');
+    const req = requestCheck.rows[0];
+    if (req.status !== 'in_progress') throw new Error('Cannot open dispute: request not in progress');
+    if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized');
+
+    // 2. Обновляем статус
+    const result = await pool.query(`
+      UPDATE ad_requests
+      SET status = 'disputed',
+          dispute_reason = $2,
+          dispute_initiator_id = $3,
+          disputed_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `, [requestId, reason || null, userId]);
+
+    // 3. Отправляем уведомление другому участнику
+    const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
+    // Получаем название объявления
+    const adTitle = await pool.query(`
+      SELECT title FROM ads WHERE id = (SELECT ad_id FROM ad_requests WHERE id = $1)
+    `, [requestId]);
+    const title = adTitle.rows[0]?.title || 'сделка';
+    await Notification.createNotification(
+      otherUserId,
+      'dispute_opened',
+      `Открыт спор по сделке "${title}"`,
+      null,
+      requestId,
+      'request'
+    );
+
+    return result.rows[0];
+  } catch (err) {
+    throw err;
+  }
+};
+
 module.exports = {
   getAds,
   getAdById,
@@ -791,5 +842,6 @@ module.exports = {
   hideRejectedRequest,
   hideAllRejectedRequests,
   autoCancelExpiredAcceptedRequests,
-  acceptProposal
+  acceptProposal,
+  openDispute
 };
