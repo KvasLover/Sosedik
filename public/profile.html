@@ -1208,30 +1208,41 @@
           }
 
           return `
-    <tr>
-      <td><strong>${escapeHtml(req.title)}</strong></td>
-      <td>${escapeHtml(req.other_party_name)}</td>
-      <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
-      <td>${new Date(req.created_at).toLocaleDateString()}</td>
-      <td class="action-buttons">
-  ${req.pendingBadge}
-  ${proposalHtml}
-  ${disputeInfo}
-  ${req.status === 'disputed' ? `
-    <button onclick="resolveDispute(${req.id})" style="background: #27ae60; margin-right: 5px;">Снять спор</button>
-    <button onclick="cancelDisputedDeal(${req.id})" class="delete-btn">Отменить сделку</button>
-    <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
-  ` : `
-    ${showStartButton ? `<button onclick="openStartModal(${req.id})">Начать работу</button>` : ''}
-    ${req.status === 'accepted' ? `<button class="delete-btn" onclick="cancelAcceptedRequest(${req.id})">Отменить договорённость</button>` : ''}
-    ${req.status === 'in_progress' && !req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
-    ${req.status === 'in_progress' ? `<button onclick="openDispute(${req.id})" style="background: #f39c12; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Открыть спор</button>` : ''}
-    ${req.status === 'in_progress' && req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили</span>` : ''}
-    <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
-  `}
-</td>
-    </tr>
-  `;
+  <tr>
+    <td><strong>${escapeHtml(req.title)}</strong></td>
+    <td>${escapeHtml(req.other_party_name)}</td>
+    <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
+    <td>${new Date(req.created_at).toLocaleDateString()}</td>
+    <td class="action-buttons">
+      ${req.pendingBadge}
+      ${proposalHtml}
+      ${disputeInfo}
+      ${req.status === 'disputed' ? `
+        <button onclick="resolveDispute(${req.id})" style="background: #27ae60; margin-right: 5px;">Снять спор</button>
+        <button onclick="cancelDisputedDeal(${req.id})" class="delete-btn">Отменить сделку</button>
+        <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
+      ` : `
+        ${showStartButton ? `<button onclick="openStartModal(${req.id})">Начать работу</button>` : ''}
+        ${req.status === 'accepted' ? `<button class="delete-btn" onclick="cancelAcceptedRequest(${req.id})">Отменить договорённость</button>` : ''}
+        ${req.status === 'in_progress' && req.type !== 'rental' && !req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
+        ${req.status === 'in_progress' && req.type === 'rental' && !req.item_return_confirmed ? `
+          <div style="margin-bottom: 5px;">
+            <strong>Состояние при передаче:</strong> ${escapeHtml(req.item_condition_start || 'не указано')}
+          </div>
+<button onclick="openReturnModal(${req.id})" style="background: #f39c12;">Подтвердить возврат</button>        ` : ''}
+        ${req.status === 'in_progress' && req.type === 'rental' && req.item_return_confirmed ? `
+          <div style="margin-bottom: 5px;">
+            <strong>Состояние при передаче:</strong> ${escapeHtml(req.item_condition_start || 'не указано')}
+            <br><span style="color: green;">✔ Возврат подтверждён</span>
+          </div>
+          ${!req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
+        ` : ''}
+        ${req.status === 'in_progress' && req.type !== 'rental' && req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили</span>` : ''}
+        <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
+      `}
+    </td>
+  </tr>
+`;
         }).join('')}
       </tbody>
     </table>
@@ -1353,6 +1364,50 @@
         }
       } catch (error) {
         showResult('Ошибка: ' + error.message, false);
+      }
+    }
+
+    let currentReturnRequestId = null;
+
+    function openReturnModal(requestId) {
+      currentReturnRequestId = requestId;
+      document.getElementById('return-modal').style.display = 'flex';
+      // Очищаем предыдущие значения и ошибки
+      document.getElementById('return-condition').value = '';
+      document.getElementById('return-error').style.display = 'none';
+    }
+
+    function closeReturnModal() {
+      document.getElementById('return-modal').style.display = 'none';
+      currentReturnRequestId = null;
+    }
+
+    async function submitReturn() {
+      const conditionEnd = document.getElementById('return-condition').value.trim();
+      const errorSpan = document.getElementById('return-error');
+      if (!conditionEnd) {
+        if (errorSpan) errorSpan.style.display = 'block';
+        return;
+      }
+      if (errorSpan) errorSpan.style.display = 'none';
+
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/requests/${currentReturnRequestId}/confirm-return`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conditionEnd })
+        });
+        if (response.ok) {
+          alert('Возврат подтверждён');
+          closeReturnModal();
+          loadActiveRequests(); // обновить список активных сделок
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + data.message);
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
       }
     }
 
@@ -1825,6 +1880,24 @@
         <button type="submit">Отправить</button>
         <button type="button" onclick="closeReviewModal()">Отмена</button>
       </form>
+    </div>
+  </div>
+
+  <!-- Модальное окно для подтверждения возврата предмета (аренда) -->
+  <div id="return-modal"
+    style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background: white; padding:1.5rem; border-radius:8px; max-width:500px; width:90%;">
+      <h3>Подтверждение возврата</h3>
+      <p>Пожалуйста, опишите состояние предмета после возврата (обязательно):</p>
+      <div class="form-group">
+        <textarea id="return-condition" class="form-control" rows="3"
+          placeholder="Царапины, сколы, работоспособность..."></textarea>
+        <small id="return-error" style="color: #dc3545; display: none;">Пожалуйста, опишите состояние предмета.</small>
+      </div>
+      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <button class="btn-secondary" onclick="closeReturnModal()">Отмена</button>
+        <button class="btn-primary" onclick="submitReturn()">Подтвердить возврат</button>
+      </div>
     </div>
   </div>
 </body>

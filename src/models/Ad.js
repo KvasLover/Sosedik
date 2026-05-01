@@ -932,6 +932,10 @@ const confirmReturn = async (requestId, userId, conditionEnd = null) => {
     if (req.type !== 'rental') throw new Error('Only rental deals have return confirmation');
     if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized');
 
+    if (!conditionEnd || conditionEnd.trim() === '') {
+      throw new Error('Please describe the condition after return');
+    }
+
     const result = await pool.query(`
       UPDATE ad_requests
       SET item_return_confirmed = true,
