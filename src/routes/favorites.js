@@ -78,29 +78,26 @@ router.delete('/:itemType/:itemId', verifyToken, async (req, res) => {
 // Get user's favorites
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const itemType = req.query.itemType || req.query.type;
+    const itemType = req.query.itemType;
+    const adType = req.query.adType; // 'service' или 'rental'
     const favorites = await Favorite.getUserFavorites(req.user.id, itemType);
 
-    // Get full item data for each favorite
+    // Получить полные данные для каждого избранного
     const favoritesWithData = await Promise.all(
       favorites.map(async (fav) => {
         let item;
         if (fav.item_type === 'ad') {
           item = await Ad.getAdById(fav.item_id);
+          // Если передан adType и тип объявления не совпадает, пропускаем
+          if (adType && item && item.type !== adType) return null;
         } else {
           item = await Rental.getRentalById(fav.item_id);
         }
-
-        return {
-          ...fav,
-          item: item
-        };
+        return item ? { ...fav, item } : null;
       })
     );
 
-    // Filter out favorites with non-existent items
-    const validFavorites = favoritesWithData.filter(fav => fav.item !== null && fav.item !== undefined);
-
+    const validFavorites = favoritesWithData.filter(fav => fav !== null);
     res.json(validFavorites);
   } catch (err) {
     res.status(500).json({ message: err.message });

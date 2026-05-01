@@ -120,6 +120,16 @@
       }
     });
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>]/g, function (m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+
     // Setup photo input listener using event delegation
     function setupPhotoInputListener() {
       document.addEventListener('change', function (e) {
@@ -156,62 +166,59 @@
       if (!token) return;
 
       try {
-        // Get user info first
+        // Получаем текущего пользователя
         const userResponse = await fetch('/api/users/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         if (userResponse.ok) {
           const user = await userResponse.json();
           currentUserId = user.id;
         }
 
-        // Load rentals
-        const response = await fetch('/api/rentals', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+        // Загружаем объявления с типом 'rental'
+        const response = await fetch('/api/ads?type=rental', {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (response.ok) {
-          allRentals = await response.json();
+          allRentals = await response.json(); // сохраняем как массив объявлений аренды
           displayRentals(allRentals);
+        } else {
+          alert('Ошибка загрузки объявлений аренды');
         }
       } catch (error) {
-        alert('Ошибка загрузки аренд: ' + error.message);
+        alert('Ошибка загрузки: ' + error.message);
       }
     }
 
     // Request rental
-    function requestRental(rentalId, buttonElement) {
+    async function requestRental(adId, buttonElement) {
       const message = prompt('Введите сообщение владельцу (опционально):', '');
       if (message === null) return;
 
       const token = localStorage.getItem('sosedik_token');
-      fetch('/api/rentals/requests', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          rental_id: rentalId,
-          message: message
-        })
-      })
-        .then(response => {
-          if (response.ok) {
-            alert('Запрос аренды отправлен');
-            if (buttonElement) {
-              buttonElement.textContent = 'Запрос отправлен';
-              buttonElement.disabled = true;
-            }
-          } else {
-            alert('Ошибка отправки запроса');
+      try {
+        const response = await fetch(`/api/ads/${adId}/request`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ message })
+        });
+        if (response.ok) {
+          alert('Запрос аренды отправлен');
+          if (buttonElement) {
+            buttonElement.textContent = 'Запрос отправлен';
+            buttonElement.disabled = true;
           }
-        })
-        .catch(error => alert('Ошибка: ' + error.message));
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось отправить запрос'));
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
     }
 
     // Отобразить аренды
@@ -224,96 +231,92 @@
         return;
       }
 
-      rentals.forEach(rental => {
+      rentals.forEach(ad => {
         const rentalDiv = document.createElement('div');
         rentalDiv.className = 'rental-item';
         rentalDiv.onclick = () => {
-          window.location.href = `/rental-details.html?id=${rental.id}`;
+          window.location.href = `/rental-details.html?id=${ad.id}`;
         };
 
-        const isOwner = rental.owner_id === currentUserId;
+        const isOwner = ad.user_id === currentUserId;
 
-        // Header с фото
-        const headerDiv = document.createElement('div');
-        headerDiv.className = 'rental-header';
-        const storedPhoto = localStorage.getItem(`sosedik_rental_photo_${rental.id}`);
+        // Фото (из localStorage)
+        const storedPhoto = localStorage.getItem(`sosedik_rental_photo_${ad.id}`);
         if (storedPhoto) {
-          const photoImg = document.createElement('img');
-          photoImg.src = storedPhoto;
-          photoImg.className = 'rental-photo';
-          headerDiv.appendChild(photoImg);
+          const img = document.createElement('img');
+          img.src = storedPhoto;
+          img.className = 'rental-photo';
+          rentalDiv.appendChild(img);
         }
 
-        // Title section с названием и бейджем
+        // Заголовок и бейдж
         const titleDiv = document.createElement('div');
         titleDiv.className = 'rental-title-section';
         const titleH3 = document.createElement('h3');
-        titleH3.textContent = rental.item_name;
+        titleH3.textContent = ad.item_name || ad.title; // item_name приоритет
         titleDiv.appendChild(titleH3);
         if (isOwner) {
-          const ownerBadge = document.createElement('span');
-          ownerBadge.className = 'owner-badge';
-          ownerBadge.textContent = 'Ваше объявление';
-          titleDiv.appendChild(ownerBadge);
+          const badge = document.createElement('span');
+          badge.className = 'owner-badge';
+          badge.textContent = 'Ваше объявление';
+          titleDiv.appendChild(badge);
         }
-        headerDiv.appendChild(titleDiv);
+        rentalDiv.appendChild(titleDiv);
 
-        // Content с информацией
+        // Информация
         const contentDiv = document.createElement('div');
         contentDiv.className = 'rental-content';
         contentDiv.innerHTML = `
-          <p><strong>Категория:</strong> ${rental.category}</p>
-          <p><strong>Ценность:</strong> ${getValueLabel(rental.value_category)}</p>
-          ${rental.rental_terms ? `<p><strong>Условия:</strong> ${rental.rental_terms.substring(0, 100)}${rental.rental_terms.length > 100 ? '...' : ''}</p>` : ''}
-          <p><small>Добавлено: ${new Date(rental.created_at).toLocaleDateString()}</small></p>
-        `;
+      <p><strong>Категория:</strong> ${escapeHtml(ad.category)}</p>
+      <p><strong>Цена / залог:</strong> ${ad.price ? ad.price + ' руб.' : '—'} ${ad.deposit ? `(залог: ${ad.deposit} руб.)` : ''}</p>
+      ${ad.condition_description ? `<p><strong>Состояние:</strong> ${escapeHtml(ad.condition_description)}</p>` : ''}
+      ${ad.description ? `<p><strong>Описание:</strong> ${escapeHtml(ad.description.substring(0, 100))}${ad.description.length > 100 ? '...' : ''}</p>` : ''}
+      <p><small>Добавлено: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
+    `;
+        rentalDiv.appendChild(contentDiv);
 
-        // Footer с кнопками
+        // Кнопки
         const footerDiv = document.createElement('div');
         footerDiv.className = 'rental-footer';
 
-        // Кнопка удаления для владельца
         if (isOwner) {
           const deleteBtn = document.createElement('button');
           deleteBtn.className = 'btn-sm btn-danger';
           deleteBtn.textContent = 'Удалить';
           deleteBtn.onclick = (e) => {
             e.stopPropagation();
-            deleteRental(rental.id);
+            deleteRental(ad.id);
           };
           footerDiv.appendChild(deleteBtn);
         } else {
-          // Кнопка избранного для других пользователей
+          // Избранное
           const favBtn = document.createElement('button');
           favBtn.className = 'favorite-btn';
           favBtn.textContent = '♡';
           favBtn.onclick = (e) => {
             e.stopPropagation();
-            toggleFavorite('rental', rental.id, favBtn);
+            toggleFavorite('ad', ad.id, favBtn);
           };
           footerDiv.appendChild(favBtn);
-
-          // Проверить статус избранного и обновить кнопку
-          checkFavoriteStatus('rental', rental.id).then(isFavorite => {
+          checkFavoriteStatus('ad', ad.id).then(isFavorite => {
             if (isFavorite) {
               favBtn.classList.add('active');
               favBtn.textContent = '♥';
             }
           });
 
+          // Кнопка "Запросить аренду"
           const requestBtn = document.createElement('button');
+          checkIfAlreadyRequested(ad.id, requestBtn);
           requestBtn.className = 'btn-primary btn-sm';
           requestBtn.textContent = 'Запросить аренду';
           requestBtn.onclick = (e) => {
             e.stopPropagation();
-            requestRental(rental.id, requestBtn);
+            requestRental(ad.id, requestBtn);
           };
           footerDiv.appendChild(requestBtn);
         }
 
-        // Собрать карточку
-        rentalDiv.appendChild(headerDiv);
-        rentalDiv.appendChild(contentDiv);
         rentalDiv.appendChild(footerDiv);
         rentalsList.appendChild(rentalDiv);
       });
@@ -330,20 +333,14 @@
     }
 
     // Delete rental
-    async function deleteRental(rentalId) {
-      if (!confirm('Вы уверены, что хотите удалить это объявление об аренде?')) {
-        return;
-      }
-
+    async function deleteRental(adId) {
+      if (!confirm('Вы уверены, что хотите удалить это объявление об аренде?')) return;
       const token = localStorage.getItem('sosedik_token');
       try {
-        const response = await fetch(`/api/rentals/${rentalId}`, {
+        const response = await fetch(`/api/ads/${adId}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-
         if (response.ok) {
           alert('Объявление удалено');
           loadRentals();
@@ -361,8 +358,9 @@
       const token = localStorage.getItem('sosedik_token');
       const itemName = document.getElementById('rental-item-name').value;
       const category = document.getElementById('rental-category').value;
-      const rentalTerms = document.getElementById('rental-terms').value;
-      const valueCategory = document.getElementById('rental-value').value;
+      const rentalTerms = document.getElementById('rental-terms').value; // это будет использовано как terms
+      const valueCategory = document.getElementById('rental-value').value; // не используется в ads, можно сохранить в отдельное поле или игнорировать
+      const deposit = prompt('Залог (руб):', '') || null;
 
       if (!itemName || !category) {
         alert('Заполните название вещи и категорию');
@@ -370,39 +368,34 @@
       }
 
       try {
-        const response = await fetch('/api/rentals', {
+        const response = await fetch('/api/ads', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            itemName,
-            category,
-            rentalTerms,
-            valueCategory
+            type: 'rental',
+            category: category,
+            title: itemName,          // заголовок = название предмета
+            description: rentalTerms, // описание = условия аренды
+            price: null,              // цена может быть отдельно, но пока не требуем
+            contact: null,
+            preferredTime: null,
+            terms: null,
+            itemName: itemName,
+            itemDescription: null,
+            deposit: deposit ? Number(deposit) : null,
+            conditionDescription: null
           })
         });
-
         const data = await response.json();
-
         if (response.ok) {
-          // Save photo to localStorage if provided
           if (currentPhotoData) {
-            localStorage.setItem(`sosedik_rental_photo_${data.rental.id}`, currentPhotoData);
+            localStorage.setItem(`sosedik_rental_photo_${data.ad.id}`, currentPhotoData);
           }
-
           alert('Объявление создано!');
           toggleCreateForm();
-          // Clear form
-          document.getElementById('rental-item-name').value = '';
-          document.getElementById('rental-category').value = '';
-          document.getElementById('rental-terms').value = '';
-          document.getElementById('rental-value').value = '';
-          currentPhotoData = null;
-          document.getElementById('rental-photo').value = '';
-          document.getElementById('photo-preview').innerHTML = '';
-          // Reload rentals
           loadRentals();
         } else {
           alert('Ошибка: ' + data.message);
@@ -427,7 +420,7 @@
       }
 
       if (onlyMyRentals) {
-        filteredRentals = filteredRentals.filter(rental => rental.owner_id === currentUserId);
+        filteredRentals = filteredRentals.filter(rental => rental.user_id === currentUserId);
       }
 
       displayRentals(filteredRentals);
@@ -498,6 +491,25 @@
       }
     }
 
+    async function checkIfAlreadyRequested(adId, buttonElement) {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch('/api/ads/requests/outgoing', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const requests = await response.json();
+          const exists = requests.some(req => req.ad_id === adId && ['pending', 'accepted', 'in_progress'].includes(req.status));
+          if (exists) {
+            buttonElement.textContent = 'Запрос отправлен';
+            buttonElement.disabled = true;
+            buttonElement.style.opacity = '0.6';
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
   </script>
 </body>
 

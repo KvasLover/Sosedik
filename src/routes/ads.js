@@ -52,7 +52,10 @@ router.get('/:id', async (req, res) => {
 // Create ad (level 1+)
 router.post('/', verifyToken, checkLevel(1), async (req, res) => {
   try {
-    const { category, title, description, price, contact, preferredTime, terms } = req.body;
+    const {
+      category, title, description, price, contact, preferredTime, terms,
+      type, itemName, itemDescription, deposit, conditionDescription
+    } = req.body;
 
     if (!category || !title || !description) {
       return res.status(400).json({ message: 'Category, title, description required' });
@@ -66,7 +69,12 @@ router.post('/', verifyToken, checkLevel(1), async (req, res) => {
       price || null,
       contact || null,
       preferredTime || null,
-      terms || null
+      terms || null,
+      type || 'service',
+      itemName || null,
+      itemDescription || null,
+      deposit ? Number(deposit) : null,
+      conditionDescription || null
     );
 
     res.status(201).json({ message: 'Ad created', ad: newAd });
@@ -291,13 +299,14 @@ router.post('/requests/:requestId/decline', verifyToken, async (req, res) => {
 // Начать выполнение запроса (accepted → in_progress)
 router.post('/requests/:requestId/start', verifyToken, async (req, res) => {
   try {
-    const { agreedPrice, agreedTime, agreementComment } = req.body;
+    const { agreedPrice, agreedTime, agreementComment, itemConditionStart } = req.body;
     const startedRequest = await Ad.startAdRequest(
       req.params.requestId,
       req.user.id,
       agreedPrice,
       agreedTime,
-      agreementComment
+      agreementComment,
+      itemConditionStart
     );
     res.json({ message: 'Request started', request: startedRequest });
   } catch (err) {
@@ -311,12 +320,15 @@ router.post('/requests/:requestId/start', verifyToken, async (req, res) => {
 // Принять предложение условий
 router.post('/requests/:requestId/accept-proposal', verifyToken, async (req, res) => {
   try {
-    const result = await Ad.acceptProposal(req.params.requestId, req.user.id);
+    const { itemConditionStart } = req.body;
+    const result = await Ad.acceptProposal(req.params.requestId, req.user.id, itemConditionStart);
     res.json({ message: 'Proposal accepted, deal started', result });
   } catch (err) {
     if (err.message.includes('Not authorized')) return res.status(403).json({ message: err.message });
     if (err.message.includes('not found')) return res.status(404).json({ message: err.message });
-    if (err.message.includes('Can only accept')) return res.status(400).json({ message: err.message });
+    if (err.message.includes('Can only accept') || err.message.includes('please provide item condition')) {
+      return res.status(400).json({ message: err.message });
+    }
     res.status(500).json({ message: err.message });
   }
 });
@@ -447,6 +459,18 @@ router.post('/requests/:requestId/resolve-dispute', verifyToken, async (req, res
     res.json({ message: 'Dispute resolved', request: updated });
   } catch (err) {
     if (err.message.includes('Cannot resolve dispute')) return res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Подтвердить возврат предмета (для аренды)
+router.post('/requests/:requestId/confirm-return', verifyToken, async (req, res) => {
+  try {
+    const { conditionEnd } = req.body;
+    const updated = await Ad.confirmReturn(req.params.requestId, req.user.id, conditionEnd);
+    res.json({ message: 'Return confirmed', request: updated });
+  } catch (err) {
+    if (err.message.includes('Cannot confirm return')) return res.status(400).json({ message: err.message });
     res.status(500).json({ message: err.message });
   }
 });

@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Детали аренды - Соседик</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
+
 <body>
   <!-- Header -->
   <div id="header-root"></div>
@@ -14,10 +16,10 @@
   <main>
     <div id="rental-details" style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
       <button onclick="history.back()" class="btn-ghost" style="margin-bottom: 20px;">← Назад</button>
-      
+
       <div id="rental-content" class="detail-card">
         <h1 id="rental-title" class="detail-title">Загрузка...</h1>
-        
+
         <div class="detail-meta">
           <span class="meta-badge" id="rental-category">Категория</span>
           <span class="meta-separator">•</span>
@@ -84,10 +86,10 @@
     // Load rental details
     async function loadRentalDetails() {
       const urlParams = new URLSearchParams(window.location.search);
-      const rentalId = urlParams.get('id');
+      const adId = urlParams.get('id');
 
-      if (!rentalId) {
-        document.getElementById('rental-content').innerHTML = '<p>Ошибка: ID аренды не указан</p>';
+      if (!adId) {
+        document.getElementById('rental-content').innerHTML = '<p>Ошибка: ID объявления не указан</p>';
         return;
       }
 
@@ -99,29 +101,25 @@
       }
 
       try {
-        // Get user info
+        // Получаем текущего пользователя
         const userResponse = await fetch('/api/users/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         if (userResponse.ok) {
           const user = await userResponse.json();
           currentUserId = user.id;
         }
 
-        // Get rental details
-        const rentalResponse = await fetch(`/api/rentals/${rentalId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+        // Загружаем объявление
+        const response = await fetch(`/api/ads/${adId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (rentalResponse.ok) {
-          currentRental = await rentalResponse.json();
+        if (response.ok) {
+          currentRental = await response.json();
           displayRentalDetails(currentRental);
         } else {
-          document.getElementById('rental-content').innerHTML = '<p>Аренда не найдена</p>';
+          document.getElementById('rental-content').innerHTML = '<p>Объявление не найдено</p>';
         }
       } catch (error) {
         document.getElementById('rental-content').innerHTML = '<p>Ошибка загрузки: ' + error.message + '</p>';
@@ -129,23 +127,25 @@
     }
 
     // Display rental details
-    function displayRentalDetails(rental) {
-      const isOwner = currentUserId === rental.owner_id;
-      
-      document.getElementById('rental-title').textContent = rental.item_name;
-      document.getElementById('rental-category').textContent = rental.category;
-      document.getElementById('rental-value').textContent = getValueLabel(rental.value_category);
-      document.getElementById('rental-owner').textContent = 'Загрузка...';
-      document.getElementById('rental-created').textContent = new Date(rental.created_at).toLocaleDateString();
+    function displayRentalDetails(ad) {
+      const isOwner = currentUserId === ad.user_id;
 
-      if (rental.rental_terms) {
+      document.getElementById('rental-title').textContent = ad.item_name || ad.title;
+      document.getElementById('rental-category').textContent = ad.category;
+      document.getElementById('rental-value').textContent = ad.deposit ? `${ad.deposit} руб.` : 'Не указан';
+      document.getElementById('rental-owner').textContent = 'Загрузка...';
+      document.getElementById('rental-created').textContent = new Date(ad.created_at).toLocaleDateString();
+
+      // Условия аренды (используем terms или description)
+      const terms = ad.terms || ad.description;
+      if (terms) {
         document.getElementById('rental-terms-section').style.display = 'block';
-        document.getElementById('rental-terms').textContent = rental.rental_terms;
+        document.getElementById('rental-terms').textContent = terms;
       }
 
-      // Display photos from localStorage
+      // Фото (из localStorage)
       const photosDiv = document.getElementById('rental-photos');
-      const storedPhoto = localStorage.getItem(`sosedik_rental_photo_${rental.id}`);
+      const storedPhoto = localStorage.getItem(`sosedik_rental_photo_${ad.id}`);
       if (storedPhoto) {
         const photoImg = document.createElement('img');
         photoImg.src = storedPhoto;
@@ -153,27 +153,26 @@
         photosDiv.appendChild(photoImg);
       }
 
-      // Load owner info
-      loadOwnerInfo(rental.owner_id);
+      // Загрузка информации о владельце
+      loadOwnerInfo(ad.user_id, ad.contact);
 
-      // Display actions
-      displayRentalActions(rental, isOwner);
+      // Кнопки действий
+      displayRentalActions(ad, isOwner);
     }
 
     // Load owner information
-    async function loadOwnerInfo(ownerId) {
+    async function loadOwnerInfo(ownerId, contactFromAd = null) {
       try {
         const token = localStorage.getItem('sosedik_token');
         const response = await fetch(`/api/users/${ownerId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-
         if (response.ok) {
           const owner = await response.json();
-          document.getElementById('rental-owner').textContent = owner.name || 'Соседик без имени';
-          document.getElementById('rental-contact').textContent = owner.phone || 'Не указан';
+          document.getElementById('rental-owner').textContent = owner.name || 'Пользователь';
+          document.getElementById('rental-contact').textContent = contactFromAd || owner.phone || 'Не указан';
+        } else {
+          document.getElementById('rental-owner').textContent = 'Ошибка загрузки';
         }
       } catch (error) {
         document.getElementById('rental-owner').textContent = 'Ошибка загрузки';
@@ -181,68 +180,65 @@
     }
 
     // Display rental actions
-    function displayRentalActions(rental, isOwner) {
+    function displayRentalActions(ad, isOwner) {
       const actionsDiv = document.getElementById('rental-actions');
       actionsDiv.innerHTML = '';
 
       if (isOwner) {
-        // Owner actions
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'btn-danger';
         deleteBtn.textContent = 'Удалить объявление об аренде';
         deleteBtn.onclick = () => {
-          if (confirm('Вы уверены, что хотите удалить это объявление об аренде?')) {
-            deleteRentalFromDetails(rental.id);
+          if (confirm('Вы уверены, что хотите удалить это объявление?')) {
+            deleteRentalFromDetails(ad.id);
           }
         };
         actionsDiv.appendChild(deleteBtn);
       } else {
-        // Other user actions
         // Кнопка "В избранное"
         const favoriteBtn = document.createElement('button');
         favoriteBtn.id = 'favorite-btn';
         favoriteBtn.className = 'btn-secondary';
         favoriteBtn.textContent = '♡ В избранное';
-        favoriteBtn.onclick = () => toggleFavorite('rental', rental.id, favoriteBtn);
+        favoriteBtn.onclick = () => toggleFavorite('ad', ad.id, favoriteBtn);
         actionsDiv.appendChild(favoriteBtn);
 
-        // Проверить статус избранного
-        checkFavoriteStatus('rental', rental.id).then(isFavorite => {
+        checkFavoriteStatus('ad', ad.id).then(isFavorite => {
           if (isFavorite) {
             favoriteBtn.classList.add('active');
             favoriteBtn.textContent = '♥ В избранном';
           }
         });
 
+        // Кнопка "Запросить аренду"
         const requestBtn = document.createElement('button');
+        checkIfAlreadyRequested(ad.id, requestBtn);
         requestBtn.className = 'btn-primary';
         requestBtn.textContent = 'Запросить аренду';
-        requestBtn.onclick = () => requestRental(rental.id, requestBtn);
+        requestBtn.onclick = () => requestRental(ad.id, requestBtn);
         actionsDiv.appendChild(requestBtn);
 
+        // Кнопка "Связаться с владельцем"
         const contactBtn = document.createElement('button');
         contactBtn.className = 'btn-success';
         contactBtn.textContent = 'Связаться с владельцем';
         contactBtn.onclick = () => {
-          window.location.href = `/chat.html?partnerId=${rental.owner_id}`;
+          window.location.href = `/chat.html?with=${ad.user_id}`;
         };
         actionsDiv.appendChild(contactBtn);
       }
     }
 
     // Delete rental
-    async function deleteRentalFromDetails(rentalId) {
+    async function deleteRentalFromDetails(adId) {
       const token = localStorage.getItem('sosedik_token');
       try {
-        const response = await fetch(`/api/rentals/${rentalId}`, {
+        const response = await fetch(`/api/ads/${adId}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-
         if (response.ok) {
-          alert('Объявление об аренде удалено');
+          alert('Объявление удалено');
           window.location.href = '/rentals.html';
         } else {
           const data = await response.json();
@@ -254,23 +250,19 @@
     }
 
     // Request rental
-    function requestRental(rentalId, buttonElement) {
+    async function requestRental(adId, buttonElement) {
       const message = prompt('Введите сообщение владельцу (опционально):', '');
       if (message === null) return;
-
       const token = localStorage.getItem('sosedik_token');
-      fetch('/api/rentals/requests', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          rental_id: rentalId,
-          message: message
-        })
-      })
-      .then(response => {
+      try {
+        const response = await fetch(`/api/ads/${adId}/request`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ message })
+        });
         if (response.ok) {
           alert('Запрос аренды отправлен');
           if (buttonElement) {
@@ -278,10 +270,12 @@
             buttonElement.disabled = true;
           }
         } else {
-          alert('Ошибка отправки запроса');
+          const data = await response.json();
+          alert('Ошибка: ' + (data.message || 'Не удалось отправить запрос'));
         }
-      })
-      .catch(error => alert('Ошибка: ' + error.message));
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
     }
 
     // Get value label
@@ -305,12 +299,12 @@
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           return data.isFavorite;
         }
-        
+
         return false;
       } catch (error) {
         console.error('Error checking favorite status:', error);
@@ -366,10 +360,31 @@
       }
     }
 
+    async function checkIfAlreadyRequested(adId, buttonElement) {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch('/api/ads/requests/outgoing', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const requests = await response.json();
+          const exists = requests.some(req => req.ad_id === adId && ['pending', 'accepted', 'in_progress'].includes(req.status));
+          if (exists) {
+            buttonElement.textContent = 'Запрос отправлен';
+            buttonElement.disabled = true;
+            buttonElement.style.opacity = '0.6';
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       loadRentalDetails();
     });
   </script>
 </body>
+
 </html>

@@ -583,8 +583,10 @@
             <h2>Избранное</h2>
             <div style="margin-bottom: 10px; text-align: center;">
               <button onclick="loadFavorites()" class="filter-btn active" id="filter-all">Все</button>
-              <button onclick="loadFavorites('ad')" class="filter-btn" id="filter-ads">Только объявления</button>
-              <button onclick="loadFavorites('rental')" class="filter-btn" id="filter-rentals">Только аренда</button>
+              <button onclick="loadFavorites('ad', 'service')" class="filter-btn" id="filter-ads">Только
+                объявления</button>
+              <button onclick="loadFavorites('ad', 'rental')" class="filter-btn" id="filter-rentals">Только
+                аренда</button>
             </div>
             <div style="margin-bottom: 20px; text-align: center;">
               <button onclick="clearFavorites()" class="filter-btn" id="clear-all"
@@ -666,6 +668,7 @@
   <script src="js/app.js"></script>
   <script>
     let currentUserId = null;
+    let currentFavoriteFilter = { itemType: '', adType: '' };
     let currentStartRequestId = null;
 
     function getUrlParameter(name) {
@@ -1242,7 +1245,6 @@
     // ---- Модальное окно для старта сделки ----
     async function openStartModal(requestId) {
       currentStartRequestId = requestId;
-      // Загружаем данные объявления для предзаполнения
       const token = localStorage.getItem('sosedik_token');
       try {
         const activeResp = await fetch('/api/ads/requests/active', {
@@ -1255,6 +1257,11 @@
             document.getElementById('modal-agreed-price').value = deal.ad_price || '';
             document.getElementById('modal-agreed-time').value = deal.ad_preferred_time || '';
             document.getElementById('modal-agreement-comment').value = deal.ad_terms || '';
+            const isRental = (deal.type === 'rental');
+            const conditionGroup = document.getElementById('item-condition-group');
+            if (conditionGroup) {
+              conditionGroup.style.display = isRental ? 'block' : 'none';
+            }
           }
         }
       } catch (e) { console.warn(e); }
@@ -1268,12 +1275,29 @@
 
     async function submitStartWork() {
       if (!currentStartRequestId) return;
+
+      // Проверка обязательного поля для аренды
+      const conditionGroup = document.getElementById('item-condition-group');
+      if (conditionGroup && conditionGroup.style.display === 'block') {
+        const itemCondition = document.getElementById('modal-item-condition').value.trim();
+        const errorSpan = document.getElementById('item-condition-error');
+        if (!itemCondition) {
+          if (errorSpan) errorSpan.style.display = 'block';
+          return;
+        } else if (errorSpan) {
+          errorSpan.style.display = 'none';
+        }
+      }
+
       const startBtn = document.querySelector('#start-work-modal button[onclick="submitStartWork()"]');
       if (startBtn) startBtn.disabled = true;
+
       const agreedPrice = document.getElementById('modal-agreed-price').value;
       const agreedTime = document.getElementById('modal-agreed-time').value;
       const agreementComment = document.getElementById('modal-agreement-comment').value;
+      const itemConditionStart = document.getElementById('modal-item-condition')?.value || null;
       const token = localStorage.getItem('sosedik_token');
+
       try {
         const response = await fetch(`/api/ads/requests/${currentStartRequestId}/start`, {
           method: 'POST',
@@ -1281,7 +1305,8 @@
           body: JSON.stringify({
             agreedPrice: agreedPrice ? Number(agreedPrice) : null,
             agreedTime: agreedTime || null,
-            agreementComment: agreementComment || null
+            agreementComment: agreementComment || null,
+            itemConditionStart: itemConditionStart
           })
         });
         if (response.ok) {
@@ -1291,7 +1316,6 @@
           loadDashboard();
         } else {
           const data = await response.json();
-          // Если ошибка "Can only start accepted requests", но статус уже изменился, просто игнорируем
           if (data.message === 'Can only start accepted requests') {
             console.warn('Запрос уже запущен, игнорируем ошибку');
             closeStartModal();
@@ -1386,15 +1410,19 @@
     }
 
     // ---- Избранное ----
-    async function loadFavorites(type = '') {
+    async function loadFavorites(itemType = '', adType = '') {
       const token = localStorage.getItem('sosedik_token');
+      currentFavoriteFilter = { itemType, adType };
       try {
         let url = '/api/favorites';
-        if (type) url += `?itemType=${type}`;
+        const params = new URLSearchParams();
+        if (itemType) params.append('itemType', itemType);
+        if (adType) params.append('adType', adType);
+        if (params.toString()) url += '?' + params.toString();
+
         const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
         if (!response.ok) throw new Error();
         let favorites = await response.json();
-        // Приводим к единому виду
         favorites = favorites.map(fav => ({
           id: fav.id,
           item_type: fav.item_type,
@@ -1402,30 +1430,52 @@
           title: fav.item?.title || fav.item?.item_name || 'Без названия',
           created_at: fav.created_at
         }));
+
+        // Обновление активных кнопок ПЕРЕД проверкой на пустоту
+        document.querySelectorAll('#favorites-tab .filter-btn').forEach(btn => btn.classList.remove('active'));
+        if (adType === 'service') {
+          const btn = document.getElementById('filter-ads');
+          if (btn) btn.classList.add('active');
+        } else if (adType === 'rental') {
+          const btn = document.getElementById('filter-rentals');
+          if (btn) btn.classList.add('active');
+        } else if (!adType && !itemType) {
+          const btn = document.getElementById('filter-all');
+          if (btn) btn.classList.add('active');
+        }
+
         const listDiv = document.getElementById('favorites-list');
         if (!favorites.length) {
           listDiv.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">Нет избранного</p>';
           return;
         }
+
         listDiv.innerHTML = `
-          <div class="profile-table-wrapper">
-            <table class="profile-table">
-              <thead><tr><th>Название</th><th>Тип</th><th>Добавлено</th><th>Действия</th></tr></thead>
-              <tbody>
-                ${favorites.map(fav => `
-                  <tr>
-                    <td><strong>${escapeHtml(fav.title)}</strong></td>
-                    <td><span class="status-badge accepted">${fav.item_type === 'ad' ? 'Объявление' : 'Аренда'}</span></td>
-                    <td>${new Date(fav.created_at).toLocaleDateString()}</td>
-                    <td class="action-buttons">
-                      <button class="delete-btn" onclick="removeFavorite('${fav.item_type}', ${fav.item_id})">Удалить</button>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        `;
+      <div class="profile-table-wrapper">
+        <table class="profile-table">
+          <thead>
+            <tr>
+              <th>Название</th>
+              <th>Тип</th>
+              <th>Добавлено</th>
+              <th style="width: 100px;">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${favorites.map(fav => `
+              <tr>
+                <td><strong>${escapeHtml(fav.title)}</strong></td>
+                <td><span class="status-badge accepted">${fav.item_type === 'ad' ? (adType === 'rental' ? 'Аренда' : 'Объявление') : 'Аренда (старая)'}</span></td>
+                <td>${new Date(fav.created_at).toLocaleDateString()}</td>
+                <td class="action-buttons">
+                  <button class="delete-btn" onclick="removeFavorite('${fav.item_type}', ${fav.item_id})">Удалить</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
       } catch (error) {
         console.error(error);
       }
@@ -1579,7 +1629,7 @@
         } else if (tabId === 'myads-tab') {
           loadMyAds();
         } else if (tabId === 'favorites-tab') {
-          loadFavorites();
+          loadFavorites(currentFavoriteFilter.itemType, currentFavoriteFilter.adType);
         }
       }, 3000); // 3 секунды
     }
@@ -1736,16 +1786,24 @@
     <div style="background: white; padding:1.5rem; border-radius:8px; max-width:500px; width:90%;">
       <h3>Уточните условия сделки</h3>
       <div class="form-group">
-        <label>Цена (руб):</label>
+        <label>Цена (руб): <span style="font-weight: normal; color: #6c757d;">(необязательно)</span></label>
         <input type="number" id="modal-agreed-price" class="form-control">
       </div>
       <div class="form-group">
-        <label>Время/дата:</label>
+        <label>Время/дата: <span style="font-weight: normal; color: #6c757d;">(необязательно)</span></label>
         <input type="text" id="modal-agreed-time" class="form-control" placeholder="Например: завтра в 15:00">
       </div>
       <div class="form-group">
-        <label>Комментарий / условия:</label>
+        <label>Комментарий / условия: <span style="font-weight: normal; color: #6c757d;">(необязательно)</span></label>
         <textarea id="modal-agreement-comment" class="form-control" rows="3"></textarea>
+      </div>
+      <div class="form-group" id="item-condition-group" style="display: none;">
+        <label for="modal-item-condition">Состояние предмета при передаче: <span style="color: #dc3545;">*</span> <span
+            style="font-weight: normal; color: #6c757d;">(обязательно)</span></label>
+        <textarea id="modal-item-condition" class="form-control" rows="2"
+          placeholder="Царапины, сколы, работоспособность..."></textarea>
+        <small id="item-condition-error" style="color: #dc3545; display: none;">Пожалуйста, опишите состояние
+          предмета.</small>
       </div>
       <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
         <button class="btn-secondary" onclick="closeStartModal()">Отмена</button>
