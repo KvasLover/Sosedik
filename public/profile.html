@@ -1321,19 +1321,13 @@
           })
         });
         if (response.ok) {
-          showResult('Работа начата!', true);
+          showResult('Предложение отправлено. Ожидайте подтверждения.', true);
           closeStartModal();
           loadActiveRequests();
           loadDashboard();
         } else {
           const data = await response.json();
-          if (data.message === 'Can only start accepted requests') {
-            console.warn('Запрос уже запущен, игнорируем ошибку');
-            closeStartModal();
-            loadActiveRequests();
-          } else {
-            showResult('Ошибка: ' + (data.message || 'Не удалось начать'), false);
-          }
+          showResult('Ошибка: ' + (data.message || 'Не удалось отправить предложение'), false);
         }
       } catch (error) {
         showResult('Ошибка: ' + error.message, false);

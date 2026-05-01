@@ -320,8 +320,7 @@ router.post('/requests/:requestId/start', verifyToken, async (req, res) => {
 // Принять предложение условий
 router.post('/requests/:requestId/accept-proposal', verifyToken, async (req, res) => {
   try {
-    const { itemConditionStart } = req.body;
-    const result = await Ad.acceptProposal(req.params.requestId, req.user.id, itemConditionStart);
+    const result = await Ad.acceptProposal(req.params.requestId, req.user.id);
     res.json({ message: 'Proposal accepted, deal started', result });
   } catch (err) {
     if (err.message.includes('Not authorized')) return res.status(403).json({ message: err.message });

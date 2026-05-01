@@ -305,59 +305,62 @@ const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime 
     if (req.current_status !== 'accepted') throw new Error('Can only start accepted requests');
     if (req.ad_owner_id !== userId && req.requester_id !== userId) throw new Error('Not authorized');
 
-    // Проверка на обязательность состояния для аренды
-    if (req.type === 'rental' && !itemConditionStart) {
+    // Определяем, является ли вызов сбросом предложения (отклонение)
+    const isClearProposal = (agreedPrice === null || agreedPrice === undefined) &&
+      (agreedTime === null || agreedTime === undefined) &&
+      (agreementComment === null || agreementComment === undefined) &&
+      (itemConditionStart === null || itemConditionStart === undefined);
+
+    // Проверка обязательности поля состояния для аренды ТОЛЬКО если это не сброс
+    if (!isClearProposal && req.type === 'rental' && !itemConditionStart) {
       throw new Error('For rental, item condition at transfer is required');
     }
 
-    // Определяем значения для agreed_*
-    let newAgreedPrice = (agreedPrice !== null && agreedPrice !== undefined) ? agreedPrice : req.ad_price;
-    let newAgreedTime = (agreedTime !== null && agreedTime !== undefined) ? agreedTime : req.ad_time;
-    let newAgreedComment = (agreementComment !== null && agreementComment !== undefined) ? agreementComment : req.ad_terms;
-
-    const result = await pool.query(`
-      UPDATE ad_requests
-      SET status = 'in_progress',
-          updated_at = CURRENT_TIMESTAMP,
-          agreed_price = COALESCE(agreed_price, $2),
-          agreed_time = COALESCE(agreed_time, $3),
-          agreement_comment = COALESCE(agreement_comment, $4),
-          item_condition_start = COALESCE(item_condition_start, $5)
-      WHERE id = $1 AND status = 'accepted'
-      RETURNING *
-    `, [requestId, newAgreedPrice, newAgreedTime, newAgreedComment, itemConditionStart]);
-
-    if (result.rows.length === 0) {
-      throw new Error('Request already started or invalid state');
-    }
-
-    // Обновляем объявление
-    await pool.query(`
-      UPDATE ads
-      SET acceptance_status = 'in_progress'
-      WHERE id = $1
-    `, [req.ad_id]);
-
-    // Уведомление другой стороне
-    const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
-    await Notification.createNotification(
-      otherUserId,
-      'request_started',
-      `Сделка по объявлению "${req.title}" начата`,
-      null,
-      requestId,
-      'request'
-    );
-
-    // Системное сообщение для аренды
-    if (req.type === 'rental' && itemConditionStart) {
+    if (isClearProposal) {
+      // Сброс предложения (отклонение)
       await pool.query(`
-        INSERT INTO request_messages (request_id, sender_id, text)
-        VALUES ($1, $2, $3)
-      `, [requestId, userId, `Зафиксировано состояние предмета при передаче: ${itemConditionStart}`]);
+        UPDATE ad_requests
+        SET proposed_price = NULL,
+            proposed_time = NULL,
+            proposed_comment = NULL,
+            proposed_condition = NULL,
+            proposed_by = NULL,
+            proposal_created_at = NULL,
+            updated_at = NOW()
+        WHERE id = $1
+      `, [requestId]);
+      // Уведомление об отклонении (опционально)
+      // ... (можете добавить уведомление, если нужно)
+    } else {
+      // Сохраняем предложение
+      await pool.query(`
+        UPDATE ad_requests
+        SET proposed_price = $2,
+            proposed_time = $3,
+            proposed_comment = $4,
+            proposed_condition = $5,
+            proposed_by = $6,
+            proposal_created_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+      `, [requestId, agreedPrice, agreedTime, agreementComment, itemConditionStart, userId]);
+
+      const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
+      let proposalText = `Пользователь предложил условия: цена ${agreedPrice || 'не указана'}, время ${agreedTime || 'не указано'}, комментарий: ${agreementComment || 'нет'}`;
+      if (req.type === 'rental' && itemConditionStart) {
+        proposalText += `, состояние при передаче: ${itemConditionStart}`;
+      }
+      await Notification.createNotification(
+        otherUserId,
+        'request_proposal_created',
+        proposalText,
+        null,
+        requestId,
+        'request'
+      );
     }
 
-    return result.rows[0];
+    return { status: isClearProposal ? 'proposal_cleared' : 'proposal_created', requestId };
   } catch (err) {
     throw err;
   }
@@ -750,11 +753,12 @@ WHERE ar.status = 'accepted'
   }
 };
 
-const acceptProposal = async (requestId, userId, itemConditionStart = null) => {
+const acceptProposal = async (requestId, userId) => {
   try {
     const request = await pool.query(`
       SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status,
              ar.proposed_price, ar.proposed_time, ar.proposed_comment, ar.proposed_by,
+             ar.proposed_condition,
              ads.title, ads.type
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
@@ -769,26 +773,27 @@ const acceptProposal = async (requestId, userId, itemConditionStart = null) => {
     if (req.proposed_by === userId) throw new Error('You cannot accept your own proposal');
     if (!req.proposed_price && !req.proposed_time && !req.proposed_comment) throw new Error('No active proposal');
 
-    // Для аренды обязательно состояние при передаче
-    if (req.type === 'rental' && !itemConditionStart) {
-      throw new Error('For rental, please provide item condition at transfer');
+    if (req.type === 'rental' && !req.proposed_condition) {
+      throw new Error('For rental, item condition at transfer is required in proposal');
     }
 
-    await pool.query(`
+    const result = await pool.query(`
       UPDATE ad_requests
       SET status = 'in_progress',
           agreed_price = proposed_price,
           agreed_time = proposed_time,
           agreement_comment = proposed_comment,
+          item_condition_start = proposed_condition,
           proposed_price = NULL,
           proposed_time = NULL,
           proposed_comment = NULL,
+          proposed_condition = NULL,
           proposed_by = NULL,
           proposal_created_at = NULL,
-          updated_at = NOW(),
-          item_condition_start = $2
+          updated_at = NOW()
       WHERE id = $1 AND status = 'accepted'
-    `, [requestId, itemConditionStart]);
+      RETURNING *
+    `, [requestId]);
 
     await Notification.createNotification(
       req.proposed_by,
@@ -799,12 +804,11 @@ const acceptProposal = async (requestId, userId, itemConditionStart = null) => {
       'request'
     );
 
-    // Системное сообщение в чат о фиксации состояния
     if (req.type === 'rental') {
       await pool.query(`
         INSERT INTO request_messages (request_id, sender_id, text)
         VALUES ($1, $2, $3)
-      `, [requestId, userId, `Зафиксировано состояние предмета при передаче: ${itemConditionStart}`]);
+      `, [requestId, userId, `Зафиксировано состояние предмета при передаче: ${req.proposed_condition}`]);
     }
 
     return { status: 'in_progress', requestId };
