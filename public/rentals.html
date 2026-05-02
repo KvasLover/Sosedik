@@ -55,10 +55,15 @@
         <div class="form-group">
           <label for="rental-value">Ценность вещи:</label>
           <select id="rental-value">
-            <option value="low">Низкая (до 1000 руб)</option>
-            <option value="medium">Средняя (1000-10000 руб)</option>
-            <option value="high">Высокая (более 10000 руб)</option>
+            <option value="low">Низкая (до 20 руб)</option>
+            <option value="medium">Средняя (20-100 руб)</option>
+            <option value="high">Высокая (более 100 руб)</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label for="deposit">Залог (руб): <span style="font-weight: normal;">(необязательно)</span></label>
+          <input type="number" id="deposit" class="form-control"
+            placeholder="Сумма залога (если не нужен, оставьте пустым)">
         </div>
         <div class="form-group">
           <label for="rental-photo">Фото вещи (необязательно):</label>
@@ -253,7 +258,7 @@
         const titleDiv = document.createElement('div');
         titleDiv.className = 'rental-title-section';
         const titleH3 = document.createElement('h3');
-        titleH3.textContent = ad.item_name || ad.title; // item_name приоритет
+        titleH3.textContent = ad.item_name || ad.title;
         titleDiv.appendChild(titleH3);
         if (isOwner) {
           const badge = document.createElement('span');
@@ -268,8 +273,8 @@
         contentDiv.className = 'rental-content';
         contentDiv.innerHTML = `
       <p><strong>Категория:</strong> ${escapeHtml(ad.category)}</p>
-      <p><strong>Цена / залог:</strong> ${ad.price ? ad.price + ' руб.' : '—'} ${ad.deposit ? `(залог: ${ad.deposit} руб.)` : ''}</p>
-      ${ad.condition_description ? `<p><strong>Состояние:</strong> ${escapeHtml(ad.condition_description)}</p>` : ''}
+      <p><strong>Ценность вещи:</strong> ${getValueLabel(ad.value_category) || 'не указана'}</p>      <p><strong>Залог:</strong> ${ad.deposit ? ad.deposit + ' руб.' : 'не нужен'}</p>
+      ${ad.condition_description ? `<p><strong>Состояние предмета:</strong> ${escapeHtml(ad.condition_description)}</p>` : ''}
       ${ad.description ? `<p><strong>Описание:</strong> ${escapeHtml(ad.description.substring(0, 100))}${ad.description.length > 100 ? '...' : ''}</p>` : ''}
       <p><small>Добавлено: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
     `;
@@ -307,7 +312,6 @@
 
           // Кнопка "Запросить аренду"
           const requestBtn = document.createElement('button');
-          checkIfAlreadyRequested(ad.id, requestBtn);
           requestBtn.className = 'btn-primary btn-sm';
           requestBtn.textContent = 'Запросить аренду';
           requestBtn.onclick = (e) => {
@@ -315,6 +319,7 @@
             requestRental(ad.id, requestBtn);
           };
           footerDiv.appendChild(requestBtn);
+          checkIfAlreadyRequested(ad.id, requestBtn);
         }
 
         rentalDiv.appendChild(footerDiv);
@@ -360,7 +365,7 @@
       const category = document.getElementById('rental-category').value;
       const rentalTerms = document.getElementById('rental-terms').value; // это будет использовано как terms
       const valueCategory = document.getElementById('rental-value').value; // не используется в ads, можно сохранить в отдельное поле или игнорировать
-      const deposit = prompt('Залог (руб):', '') || null;
+      const deposit = document.getElementById('deposit')?.value || null;
 
       if (!itemName || !category) {
         alert('Заполните название вещи и категорию');
@@ -386,7 +391,8 @@
             itemName: itemName,
             itemDescription: null,
             deposit: deposit ? Number(deposit) : null,
-            conditionDescription: null
+            conditionDescription: null,
+             valueCategory: document.getElementById('rental-value').value
           })
         });
         const data = await response.json();

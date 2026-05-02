@@ -1191,16 +1191,17 @@
             const isProposalFromMe = (req.proposed_by === currentUserId);
             if (!isProposalFromMe) {
               proposalHtml = `
-        <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
-          <strong>Предложенные условия:</strong><br>
-          Цена: ${req.proposed_price || '—'}<br>
-          Время: ${req.proposed_time || '—'}<br>
-          Комментарий: ${req.proposed_comment || '—'}<br>
-          <button onclick="acceptProposal(${req.id})" style="margin-top: 5px;">Принять</button>
-          <button onclick="declineProposal(${req.id})" style="margin-top: 5px; margin-left: 5px;">Отклонить</button>
-        </div>
-      `;
-              showStartButton = false;
+    <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
+      <strong>Предложенные условия:</strong><br>
+      Цена: ${req.proposed_price || '—'}<br>
+      Время: ${req.proposed_time || '—'}<br>
+      Условия: ${req.proposed_comment || '—'}<br>
+      ${req.proposed_deposit ? `Залог: ${req.proposed_deposit} руб.<br>` : ''}
+      ${req.proposed_condition ? `Состояние при передаче: ${req.proposed_condition}<br>` : ''}
+      <button onclick="acceptProposal(${req.id})" style="margin-top: 5px;">Принять</button>
+      <button onclick="declineProposal(${req.id})" style="margin-top: 5px; margin-left: 5px;">Отклонить</button>
+    </div>
+  `;
             } else {
               proposalHtml = '<div style="margin-top: 8px; color: #666;">Вы отправили предложение. Ожидайте ответа.</div>';
               showStartButton = false;
@@ -1224,20 +1225,32 @@
       ` : `
         ${showStartButton ? `<button onclick="openStartModal(${req.id})">Начать работу</button>` : ''}
         ${req.status === 'accepted' ? `<button class="delete-btn" onclick="cancelAcceptedRequest(${req.id})">Отменить договорённость</button>` : ''}
-        ${req.status === 'in_progress' && req.type !== 'rental' && !req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
-        ${req.status === 'in_progress' && req.type === 'rental' && !req.item_return_confirmed ? `
-          <div style="margin-bottom: 5px;">
-            <strong>Состояние при передаче:</strong> ${escapeHtml(req.item_condition_start || 'не указано')}
-          </div>
-<button onclick="openReturnModal(${req.id})" style="background: #f39c12;">Подтвердить возврат</button>        ` : ''}
-        ${req.status === 'in_progress' && req.type === 'rental' && req.item_return_confirmed ? `
-          <div style="margin-bottom: 5px;">
-            <strong>Состояние при передаче:</strong> ${escapeHtml(req.item_condition_start || 'не указано')}
-            <br><span style="color: green;">✔ Возврат подтверждён</span>
-          </div>
+        
+        ${req.status === 'in_progress' && req.type !== 'rental' ? `
           ${!req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
+          ${req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили</span>` : ''}
         ` : ''}
-        ${req.status === 'in_progress' && req.type !== 'rental' && req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили</span>` : ''}
+        
+        ${req.status === 'in_progress' && req.type === 'rental' ? `
+  <div style="margin-bottom: 5px;">
+    <strong>Состояние при передаче:</strong> ${escapeHtml(req.item_condition_start || 'не указано')}
+  </div>
+  ${!req.requester_return_confirmed && currentUserId === req.requester_id ? `
+    <button onclick="openReturnModal(${req.id})" style="background: #f39c12;">Подтвердить возврат</button>
+  ` : ''}
+  ${!req.creator_return_confirmed && currentUserId === req.ad_owner_id ? `
+    <button onclick="openReturnModal(${req.id})" style="background: #f39c12;">Подтвердить возврат</button>
+  ` : ''}
+  ${req.requester_return_confirmed && currentUserId === req.requester_id ? '<span style="color:#27ae60;">✓ Вы подтвердили возврат</span>' : ''}
+  ${req.creator_return_confirmed && currentUserId === req.ad_owner_id ? '<span style="color:#27ae60;">✓ Вы подтвердили возврат</span>' : ''}
+  ${((currentUserId === req.requester_id && req.requester_return_confirmed && !req.creator_return_confirmed) ||
+                (currentUserId === req.ad_owner_id && req.creator_return_confirmed && !req.requester_return_confirmed)) ? `
+    <div style="background: #fef3c7; padding: 4px; border-radius: 4px; margin-top: 5px;">
+      ⚠️ Ожидает подтверждения возврата от другой стороны
+    </div>
+  ` : ''}
+` : ''}
+        
         <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
       `}
     </td>
@@ -1265,13 +1278,20 @@
           const deals = await activeResp.json();
           const deal = deals.find(d => d.id === requestId);
           if (deal) {
-            document.getElementById('modal-agreed-price').value = deal.ad_price || '';
+            // Для обычных: цену, если нужно – но убрали, оставим для совместимости, но не используем
             document.getElementById('modal-agreed-time').value = deal.ad_preferred_time || '';
             document.getElementById('modal-agreement-comment').value = deal.ad_terms || '';
             const isRental = (deal.type === 'rental');
             const conditionGroup = document.getElementById('item-condition-group');
-            if (conditionGroup) {
-              conditionGroup.style.display = isRental ? 'block' : 'none';
+            if (conditionGroup) conditionGroup.style.display = isRental ? 'block' : 'none';
+            const depositGroup = document.getElementById('deposit-group');
+            if (depositGroup) {
+              if (isRental) {
+                depositGroup.style.display = 'block';
+                document.getElementById('modal-agreed-deposit').value = deal.deposit || '';
+              } else {
+                depositGroup.style.display = 'none';
+              }
             }
           }
         }
@@ -1287,7 +1307,6 @@
     async function submitStartWork() {
       if (!currentStartRequestId) return;
 
-      // Проверка обязательного поля для аренды
       const conditionGroup = document.getElementById('item-condition-group');
       if (conditionGroup && conditionGroup.style.display === 'block') {
         const itemCondition = document.getElementById('modal-item-condition').value.trim();
@@ -1303,10 +1322,10 @@
       const startBtn = document.querySelector('#start-work-modal button[onclick="submitStartWork()"]');
       if (startBtn) startBtn.disabled = true;
 
-      const agreedPrice = document.getElementById('modal-agreed-price').value;
       const agreedTime = document.getElementById('modal-agreed-time').value;
       const agreementComment = document.getElementById('modal-agreement-comment').value;
       const itemConditionStart = document.getElementById('modal-item-condition')?.value || null;
+      const agreedDeposit = document.getElementById('modal-agreed-deposit')?.value || null;
       const token = localStorage.getItem('sosedik_token');
 
       try {
@@ -1314,10 +1333,11 @@
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            agreedPrice: agreedPrice ? Number(agreedPrice) : null,
+            agreedPrice: null, // цена не используется для аренды
             agreedTime: agreedTime || null,
             agreementComment: agreementComment || null,
-            itemConditionStart: itemConditionStart
+            itemConditionStart: itemConditionStart,
+            agreedDeposit: agreedDeposit ? Number(agreedDeposit) : null
           })
         });
         if (response.ok) {
@@ -1835,15 +1855,11 @@
     <div style="background: white; padding:1.5rem; border-radius:8px; max-width:500px; width:90%;">
       <h3>Уточните условия сделки</h3>
       <div class="form-group">
-        <label>Цена (руб): <span style="font-weight: normal; color: #6c757d;">(необязательно)</span></label>
-        <input type="number" id="modal-agreed-price" class="form-control">
-      </div>
-      <div class="form-group">
         <label>Время/дата: <span style="font-weight: normal; color: #6c757d;">(необязательно)</span></label>
         <input type="text" id="modal-agreed-time" class="form-control" placeholder="Например: завтра в 15:00">
       </div>
       <div class="form-group">
-        <label>Комментарий / условия: <span style="font-weight: normal; color: #6c757d;">(необязательно)</span></label>
+        <label>Условия: <span style="font-weight: normal; color: #6c757d;">(необязательно)</span></label>
         <textarea id="modal-agreement-comment" class="form-control" rows="3"></textarea>
       </div>
       <div class="form-group" id="item-condition-group" style="display: none;">
@@ -1853,6 +1869,11 @@
           placeholder="Царапины, сколы, работоспособность..."></textarea>
         <small id="item-condition-error" style="color: #dc3545; display: none;">Пожалуйста, опишите состояние
           предмета.</small>
+      </div>
+      <div class="form-group" id="deposit-group" style="display: none;">
+        <label for="modal-agreed-deposit">Залог (руб): <span
+            style="font-weight: normal; color: #6c757d;">(необязательно, можно изменить)</span></label>
+        <input type="number" id="modal-agreed-deposit" class="form-control">
       </div>
       <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
         <button class="btn-secondary" onclick="closeStartModal()">Отмена</button>

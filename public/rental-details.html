@@ -41,6 +41,14 @@
             <p class="section-content" id="rental-status">Доступна</p>
           </div>
         </div>
+        <div class="detail-section">
+          <h3 class="section-label">Залог</h3>
+          <p class="section-content" id="rental-deposit">-</p>
+        </div>
+        <div class="detail-section">
+          <h3 class="section-label">Описание</h3>
+          <p class="section-content" id="rental-description">-</p>
+        </div>
 
         <div class="detail-section" id="rental-terms-section" style="display: none;">
           <h3 class="section-label">Условия аренды</h3>
@@ -135,6 +143,20 @@
       document.getElementById('rental-value').textContent = ad.deposit ? `${ad.deposit} руб.` : 'Не указан';
       document.getElementById('rental-owner').textContent = 'Загрузка...';
       document.getElementById('rental-created').textContent = new Date(ad.created_at).toLocaleDateString();
+
+      // Ценность вещи
+      const valueSpan = document.getElementById('rental-value');
+      valueSpan.textContent = ad.value_category ? getValueLabel(ad.value_category) : 'Не указана';
+
+      // Залог
+      const depositSpan = document.getElementById('rental-deposit'); // нужно добавить id в HTML
+      if (depositSpan) {
+        depositSpan.textContent = ad.deposit ? ad.deposit + ' руб.' : 'Не нужен';
+      }
+      const descSpan = document.getElementById('rental-description');
+      if (descSpan) {
+        descSpan.textContent = ad.description || '—';
+      }
 
       // Условия аренды (используем terms или description)
       const terms = ad.terms || ad.description;
@@ -281,9 +303,9 @@
     // Get value label
     function getValueLabel(value) {
       const labels = {
-        'low': 'Низкая (до 1000 руб)',
-        'medium': 'Средняя (1000-10000 руб)',
-        'high': 'Высокая (более 10000 руб)'
+        'low': 'Низкая (до 20 руб)',
+        'medium': 'Средняя (20-100 руб)',
+        'high': 'Высокая (более 100 руб)'
       };
       return labels[value] || value;
     }

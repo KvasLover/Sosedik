@@ -54,7 +54,8 @@ router.post('/', verifyToken, checkLevel(1), async (req, res) => {
   try {
     const {
       category, title, description, price, contact, preferredTime, terms,
-      type, itemName, itemDescription, deposit, conditionDescription
+      type, itemName, itemDescription, deposit, conditionDescription,
+      valueCategory
     } = req.body;
 
     if (!category || !title || !description) {
@@ -74,7 +75,8 @@ router.post('/', verifyToken, checkLevel(1), async (req, res) => {
       itemName || null,
       itemDescription || null,
       deposit ? Number(deposit) : null,
-      conditionDescription || null
+      conditionDescription || null,
+      valueCategory || null
     );
 
     res.status(201).json({ message: 'Ad created', ad: newAd });
@@ -299,14 +301,14 @@ router.post('/requests/:requestId/decline', verifyToken, async (req, res) => {
 // Начать выполнение запроса (accepted → in_progress)
 router.post('/requests/:requestId/start', verifyToken, async (req, res) => {
   try {
-    const { agreedPrice, agreedTime, agreementComment, itemConditionStart } = req.body;
-    const startedRequest = await Ad.startAdRequest(
+    const { agreedPrice, agreedTime, agreementComment, itemConditionStart, agreedDeposit } = req.body; const startedRequest = await Ad.startAdRequest(
       req.params.requestId,
       req.user.id,
       agreedPrice,
       agreedTime,
       agreementComment,
-      itemConditionStart
+      itemConditionStart,
+      agreedDeposit
     );
     res.json({ message: 'Request started', request: startedRequest });
   } catch (err) {
@@ -419,6 +421,7 @@ router.get('/requests/:requestId', verifyToken, async (req, res) => {
     const result = await pool.query(`
       SELECT ar.*, 
              ads.title as ad_title, ads.price as ad_price, ads.preferred_time as ad_time, ads.terms as ad_terms,
+             ads.deposit,
              ads.user_id as ad_owner_id,
              u1.name as requester_name, u2.name as creator_name
       FROM ad_requests ar

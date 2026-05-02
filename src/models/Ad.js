@@ -3,11 +3,15 @@ const Notification = require('./Notification');
 
 // Get all active ads
 const getAds = async (filters = {}) => {
-  let query = `SELECT ads.id, ads.user_id, ads.category, ads.title, ads.description, ads.price, ads.contact, ads.created_at, ads.active, ads.accepted_by, users.name as acceptor_name, author.name as author_name, ads.preferred_time, ads.terms
-               FROM ads
-               LEFT JOIN users ON ads.accepted_by = users.id
-               LEFT JOIN users as author ON ads.user_id = author.id
-               WHERE ads.active = true`;
+  let query = `SELECT ads.id, ads.user_id, ads.category, ads.title, ads.description, 
+               ads.price, ads.contact, ads.created_at, ads.active, ads.accepted_by, 
+               users.name as acceptor_name, author.name as author_name, 
+               ads.preferred_time, ads.terms,
+               ads.deposit, ads.value_category, ads.item_name, ads.condition_description
+            FROM ads
+            LEFT JOIN users ON ads.accepted_by = users.id
+            LEFT JOIN users as author ON ads.user_id = author.id
+            WHERE ads.active = true`;
   const values = [];
 
   if (filters.category) {
@@ -50,17 +54,19 @@ const getAdById = async (id) => {
 const createAd = async (
   userId, category, title, description, price = null, contact = null,
   preferredTime = null, terms = null, type = 'service',
-  itemName = null, itemDescription = null, deposit = null, conditionDescription = null
+  itemName = null, itemDescription = null, deposit = null, conditionDescription = null,
+  valueCategory = null
 ) => {
   try {
     const result = await pool.query(`
       INSERT INTO ads (
-        user_id, category, title, description, price, contact,
-        preferred_time, terms, type, item_name, item_description, deposit, condition_description
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+  user_id, category, title, description, price, contact,
+  preferred_time, terms, type, item_name, item_description, deposit, condition_description,
+  value_category
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `, [userId, category, title, description, price, contact, preferredTime, terms,
-      type, itemName, itemDescription, deposit, conditionDescription]);
+      type, itemName, itemDescription, deposit, conditionDescription, valueCategory]);
     return result.rows[0];
   } catch (err) {
     throw err;
@@ -288,7 +294,7 @@ const acceptAdRequest = async (requestId, userId) => {
 // Может быть вызвано только если запрос в статусе accepted
 // Доступно для обеих сторон
 
-const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime = null, agreementComment = null, itemConditionStart = null) => {
+const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime = null, agreementComment = null, itemConditionStart = null, agreedDeposit = null) => {
   try {
     const request = await pool.query(`
       SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status,
@@ -334,16 +340,17 @@ const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime 
     } else {
       // Сохраняем предложение
       await pool.query(`
-        UPDATE ad_requests
-        SET proposed_price = $2,
-            proposed_time = $3,
-            proposed_comment = $4,
-            proposed_condition = $5,
-            proposed_by = $6,
-            proposal_created_at = NOW(),
-            updated_at = NOW()
-        WHERE id = $1
-      `, [requestId, agreedPrice, agreedTime, agreementComment, itemConditionStart, userId]);
+  UPDATE ad_requests
+  SET proposed_price = $2,
+      proposed_time = $3,
+      proposed_comment = $4,
+      proposed_condition = $5,
+      proposed_deposit = $7,
+      proposed_by = $6,
+      proposal_created_at = NOW(),
+      updated_at = NOW()
+  WHERE id = $1
+`, [requestId, agreedPrice, agreedTime, agreementComment, itemConditionStart, userId, agreedDeposit]);
 
       const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
       let proposalText = `Пользователь предложил условия: цена ${agreedPrice || 'не указана'}, время ${agreedTime || 'не указано'}, комментарий: ${agreementComment || 'нет'}`;
@@ -771,8 +778,9 @@ const acceptProposal = async (requestId, userId) => {
     if (req.current_status !== 'accepted') throw new Error('Can only accept proposal for accepted request');
     if (req.ad_owner_id !== userId && req.requester_id !== userId) throw new Error('Not authorized');
     if (req.proposed_by === userId) throw new Error('You cannot accept your own proposal');
-    if (!req.proposed_price && !req.proposed_time && !req.proposed_comment) throw new Error('No active proposal');
-
+    if (!req.proposed_by) {
+      throw new Error('No active proposal');
+    }
     if (req.type === 'rental' && !req.proposed_condition) {
       throw new Error('For rental, item condition at transfer is required in proposal');
     }
@@ -784,6 +792,7 @@ const acceptProposal = async (requestId, userId) => {
           agreed_time = proposed_time,
           agreement_comment = proposed_comment,
           item_condition_start = proposed_condition,
+          agreed_deposit = proposed_deposit,
           proposed_price = NULL,
           proposed_time = NULL,
           proposed_comment = NULL,
@@ -924,7 +933,8 @@ const resolveDispute = async (requestId, userId) => {
 const confirmReturn = async (requestId, userId, conditionEnd = null) => {
   try {
     const request = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status, ads.type
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status, ads.type,
+             ar.requester_return_confirmed, ar.creator_return_confirmed
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       WHERE ar.id = $1
@@ -936,18 +946,77 @@ const confirmReturn = async (requestId, userId, conditionEnd = null) => {
     if (req.type !== 'rental') throw new Error('Only rental deals have return confirmation');
     if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized');
 
-    if (!conditionEnd || conditionEnd.trim() === '') {
-      throw new Error('Please describe the condition after return');
+    let field = null;
+    if (userId === req.requester_id) field = 'requester_return_confirmed';
+    else if (userId === req.ad_owner_id) field = 'creator_return_confirmed';
+    else throw new Error('Not a participant');
+
+    // Проверка, не подтверждал ли уже этот пользователь
+    if (req[field] === true) {
+      throw new Error('You have already confirmed return');
     }
 
-    const result = await pool.query(`
+    // Обновляем флаг и состояние после возврата (опционально)
+    await pool.query(`
       UPDATE ad_requests
-      SET item_return_confirmed = true,
+      SET ${field} = true,
           item_condition_end = $2,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
-      RETURNING *
     `, [requestId, conditionEnd]);
+
+    // Получаем обновлённые данные
+    const updated = await pool.query(`
+      SELECT ar.*, ads.user_id as ad_owner_id
+      FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
+      WHERE ar.id = $1
+    `, [requestId]);
+    const updatedReq = updated.rows[0];
+
+    // Если оба подтвердили возврат → завершаем сделку
+    if (updatedReq.requester_return_confirmed && updatedReq.creator_return_confirmed) {
+      await pool.query(`
+        UPDATE ad_requests
+        SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+      `, [requestId]);
+
+      // Уведомления обоим участникам о завершении (как в обычных сделках)
+      await Notification.createNotification(
+        updatedReq.requester_id,
+        'review_reminder',
+        `Сделка по объявлению "${req.title}" завершена. Оцените результат во вкладке «Сделки» в Профиле.`,
+        null,
+        requestId,
+        'request'
+      );
+      await Notification.createNotification(
+        updatedReq.ad_owner_id,
+        'review_reminder',
+        `Сделка по объявлению "${req.title}" завершена. Оцените результат во вкладке «Сделки» в Профиле.`,
+        null,
+        requestId,
+        'request'
+      );
+
+      await pool.query(`
+        UPDATE ads
+        SET acceptance_status = 'open', accepted_by = NULL, accepted_at = NULL
+        WHERE id = $1
+      `, [updatedReq.ad_id]);
+    } else {
+      // Первое подтверждение – уведомляем другую сторону
+      const otherUserId = (userId === updatedReq.requester_id) ? updatedReq.ad_owner_id : updatedReq.requester_id;
+      await Notification.createNotification(
+        otherUserId,
+        'request_pending_completion',
+        `Партнёр подтвердил возврат. Пожалуйста, подтвердите и вы, чтобы завершить сделку.`,
+        null,
+        requestId,
+        'request'
+      );
+    }
 
     // Системное сообщение в чат
     await pool.query(`
@@ -955,7 +1024,7 @@ const confirmReturn = async (requestId, userId, conditionEnd = null) => {
       VALUES ($1, $2, $3)
     `, [requestId, userId, 'Возврат предмета подтверждён']);
 
-    return result.rows[0];
+    return { status: updatedReq.status === 'completed' ? 'completed' : 'in_progress', requestId };
   } catch (err) {
     throw err;
   }
