@@ -32,14 +32,19 @@
           <h2>Сдать вещь в аренду</h2>
           <button class="btn-sm btn-secondary" onclick="toggleCreateForm()">✕</button>
         </div>
+        <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">
+          <span style="color: red;">*</span> – обязательные поля
+        </p>
         <div class="form-group">
-          <label for="rental-item-name">Название вещи:</label>
+          <label for="rental-item-name">Название вещи: <span style="color: red;">*</span></label>
+          <span class="error-hint" id="item-name-error"></span>
           <input type="text" id="rental-item-name" placeholder="Например: Дрель Bosch" required>
         </div>
         <div class="form-group">
-          <label for="rental-category">Категория:</label>
+          <label for="rental-category">Категория: <span style="color: red;">*</span></label>
+          <span class="error-hint" id="category-error"></span>
           <select id="rental-category" required>
-            <option value="">Выберите категорию</option>
+            <option value="">Укажите категорию</option>
             <option value="инструменты">Инструменты</option>
             <option value="электроника">Электроника</option>
             <option value="спорт">Спорт и отдых</option>
@@ -49,8 +54,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="rental-description">Описание вещи: <span
-              style="font-weight: normal;">(необязательно)</span></label>
+          <label for="rental-description">Описание вещи</label>
           <textarea id="rental-description" placeholder="Опишите предмет: состояние, комплектация, особенности"
             rows="3"></textarea>
         </div>
@@ -59,20 +63,23 @@
           <textarea id="rental-terms" placeholder="Опишите условия аренды, стоимость, залог и т.д." rows="4"></textarea>
         </div>
         <div class="form-group">
-          <label for="rental-value">Ценность вещи:</label>
+          <label for="rental-value">Ценность вещи: <span style="color: red;">*</span></label>
+          <span class="error-hint" id="value-error"></span>
           <select id="rental-value">
+            <option value="">Укажите ценность</option>
             <option value="low">Низкая (до 20 руб)</option>
             <option value="medium">Средняя (20-100 руб)</option>
             <option value="high">Высокая (более 100 руб)</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="deposit">Залог (руб): <span style="font-weight: normal;">(необязательно)</span></label>
-          <input type="number" id="deposit" class="form-control"
-            placeholder="Сумма залога (если не нужен, оставьте пустым)">
+          <label for="deposit">Залог (руб):</label>
+          <span class="error-hint" id="deposit-error"></span>
+          <input type="text" id="deposit" class="form-control" inputmode="numeric" pattern="[0-9]*"
+            placeholder="Сумма залога (целое число, или оставьте пустым)">
         </div>
         <div class="form-group">
-          <label for="rental-photo">Фото вещи (необязательно):</label>
+          <label for="rental-photo">Фото вещи</label>
           <input type="file" id="rental-photo" accept="image/*" style="margin-bottom: 10px;">
           <div id="photo-preview" style="margin-top: 10px;"></div>
         </div>
@@ -281,8 +288,7 @@
   <p><strong>Категория:</strong> ${escapeHtml(ad.category)}</p>
   <p><strong>Ценность вещи:</strong> ${getValueLabel(ad.value_category) || 'не указана'}</p>
   <p><strong>Залог:</strong> ${ad.deposit ? ad.deposit + ' руб.' : 'не нужен'}</p>
-  ${ad.description ? `<p><strong>Описание:</strong> ${escapeHtml(ad.description.substring(0, 100))}${ad.description.length > 100 ? '...' : ''}</p>` : ''}
-  <p><small>Добавлено: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
+  <p><strong>Описание:</strong> ${ad.description ? escapeHtml(ad.description.substring(0, 100)) + (ad.description.length > 100 ? '...' : '') : 'Не указано'}</p>  <p><small>Добавлено: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
 `;
         rentalDiv.appendChild(contentDiv);
 
@@ -366,15 +372,61 @@
 
     // Создать аренду
     async function createRental() {
-      const token = localStorage.getItem('sosedik_token');
-      const itemName = document.getElementById('rental-item-name').value;
-      const category = document.getElementById('rental-category').value;
-      const rentalTerms = document.getElementById('rental-terms').value; const valueCategory = document.getElementById('rental-value').value; // не используется в ads, можно сохранить в отдельное поле или игнорировать
-      const deposit = document.getElementById('deposit')?.value || null;
-      const itemDescription = document.getElementById('rental-description')?.value || null;
+      // 1. Сбросить все видимые ошибки
+      document.querySelectorAll('.error-hint').forEach(el => {
+        el.style.display = 'none';
+      });
 
-      if (!itemName || !category) {
-        alert('Заполните название вещи и категорию');
+      const token = localStorage.getItem('sosedik_token');
+      const itemName = document.getElementById('rental-item-name').value.trim();
+      const category = document.getElementById('rental-category').value;
+      const valueCategory = document.getElementById('rental-value').value;
+
+      let hasError = false;
+
+      if (!itemName) {
+        document.getElementById('item-name-error').textContent = 'Введите название вещи';
+        document.getElementById('item-name-error').style.display = 'block';
+        hasError = true;
+      }
+
+      if (!category) {
+        document.getElementById('category-error').textContent = 'Выберите категорию';
+        document.getElementById('category-error').style.display = 'block';
+        hasError = true;
+      }
+
+      if (!valueCategory) {
+        document.getElementById('value-error').textContent = 'Укажите ценность вещи';
+        document.getElementById('value-error').style.display = 'block';
+        hasError = true;
+      }
+
+      if (hasError) {
+        return; // Прерываем выполнение, ошибки подсвечены
+      }
+
+      // Дальше ваш обычный код создания (без alert):
+      const rentalTerms = document.getElementById('rental-terms').value;
+      const itemDescription = document.getElementById('rental-description')?.value.trim() || null;
+
+      const depositInput = document.getElementById('deposit');
+      const depositRaw = depositInput.value.trim();
+      let deposit = null;
+
+      if (depositRaw !== '') {
+        const depositNum = Number(depositRaw);
+        if (isNaN(depositNum) || depositNum < 0 || !Number.isInteger(depositNum)) {
+          document.getElementById('deposit-error').textContent = 'Введите корректную сумму залога (целое число)';
+          document.getElementById('deposit-error').style.display = 'block';
+          hasError = true;
+        } else {
+          deposit = depositNum;
+        }
+      }
+
+      // ВОТ ЭТУ СТРОКУ НУЖНО ДОБАВИТЬ:
+      if (hasError) {
         return;
       }
 
@@ -389,18 +441,13 @@
             type: 'rental',
             category: category,
             title: itemName,
-            description: itemDescription,        // теперь берём из нового поля
-            price: null,
-            contact: null,
-            preferredTime: null,
-            terms: rentalTerms || null,         // условия аренды
-            itemName: itemName,
-            itemDescription: null,
-            deposit: deposit ? Number(deposit) : null,
-            conditionDescription: null,
+            description: itemDescription,
+            terms: rentalTerms || null,
+            deposit: deposit,   // не оборачиваем Number() ещё раз
             valueCategory: valueCategory
           })
         });
+
         const data = await response.json();
         if (response.ok) {
           if (currentPhotoData) {

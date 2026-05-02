@@ -892,6 +892,13 @@ span[style*="3498db"] {
   margin-top: auto;
 }
 
+.error-hint {
+  color: #d32f2f;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  display: none; /* по умолчанию скрыты */
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   main h1 {

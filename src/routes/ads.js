@@ -58,8 +58,8 @@ router.post('/', verifyToken, checkLevel(1), async (req, res) => {
       valueCategory
     } = req.body;
 
-    if (!category || !title || !description) {
-      return res.status(400).json({ message: 'Category, title, description required' });
+    if (!category || !title) {
+      return res.status(400).json({ message: 'Category and title are required' });
     }
 
     const newAd = await Ad.createAd(
