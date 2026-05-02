@@ -290,7 +290,17 @@
         const footerDiv = document.createElement('div');
         footerDiv.className = 'rental-footer';
 
-        if (isOwner) {
+                if (isOwner) {
+          // Если объявление принято кем-то, показываем принявшего
+          if (ad.accepted_by) {
+            const acceptedInfo = document.createElement('p');
+            acceptedInfo.style.color = '#27ae60';
+            acceptedInfo.style.fontWeight = 'bold';
+            acceptedInfo.style.fontSize = '14px';
+            acceptedInfo.textContent = `Принято пользователем ${ad.acceptor_name || ('#' + ad.accepted_by)}`;
+            footerDiv.appendChild(acceptedInfo);
+          }
+
           const deleteBtn = document.createElement('button');
           deleteBtn.className = 'btn-sm btn-danger';
           deleteBtn.textContent = 'Удалить';
@@ -299,37 +309,44 @@
             deleteRental(ad.id);
           };
           footerDiv.appendChild(deleteBtn);
+
         } else {
-          // Избранное
-          const favBtn = document.createElement('button');
-          favBtn.className = 'favorite-btn';
-          favBtn.textContent = '♡';
-          favBtn.onclick = (e) => {
-            e.stopPropagation();
-            toggleFavorite('ad', ad.id, favBtn);
-          };
-          footerDiv.appendChild(favBtn);
-          checkFavoriteStatus('ad', ad.id).then(isFavorite => {
-            if (isFavorite) {
-              favBtn.classList.add('active');
-              favBtn.textContent = '♥';
-            }
-          });
+          // Проверяем, принято ли объявление текущим пользователем
+          if (ad.accepted_by && ad.accepted_by === currentUserId) {
+            const statusSpan = document.createElement('span');
+            statusSpan.style.color = '#27ae60';
+            statusSpan.style.fontWeight = '600';
+            statusSpan.style.fontSize = '14px';
+            statusSpan.textContent = '✓ Принято вами';
+            footerDiv.appendChild(statusSpan);
+          } else {
+            // Избранное
+            const favBtn = document.createElement('button');
+            favBtn.className = 'favorite-btn';
+            favBtn.textContent = '♡';
+            favBtn.onclick = (e) => {
+              e.stopPropagation();
+              toggleFavorite('ad', ad.id, favBtn);
+            };
+            footerDiv.appendChild(favBtn);
+            checkFavoriteStatus('ad', ad.id).then(isFavorite => {
+              if (isFavorite) {
+                favBtn.classList.add('active');
+                favBtn.textContent = '♥';
+              }
+            });
 
-          // Кнопка "Запросить аренду"
-          const requestBtn = document.createElement('button');
-          requestBtn.className = 'btn-primary btn-sm';
-          requestBtn.textContent = 'Запросить аренду';
-          requestBtn.onclick = (e) => {
-            e.stopPropagation();
-            requestRental(ad.id, requestBtn);
-          };
-
-          requestBtn.textContent = 'Запросить аренду';
-          checkIfAlreadyRequested(ad.id, requestBtn);
-
-          footerDiv.appendChild(requestBtn);
-          checkIfAlreadyRequested(ad.id, requestBtn);
+            // Кнопка "Запросить аренду"
+            const requestBtn = document.createElement('button');
+            requestBtn.className = 'btn-primary btn-sm';
+            requestBtn.textContent = 'Запросить аренду';
+            requestBtn.onclick = (e) => {
+              e.stopPropagation();
+              requestRental(ad.id, requestBtn);
+            };
+            footerDiv.appendChild(requestBtn);
+            checkIfAlreadyRequested(ad.id, requestBtn);
+          }
         }
 
         rentalDiv.appendChild(footerDiv);
