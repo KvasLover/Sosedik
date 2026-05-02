@@ -330,6 +330,10 @@
             e.stopPropagation();
             requestRental(ad.id, requestBtn);
           };
+
+          requestBtn.textContent = 'Запросить аренду';
+          checkIfAlreadyRequested(ad.id, requestBtn);
+
           footerDiv.appendChild(requestBtn);
           checkIfAlreadyRequested(ad.id, requestBtn);
         }

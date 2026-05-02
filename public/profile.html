@@ -482,7 +482,7 @@
             <div class="menu-group-title">🔄 Взаимодействия</div>
             <button class="menu-item" onclick="showProfileTab('incoming')">Входящие запросы</button>
             <button class="menu-item" onclick="showProfileTab('outgoing')">Исходящие запросы</button>
-            <button class="menu-item" onclick="showProfileTab('active')">Активные сделки</button>
+            <button class="menu-item" onclick="showProfileTab('active')">Активные взаимодействия</button>
           </div>
           <div class="menu-group">
             <div class="menu-group-title">📋 История</div>
@@ -573,7 +573,7 @@
 
           <!-- Active Deals Tab -->
           <div id="active-tab" class="profile-tab">
-            <h2>Активные сделки</h2>
+            <h2>Активные взаимодействия</h2>
             <p style="color: #666; margin-bottom: 15px;">Принятые запросы, требующие выполнения</p>
             <div id="active-list"></div>
           </div>
@@ -952,12 +952,14 @@
         listDiv.innerHTML = `
           <div class="profile-table-wrapper">
             <table class="profile-table">
-              <thead><tr><th>От пользователя</th><th>Объявление</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
+              <thead><tr><th>Тип</th><th>От кого</th><th>Объявление</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
               <tbody>
                 ${requests.map(req => `
                   <tr>
+                    <td>${req.type === 'rental' ? 'Аренда' : 'Объявление'}</td>
                     <td>${escapeHtml(req.requester_name || 'Пользователь')}</td>
                     <td>${escapeHtml(req.title)}</td>
+                    
                     <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
                     <td>${new Date(req.created_at).toLocaleDateString()}</td>
                     <td class="action-buttons">
@@ -1040,10 +1042,11 @@
         listDiv.innerHTML = `
           <div class="profile-table-wrapper">
             <table class="profile-table">
-              <thead><tr><th>Кому</th><th>Объявление</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
+              <thead><tr><th>Тип</th><th>Кому</th><th>Объявление</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
               <tbody>
                 ${requests.map(req => `
                   <tr>
+                    <td>${req.type === 'rental' ? 'Аренда' : 'Объявление'}</td>
                     <td>${escapeHtml(req.creator_name || 'Пользователь')}</td>
                     <td>${escapeHtml(req.title)}</td>
                     <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
@@ -1130,7 +1133,7 @@
       }
     }
 
-    // ---- Активные сделки ----
+    // ---- Активные взаимодействия ----
     async function loadActiveRequests() {
       const token = localStorage.getItem('sosedik_token');
       try {
@@ -1173,17 +1176,11 @@
           if (req.status === 'disputed') {
             const initiatorName = (req.dispute_initiator_id === currentUserId) ? 'Вы' : (req.dispute_initiator_id === req.requester_id ? req.requester_name : req.creator_name);
             disputeInfo = `
-    <div style="margin-top: 8px; padding: 8px; background: #fef3c7; border-radius: 6px;">
-      ⚠️ Спор открыт пользователем ${initiatorName || 'неизвестным'}.<br>
-      Причина: ${req.dispute_reason || 'не указана'}
-    </div>
-  `;
-            // Кнопки для управления спором
-            actionButtonsHtml = `
-    <button onclick="resolveDispute(${req.id})" style="background: #27ae60; margin-right: 5px;">Снять спор</button>
-    <button onclick="cancelDisputedDeal(${req.id})" class="delete-btn">Отменить сделку</button>
-    <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
-  `;
+              <div style="margin-top: 8px; padding: 8px; background: #fef3c7; border-radius: 6px;">
+                ⚠️ Спор открыт пользователем ${initiatorName || 'неизвестным'}.<br>
+                Причина: ${req.dispute_reason || 'не указана'}
+              </div>
+            `;
           }
 
           // Обработка предложений (если есть)
@@ -1191,74 +1188,71 @@
             const isProposalFromMe = (req.proposed_by === currentUserId);
             if (!isProposalFromMe) {
               proposalHtml = `
-    <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
-      <strong>Предложенные условия:</strong><br>
-          Цена: ${req.proposed_price ? req.proposed_price + ' руб.' : 'Не указана'}<br>
-    Время: ${req.proposed_time || 'Не указано'}<br>
-    Условия: ${req.proposed_comment || 'Не указаны'}<br>
-      ${req.proposed_deposit ? `Залог: ${req.proposed_deposit} руб.<br>` : ''}
-      ${req.proposed_condition ? `Состояние при передаче: ${req.proposed_condition}<br>` : ''}
-      <button onclick="acceptProposal(${req.id})" style="margin-top: 5px;">Принять</button>
-      <button onclick="declineProposal(${req.id})" style="margin-top: 5px; margin-left: 5px;">Отклонить</button>
-    </div>
-  `;
+                <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
+                  <strong>Предложенные условия:</strong><br>
+                  Цена: ${req.proposed_price ? req.proposed_price + ' руб.' : 'Не указана'}<br>
+                  Время: ${req.proposed_time || 'Не указано'}<br>
+                  Условия: ${req.proposed_comment || 'Не указаны'}<br>
+                  ${req.proposed_deposit ? `Залог: ${req.proposed_deposit} руб.<br>` : ''}
+                  ${req.proposed_condition ? `Состояние при передаче: ${req.proposed_condition}<br>` : ''}
+                  <button onclick="acceptProposal(${req.id})" class="u-font-sm">Принять</button>
+                  <button onclick="declineProposal(${req.id})" class="u-font-sm u-ml-auto">Отклонить</button>
+                </div>
+              `;
             } else {
-              proposalHtml = '<div style="margin-top: 8px; color: #666;">Вы отправили предложение. Ждем ответ.</div>';
+              proposalHtml = '<div style="margin-top: 8px; color: #666;">Вы отправили предложение. Ждём ответа.</div>';
               showStartButton = false;
             }
           }
 
           return `
-  <tr>
-    <td><strong>${escapeHtml(req.title)}</strong></td>
-    <td>${escapeHtml(req.other_party_name)}</td>
-    <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
-    <td>${new Date(req.created_at).toLocaleDateString()}</td>
-    <td class="action-buttons">
-      ${req.pendingBadge}
-      ${proposalHtml}
-      ${disputeInfo}
-      ${req.status === 'disputed' ? `
-        <button onclick="resolveDispute(${req.id})" style="background: #27ae60; margin-right: 5px;">Снять спор</button>
-        <button onclick="cancelDisputedDeal(${req.id})" class="delete-btn">Отменить сделку</button>
-        <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
-      ` : `
-        ${showStartButton ? `<button onclick="openStartModal(${req.id})">Начать работу</button>` : ''}
-        ${req.status === 'accepted' ? `<button class="delete-btn" onclick="cancelAcceptedRequest(${req.id})">Отменить договорённость</button>` : ''}
-        
-        ${req.status === 'in_progress' && req.type !== 'rental' ? `
-          ${!req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
-          ${req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили. Ждем ответ</span>` : ''}
-        ` : ''}
-        
-                ${req.status === 'in_progress' && req.type === 'rental' ? `
-          <div style="margin-bottom: 5px;">
-            <strong>Состояние при передаче:</strong> ${escapeHtml(req.item_condition_start || 'не указано')}
-          </div>
-          ${req.return_proposed_by ? (
+            <tr>
+              <td><strong>${escapeHtml(req.title)}</strong><span class="u-font-xs u-text-muted">${req.type === 'rental' ? ' (аренда)' : ' (услуга)'}</span></td>
+              <td>${escapeHtml(req.other_party_name)}</td>
+              <td><span class="status-badge ${req.status}">${getStatusName(req.status)}</span></td>
+              <td>${new Date(req.created_at).toLocaleDateString()}</td>
+              <td>
+                <div class="deal-action-group">
+                  ${req.pendingBadge}
+                  ${proposalHtml}
+                  ${disputeInfo}
+                  ${req.status === 'disputed' ? `
+                    <button onclick="resolveDispute(${req.id})">Снять спор</button>
+                    <button onclick="cancelDisputedDeal(${req.id})" class="delete-btn">Отменить взаимодействие</button>
+                    <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат взаимодействия</a>
+                  ` : `
+                    ${showStartButton ? `<button onclick="openStartModal(${req.id})">Отправить предложение</button>` : ''}
+                    ${req.status === 'accepted' ? `<button class="delete-btn" onclick="cancelAcceptedRequest(${req.id})">Отменить договорённость</button>` : ''}
+                    
+                    ${req.status === 'in_progress' && req.type !== 'rental' ? `
+                      ${!req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
+                      ${req.userConfirmed ? `<span class="u-font-sm u-text-success">✓ Вы подтвердили. Ждём ответ</span>` : ''}
+                    ` : ''}
+                    
+                    ${req.status === 'in_progress' && req.type === 'rental' ? `
+                      <div><strong>Состояние при передаче:</strong> ${escapeHtml(req.item_condition_start || 'не указано')}</div>
+                      ${req.return_proposed_by ? (
                 req.return_proposed_by === currentUserId ?
                   '<p>Вы предложили возврат. Ожидайте ответа.</p>' :
                   `
-              <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
-                <strong>Предложен возврат:</strong><br>
-                Состояние после возврата: ${escapeHtml(req.return_proposed_condition || 'Не указано')}<br>
-                <button onclick="acceptReturnProposal(${req.id})" style="margin-top: 5px;">Согласиться</button>
-                <button onclick="declineReturnProposal(${req.id})" style="margin-top: 5px; margin-left: 5px;">Не согласиться</button>
-              </div>`
+                            <div style="padding: 8px; background: #f0f7ff; border-radius: 6px;">
+                              <strong>Предложен возврат:</strong><br>
+                              Состояние после возврата: ${escapeHtml(req.return_proposed_condition || 'Не указано')}<br>
+                              <button onclick="acceptReturnProposal(${req.id})">Согласиться</button>
+                              <button onclick="declineReturnProposal(${req.id})" class="u-ml-auto">Не согласиться</button>
+                            </div>`
               ) : (
-                `<button onclick="openReturnModal(${req.id})" style="background: #f39c12;">Подтвердить возврат</button>`
+                `<button onclick="openReturnModal(${req.id})" class="btn-warning">Подтвердить возврат</button>`
               )}
-        ` : ''}
-
-        ${req.status === 'in_progress' ?
-              `<button onclick="openDispute(${req.id})" class="delete-btn" style="margin-left:5px;">Открыть спор</button>`
-              : ''}
-
-        <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
-      `}
-    </td>
-  </tr>
-`;
+                    ` : ''}
+                    
+                    ${req.status === 'in_progress' ? `<button onclick="openDispute(${req.id})" class="delete-btn">Открыть спор</button>` : ''}
+                    <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат взаимодействия</a>
+                  `}
+                </div>
+              </td>
+            </tr>
+          `;
         }).join('')}
       </tbody>
     </table>
@@ -1291,24 +1285,28 @@
             const depositGroup = document.getElementById('deposit-group');
 
             if (isRental) {
-              // Скрываем цену, показываем арендные поля
               if (priceGroup) priceGroup.style.display = 'none';
               if (conditionGroup) {
                 conditionGroup.style.display = 'block';
-                document.getElementById('modal-item-condition').value = ''; // очищаем
+                document.getElementById('modal-item-condition').value = '';
               }
               if (depositGroup) {
                 depositGroup.style.display = 'block';
                 document.getElementById('modal-agreed-deposit').value = deal.deposit || '';
               }
             } else {
-              // Показываем цену, скрываем арендные поля
               if (priceGroup) {
                 priceGroup.style.display = 'block';
                 document.getElementById('modal-agreed-price').value = deal.ad_price || '';
               }
               if (conditionGroup) conditionGroup.style.display = 'none';
               if (depositGroup) depositGroup.style.display = 'none';
+            }
+
+            // *** ВОТ СЮДА ПЕРЕНОСИМ СМЕНУ ТЕКСТА КНОПКИ ***
+            const startBtn = document.querySelector('#start-work-modal button[onclick="submitStartWork()"]');
+            if (startBtn) {
+              startBtn.textContent = isRental ? 'Начать аренду' : 'Начать работу';
             }
           }
         }
@@ -1884,7 +1882,7 @@
     }
 
     async function cancelDisputedDeal(requestId) {
-      if (!confirm('Отменить сделку из-за спора? Объявление снова станет доступно.')) return;
+      if (!confirm('Отменить взаимодействие из-за спора? Объявление снова станет доступно.')) return;
       const token = localStorage.getItem('sosedik_token');
       const response = await fetch(`/api/ads/requests/${requestId}/cancel`, {
         method: 'DELETE',
@@ -1944,7 +1942,7 @@
   <div id="start-work-modal"
     style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
     <div style="background: white; padding:1.5rem; border-radius:8px; max-width:500px; width:90%;">
-      <h3>Уточните условия сделки</h3>
+      <h3>Предложите условия</h3>
       <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 1rem;">
         Оставьте поля пустыми, чтобы использовать изначальные условия.
       </p>

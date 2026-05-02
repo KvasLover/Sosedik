@@ -899,6 +899,46 @@ span[style*="3498db"] {
   display: none; /* по умолчанию скрыты */
 }
 
+/* ===== Utility classes ===== */
+.u-text-muted { color: #6c757d; }
+.u-text-danger { color: #dc3545; }
+.u-text-success { color: #28a745; }
+.u-font-sm { font-size: 0.85rem; }
+.u-font-xs { font-size: 0.75rem; }
+
+.u-mb-1 { margin-bottom: 0.5rem; }
+.u-mt-1 { margin-top: 0.5rem; }
+.u-ml-auto { margin-left: auto; }
+.u-w-100 { width: 100%; }
+
+.u-d-flex { display: flex; }
+.u-align-center { align-items: center; }
+.u-flex-wrap { flex-wrap: wrap; }
+.u-gap-1 { gap: 0.5rem; }
+
+.u-badge-warning {
+  background: #f97316;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-right: 8px;
+  display: inline-block;
+}
+
+/* Compact action buttons for deal rows */
+.deal-action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.deal-action-group button,
+.deal-action-group a {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   main h1 {
