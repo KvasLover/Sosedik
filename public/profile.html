@@ -1776,6 +1776,7 @@
   <button onclick="openReviewModalForDeal(${deal.request_id})">Оценить</button>
   <button onclick="skipDealReview(${deal.request_id})" style="margin-left: 8px;">Не оценивать</button>
 `))}
+<a href="/request-chat.html?requestId=${deal.request_id}" class="chat-link">💬 Чат взаимодействия</a>
   </div>
 `).join('');
       } catch (error) {

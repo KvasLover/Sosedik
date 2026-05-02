@@ -271,14 +271,8 @@
         const titleDiv = document.createElement('div');
         titleDiv.className = 'rental-title-section';
         const titleH3 = document.createElement('h3');
-        titleH3.textContent = ad.item_name || ad.title;
+        titleH3.innerHTML = (ad.item_name || ad.title) + (isOwner ? ' <span style="color: #27ae60; font-size: 12px;">(Ваше)</span>' : '');
         titleDiv.appendChild(titleH3);
-        if (isOwner) {
-          const badge = document.createElement('span');
-          badge.className = 'owner-badge';
-          badge.textContent = 'Ваше объявление';
-          titleDiv.appendChild(badge);
-        }
         rentalDiv.appendChild(titleDiv);
 
         // Информация

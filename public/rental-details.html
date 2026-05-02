@@ -138,7 +138,10 @@
     function displayRentalDetails(ad) {
       const isOwner = currentUserId === ad.user_id;
 
-      document.getElementById('rental-title').textContent = ad.item_name || ad.title;
+      const titleEl = document.getElementById('rental-title');
+      if (titleEl) {
+        titleEl.innerHTML = (ad.item_name || ad.title) + (isOwner ? ' <span style="color: #27ae60; font-size: 12px; font-weight: normal;">(Ваше)</span>' : '');
+      }
       document.getElementById('rental-category').textContent = ad.category;
       document.getElementById('rental-value').textContent = ad.deposit ? `${ad.deposit} руб.` : 'Не указан';
       document.getElementById('rental-owner').textContent = 'Загрузка...';
@@ -206,6 +209,14 @@
       const actionsDiv = document.getElementById('rental-actions');
       actionsDiv.innerHTML = '';
 
+      if (isOwner && ad.accepted_by) {
+        const acceptedInfo = document.createElement('p');
+        acceptedInfo.style.color = '#27ae60';
+        acceptedInfo.style.fontWeight = 'bold';
+        acceptedInfo.textContent = `Принято пользователем ${ad.acceptor_name || ('#' + ad.accepted_by)}`;
+        actionsDiv.appendChild(acceptedInfo);
+      }
+
       if (isOwner) {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'btn-danger';
@@ -217,37 +228,45 @@
         };
         actionsDiv.appendChild(deleteBtn);
       } else {
-        // Кнопка "В избранное"
-        const favoriteBtn = document.createElement('button');
-        favoriteBtn.id = 'favorite-btn';
-        favoriteBtn.className = 'btn-secondary';
-        favoriteBtn.textContent = '♡ В избранное';
-        favoriteBtn.onclick = () => toggleFavorite('ad', ad.id, favoriteBtn);
-        actionsDiv.appendChild(favoriteBtn);
+        // Проверяем, принято ли объявление текущим пользователем
+        if (ad.accepted_by && ad.accepted_by === currentUserId) {
+          const statusSpan = document.createElement('span');
+          statusSpan.textContent = '✓ Принято вами';
+          statusSpan.style.cssText = 'color: #27ae60; font-weight: bold; display: inline-block; padding: 10px 16px; border-radius: 6px; background: #f0fdf4;';
+          actionsDiv.appendChild(statusSpan);
+        } else {
+          // Избранное
+          const favoriteBtn = document.createElement('button');
+          favoriteBtn.id = 'favorite-btn';
+          favoriteBtn.className = 'btn-secondary';
+          favoriteBtn.textContent = '♡ В избранное';
+          favoriteBtn.onclick = () => toggleFavorite('ad', ad.id, favoriteBtn);
+          actionsDiv.appendChild(favoriteBtn);
 
-        checkFavoriteStatus('ad', ad.id).then(isFavorite => {
-          if (isFavorite) {
-            favoriteBtn.classList.add('active');
-            favoriteBtn.textContent = '♥ В избранном';
-          }
-        });
+          checkFavoriteStatus('ad', ad.id).then(isFavorite => {
+            if (isFavorite) {
+              favoriteBtn.classList.add('active');
+              favoriteBtn.textContent = '♥ В избранном';
+            }
+          });
 
-        // Кнопка "Запросить аренду"
-        const requestBtn = document.createElement('button');
-        checkIfAlreadyRequested(ad.id, requestBtn);
-        requestBtn.className = 'btn-primary';
-        requestBtn.textContent = 'Запросить аренду';
-        requestBtn.onclick = () => requestRental(ad.id, requestBtn);
-        actionsDiv.appendChild(requestBtn);
+          // Кнопка "Запросить аренду"
+          const requestBtn = document.createElement('button');
+          requestBtn.className = 'btn-primary';
+          requestBtn.textContent = 'Запросить аренду';
+          requestBtn.onclick = () => requestRental(ad.id, requestBtn);
+          actionsDiv.appendChild(requestBtn);
+          checkIfAlreadyRequested(ad.id, requestBtn);
 
-        // Кнопка "Связаться с владельцем"
-        const contactBtn = document.createElement('button');
-        contactBtn.className = 'btn-success';
-        contactBtn.textContent = 'Связаться с владельцем';
-        contactBtn.onclick = () => {
-          window.location.href = `/chat.html?with=${ad.user_id}`;
-        };
-        actionsDiv.appendChild(contactBtn);
+          // Кнопка "Связаться с владельцем"
+          const contactBtn = document.createElement('button');
+          contactBtn.className = 'btn-success';
+          contactBtn.textContent = 'Связаться с владельцем';
+          contactBtn.onclick = () => {
+            window.location.href = `/chat.html?with=${ad.user_id}`;
+          };
+          actionsDiv.appendChild(contactBtn);
+        }
       }
     }
 

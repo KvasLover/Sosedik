@@ -140,9 +140,7 @@
           console.log('Ad user ID:', ad.user_id);
           console.log('Is owner:', isOwner);
 
-          document.getElementById('ad-title').textContent = ad.title + (isOwner ? ' (Ваше объявление)' : '');
-          document.getElementById('ad-category').textContent = ad.category;
-          document.getElementById('ad-description').textContent = ad.description || 'Не указано';
+          document.getElementById('ad-title').innerHTML = ad.title + (isOwner ? ' <span style="color: #27ae60; font-size: 12px; font-weight: normal;">(Ваше)</span>' : ''); document.getElementById('ad-description').textContent = ad.description || 'Не указано';
           // Цена – показываем всегда
           document.getElementById('ad-price-section').style.display = 'block';
           document.getElementById('price-value').textContent = ad.price ? ad.price + ' руб.' : 'Не указана';
@@ -224,7 +222,7 @@
             contactBtn.className = 'btn-success';
             contactBtn.textContent = 'Связаться с автором';
             contactBtn.onclick = () => {
-              window.location.href = `/chat.html?partnerId=${ad.user_id}`;
+              window.location.href = `/chat.html?with=${ad.user_id}`;
             };
             actionsDiv.appendChild(contactBtn);
           } else {
