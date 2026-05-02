@@ -49,6 +49,12 @@
           </select>
         </div>
         <div class="form-group">
+          <label for="rental-description">Описание вещи: <span
+              style="font-weight: normal;">(необязательно)</span></label>
+          <textarea id="rental-description" placeholder="Опишите предмет: состояние, комплектация, особенности"
+            rows="3"></textarea>
+        </div>
+        <div class="form-group">
           <label for="rental-terms">Условия аренды:</label>
           <textarea id="rental-terms" placeholder="Опишите условия аренды, стоимость, залог и т.д." rows="4"></textarea>
         </div>
@@ -272,12 +278,12 @@
         const contentDiv = document.createElement('div');
         contentDiv.className = 'rental-content';
         contentDiv.innerHTML = `
-      <p><strong>Категория:</strong> ${escapeHtml(ad.category)}</p>
-      <p><strong>Ценность вещи:</strong> ${getValueLabel(ad.value_category) || 'не указана'}</p>      <p><strong>Залог:</strong> ${ad.deposit ? ad.deposit + ' руб.' : 'не нужен'}</p>
-      ${ad.condition_description ? `<p><strong>Состояние предмета:</strong> ${escapeHtml(ad.condition_description)}</p>` : ''}
-      ${ad.description ? `<p><strong>Описание:</strong> ${escapeHtml(ad.description.substring(0, 100))}${ad.description.length > 100 ? '...' : ''}</p>` : ''}
-      <p><small>Добавлено: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
-    `;
+  <p><strong>Категория:</strong> ${escapeHtml(ad.category)}</p>
+  <p><strong>Ценность вещи:</strong> ${getValueLabel(ad.value_category) || 'не указана'}</p>
+  <p><strong>Залог:</strong> ${ad.deposit ? ad.deposit + ' руб.' : 'не нужен'}</p>
+  ${ad.description ? `<p><strong>Описание:</strong> ${escapeHtml(ad.description.substring(0, 100))}${ad.description.length > 100 ? '...' : ''}</p>` : ''}
+  <p><small>Добавлено: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
+`;
         rentalDiv.appendChild(contentDiv);
 
         // Кнопки
@@ -363,9 +369,9 @@
       const token = localStorage.getItem('sosedik_token');
       const itemName = document.getElementById('rental-item-name').value;
       const category = document.getElementById('rental-category').value;
-      const rentalTerms = document.getElementById('rental-terms').value; // это будет использовано как terms
-      const valueCategory = document.getElementById('rental-value').value; // не используется в ads, можно сохранить в отдельное поле или игнорировать
+      const rentalTerms = document.getElementById('rental-terms').value; const valueCategory = document.getElementById('rental-value').value; // не используется в ads, можно сохранить в отдельное поле или игнорировать
       const deposit = document.getElementById('deposit')?.value || null;
+      const itemDescription = document.getElementById('rental-description')?.value || null;
 
       if (!itemName || !category) {
         alert('Заполните название вещи и категорию');
@@ -382,17 +388,17 @@
           body: JSON.stringify({
             type: 'rental',
             category: category,
-            title: itemName,          // заголовок = название предмета
-            description: rentalTerms, // описание = условия аренды
-            price: null,              // цена может быть отдельно, но пока не требуем
+            title: itemName,
+            description: itemDescription,        // теперь берём из нового поля
+            price: null,
             contact: null,
             preferredTime: null,
-            terms: null,
+            terms: rentalTerms || null,         // условия аренды
             itemName: itemName,
             itemDescription: null,
             deposit: deposit ? Number(deposit) : null,
             conditionDescription: null,
-             valueCategory: document.getElementById('rental-value').value
+            valueCategory: valueCategory
           })
         });
         const data = await response.json();

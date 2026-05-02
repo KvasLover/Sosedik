@@ -153,16 +153,20 @@
       if (depositSpan) {
         depositSpan.textContent = ad.deposit ? ad.deposit + ' руб.' : 'Не нужен';
       }
+      // Описание
       const descSpan = document.getElementById('rental-description');
       if (descSpan) {
         descSpan.textContent = ad.description || '—';
       }
 
-      // Условия аренды (используем terms или description)
-      const terms = ad.terms || ad.description;
+      // Условия аренды
+      const terms = ad.terms;
       if (terms) {
         document.getElementById('rental-terms-section').style.display = 'block';
         document.getElementById('rental-terms').textContent = terms;
+      } else {
+        // если условий нет, можно скрыть блок или показать «не указаны»
+        document.getElementById('rental-terms-section').style.display = 'none';
       }
 
       // Фото (из localStorage)
