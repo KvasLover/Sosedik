@@ -279,7 +279,8 @@
         const contentDiv = document.createElement('div');
         contentDiv.className = 'rental-content';
         contentDiv.innerHTML = `
-  <p><strong>Категория:</strong> ${escapeHtml(ad.category)}</p>
+    <p><strong>Владелец:</strong> <a href="/user-profile.html?userId=${ad.user_id}">${escapeHtml(ad.author_name || 'Пользователь')}</a></p>
+<p><strong>Категория:</strong> ${escapeHtml(ad.category)}</p>
   <p><strong>Ценность вещи:</strong> ${getValueLabel(ad.value_category) || 'не указана'}</p>
   <p><strong>Залог:</strong> ${ad.deposit ? ad.deposit + ' руб.' : 'не нужен'}</p>
   <p><strong>Описание:</strong> ${ad.description ? escapeHtml(ad.description.substring(0, 100)) + (ad.description.length > 100 ? '...' : '') : 'Не указано'}</p>  <p><small>Добавлено: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
@@ -290,7 +291,7 @@
         const footerDiv = document.createElement('div');
         footerDiv.className = 'rental-footer';
 
-                if (isOwner) {
+        if (isOwner) {
           // Если объявление принято кем-то, показываем принявшего
           if (ad.accepted_by) {
             const acceptedInfo = document.createElement('p');

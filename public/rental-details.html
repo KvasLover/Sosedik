@@ -194,8 +194,7 @@
         });
         if (response.ok) {
           const owner = await response.json();
-          document.getElementById('rental-owner').textContent = owner.name || 'Пользователь';
-          document.getElementById('rental-contact').textContent = contactFromAd || owner.phone || 'Не указан';
+          document.getElementById('rental-owner').innerHTML = `<a href="/user-profile.html?userId=${ownerId}">${owner.name || 'Пользователь'}</a>`; document.getElementById('rental-contact').textContent = contactFromAd || owner.phone || 'Не указан';
         } else {
           document.getElementById('rental-owner').textContent = 'Ошибка загрузки';
         }
