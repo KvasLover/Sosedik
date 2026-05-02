@@ -12,6 +12,7 @@ const notificationsRoutes = require('./routes/notifications');
 const requestMessagesRoutes = require('./routes/request-messages');
 const { autoCancelExpiredAcceptedRequests } = require('./models/Ad');
 const reputationRoutes = require('./routes/reputation');
+const adminRoutes = require('./routes/admin');
 const friendsRoutes = require('./routes/friends');
 
 const app = express();
@@ -32,6 +33,8 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/request-messages', requestMessagesRoutes);
 app.use('/api/friends', friendsRoutes);
 app.use('/api', reputationRoutes);
+app.use('/api/admin', adminRoutes);
+
 
 // Test database connection
 app.get('/api/health', async (req, res) => {

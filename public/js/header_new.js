@@ -102,6 +102,19 @@ function initHeader() {
     setInterval(() => {
       loadNotifications(token);
     }, 3000);
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('Уровень пользователя:', payload.level);
+        if (payload.level >= 4) {
+          const adminLink = document.createElement('a');
+          adminLink.href = '/admin.html';
+          adminLink.textContent = 'Админ';
+          adminLink.style.color = '#ffd700'; // золотистый цвет, чтобы выделялось
+          document.getElementById('nav-auth').appendChild(adminLink);
+        }
+      } catch (e) { }
+    }
   } else {
     guestNav.classList.remove('hidden');
     authNav.classList.add('hidden');

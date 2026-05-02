@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель – Соседик</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .admin-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .admin-tab {
+            padding: 0.8rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #666;
+        }
+
+        .admin-panel table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .admin-panel th,
+        .admin-panel td {
+            border: 1px solid #e0e0e0;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .admin-panel th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+
+        .admin-tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .admin-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .user-level-select {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="header-root"></div>
+    <main>
+        <h1>Административная панель</h1>
+        <div class="admin-tabs">
+            <button class="admin-tab active" onclick="showAdminTab('users')">Пользователи</button>
+            <button class="admin-tab" onclick="showAdminTab('ads')">Объявления</button>
+            <button class="admin-tab" onclick="showAdminTab('stats')">Статистика</button>
+        </div>
+
+        <div id="admin-content" class="admin-panel">
+            <!-- Контент загружается динамически -->
+        </div>
+    </main>
+
+    <script src="js/header_new.js"></script>
+    <script>
+        // Проверка доступа
+        const token = localStorage.getItem('sosedik_token');
+        if (!token) window.location.href = '/login.html';
+        let userLevel = null;
+        try { userLevel = JSON.parse(atob(token.split('.')[1])).level; } catch (e) { window.location.href = '/login.html'; }
+        if (userLevel < 4) { alert('Доступ запрещён'); window.location.href = '/'; }
+
+        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+        function showAdminTab(tab) {
+            document.querySelectorAll('.admin-tab').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`button[onclick="showAdminTab('${tab}')"]`).classList.add('active');
+            if (tab === 'users') loadUsers();
+            else if (tab === 'ads') loadAds();
+            else if (tab === 'stats') loadStats();
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch('/api/admin/users', { headers });
+                const users = await res.json();
+                const html = `
+          <h2>Пользователи</h2>
+          <table class="profile-table">
+            <thead><tr><th>ID</th><th>Телефон</th><th>Имя</th><th>Уровень</th><th>Объявлений</th><th>Баллы</th><th>Дата регистрации</th><th>Действия</th></tr></thead>
+            <tbody>
+              ${users.map(u => `
+                <tr>
+                  <td>${u.id}</td>
+                  <td>${u.phone || ''}</td>
+                  <td>${u.name || ''}</td>
+                  <td>${getLevelName(u.level)}</td>
+                  <td>${u.ads_count}</td>
+                  <td>${u.points}</td>
+                  <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                  <td>
+                    <select class="user-level-select" onchange="changeUserLevel(${u.id}, this.value)">
+                      <option value="1" ${u.level === 1 ? 'selected' : ''}>1 – Жилец</option>
+                      <option value="2" ${u.level === 2 ? 'selected' : ''}>2 – Верифицированный</option>
+                      <option value="3" ${u.level === 3 ? 'selected' : ''}>3 – Модератор</option>
+                      <option value="4" ${u.level === 4 ? 'selected' : ''}>4 – Администратор</option>
+                    </select>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+                document.getElementById('admin-content').innerHTML = html;
+            } catch (e) { alert('Ошибка загрузки пользователей'); }
+        }
+
+        async function changeUserLevel(userId, newLevel) {
+            if (!confirm(`Изменить уровень пользователя ${userId} на ${newLevel}?`)) return;
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/level`, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify({ level: parseInt(newLevel) })
+                });
+                if (res.ok) alert('Уровень обновлён');
+                else alert('Ошибка: ' + (await res.json()).message);
+                loadUsers();
+            } catch (e) { alert('Ошибка сети'); }
+        }
+
+        function getLevelName(level) {
+            const names = { 0: 'Гость', 1: 'Зарегистрированный жилец', 2: 'Верифицированный жилец', 3: 'Модератор', 4: 'Администратор' };
+            return names[level] || 'Неизвестный';
+        }
+
+        async function loadAds() {
+            try {
+                const res = await fetch('/api/admin/ads', { headers });
+                const ads = await res.json();
+                const html = `
+          <h2>Все объявления</h2>
+          <table class="profile-table">
+            <thead><tr><th>ID</th><th>Название</th><th>Автор</th><th>Тип</th><th>Категория</th><th>Активно</th><th>Дата</th><th>Действия</th></tr></thead>
+            <tbody>
+              ${ads.map(a => `
+                <tr>
+                  <td>${a.id}</td>
+                  <td>${a.title}</td>
+                  <td>${a.author_name || ''}</td>
+                  <td>${a.type === 'rental' ? 'Аренда' : 'Услуга'}</td>
+                  <td>${a.category}</td>
+                  <td>${a.active ? 'Да' : 'Нет'}</td>
+                  <td>${new Date(a.created_at).toLocaleDateString()}</td>
+                  <td><button class="delete-btn" onclick="deleteAd(${a.id})">Удалить</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+                document.getElementById('admin-content').innerHTML = html;
+            } catch (e) { alert('Ошибка загрузки объявлений'); }
+        }
+
+        async function deleteAd(adId) {
+            if (!confirm('Удалить объявление навсегда?')) return;
+            try {
+                const res = await fetch(`/api/admin/ads/${adId}`, { method: 'DELETE', headers });
+                if (res.ok) alert('Объявление удалено');
+                else alert('Ошибка');
+                loadAds();
+            } catch (e) { alert('Ошибка сети'); }
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/admin/stats', { headers });
+                const s = await res.json();
+                let usersHtml = s.usersByLevel.map(l => `<p>Уровень ${l.level}: ${l.count} пользователей</p>`).join('');
+                const html = `
+          <h2>Статистика</h2>
+          <div class="detail-section-grid">
+            <div class="detail-section"><h3>Пользователи</h3>${usersHtml || '<p>Нет данных</p>'}</div>
+            <div class="detail-section"><h3>Активных объявлений</h3><p class="price-highlight">${s.totalActiveAds}</p></div>
+            <div class="detail-section"><h3>Завершённых сделок</h3><p class="price-highlight">${s.totalCompletedDeals}</p></div>
+          </div>
+        `;
+                document.getElementById('admin-content').innerHTML = html;
+            } catch (e) { alert('Ошибка загрузки статистики'); }
+        }
+
+        // Загружаем пользователей по умолчанию
+        showAdminTab('users');
+    </script>
+</body>
+
+</html>
