@@ -670,6 +670,7 @@
     let currentUserId = null;
     let currentFavoriteFilter = { itemType: '', adType: '' };
     let currentStartRequestId = null;
+    let currentOriginalConditions = null;
 
     function getUrlParameter(name) {
       const urlParams = new URLSearchParams(window.location.search);
@@ -1187,18 +1188,31 @@
           if (req.proposed_by && req.status !== 'disputed') {
             const isProposalFromMe = (req.proposed_by === currentUserId);
             if (!isProposalFromMe) {
-              proposalHtml = `
-                <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
-                  <strong>Предложенные условия:</strong><br>
-                  Цена: ${req.proposed_price ? req.proposed_price + ' руб.' : 'Не указана'}<br>
-                  Время: ${req.proposed_time || 'Не указано'}<br>
-                  Условия: ${req.proposed_comment || 'Не указаны'}<br>
-                  ${req.proposed_deposit ? `Залог: ${req.proposed_deposit} руб.<br>` : ''}
-                  ${req.proposed_condition ? `Состояние при передаче: ${req.proposed_condition}<br>` : ''}
-                  <button onclick="acceptProposal(${req.id})" class="u-font-sm">Принять</button>
-                  <button onclick="declineProposal(${req.id})" class="u-font-sm u-ml-auto">Отклонить</button>
-                </div>
-              `;
+              // Проверяем, отличается ли предложение от исходных условий
+              const priceChanged = req.proposed_price !== req.ad_price && req.proposed_price !== null;
+              const timeChanged = req.proposed_time && req.proposed_time !== req.ad_preferred_time;
+              const commentChanged = req.proposed_comment && req.proposed_comment !== req.ad_terms;
+              const depositChanged = req.proposed_deposit !== undefined && req.proposed_deposit !== null && req.proposed_deposit != req.deposit; // deposit может быть null
+              const conditionChanged = req.proposed_condition && req.proposed_condition !== '';
+
+              const somethingChanged = priceChanged || timeChanged || commentChanged || depositChanged || conditionChanged;
+
+              if (!somethingChanged) {
+                proposalHtml = '<div style="margin-top: 8px; color: #27ae60;">Партнёр предлагает начать сотрудничество на изначальных условиях.</div>';
+              } else {
+                proposalHtml = `
+      <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
+        <strong>Предложенные условия:</strong><br>
+        Цена: ${req.proposed_price ? req.proposed_price + ' руб.' : 'Не указана'}<br>
+        Время: ${req.proposed_time || 'Не указано'}<br>
+        Условия: ${req.proposed_comment || 'Не указаны'}<br>
+        ${req.proposed_deposit ? `Залог: ${req.proposed_deposit} руб.<br>` : ''}
+        ${req.proposed_condition ? `Состояние при передаче: ${req.proposed_condition}<br>` : ''}
+        <button onclick="acceptProposal(${req.id})" class="u-font-sm">Принять</button>
+        <button onclick="declineProposal(${req.id})" class="u-font-sm u-ml-auto">Отклонить</button>
+      </div>
+    `;
+              }
             } else {
               proposalHtml = '<div style="margin-top: 8px; color: #666;">Вы отправили предложение. Ждём ответа.</div>';
               showStartButton = false;
@@ -1233,7 +1247,7 @@
                       <div><strong>Состояние при передаче:</strong> ${escapeHtml(req.item_condition_start || 'не указано')}</div>
                       ${req.return_proposed_by ? (
                 req.return_proposed_by === currentUserId ?
-                  '<p>Вы предложили возврат. Ожидайте ответа.</p>' :
+                  '<p>Вы предложили возврат. Ждем ответ</p>' :
                   `
                             <div style="padding: 8px; background: #f0f7ff; border-radius: 6px;">
                               <strong>Предложен возврат:</strong><br>
@@ -1308,9 +1322,18 @@
             if (startBtn) {
               startBtn.textContent = isRental ? 'Начать аренду' : 'Начать работу';
             }
+
+            // Сохраняем исходные условия для последующего сравнения
+            currentOriginalConditions = {
+              price: deal.ad_price || null,
+              time: deal.ad_preferred_time || '',
+              comment: deal.ad_terms || '',
+              deposit: deal.deposit || null
+            };
           }
         }
       } catch (e) { console.warn(e); }
+
       document.getElementById('start-work-modal').style.display = 'flex';
     }
 
@@ -1330,8 +1353,14 @@
 
       let hasError = false;
 
-      // Проверка для аренды: состояние обязательно
+      // === Все переменные условий ===
+      let agreedPrice = null;
+      let agreedDeposit = null;
       let itemConditionStart = null;
+      const agreedTime = document.getElementById('modal-agreed-time').value;          // ← теперь объявлено ДО использования
+      const agreementComment = document.getElementById('modal-agreement-comment').value;
+
+      // Проверка для аренды: состояние обязательно
       if (isRental) {
         itemConditionStart = document.getElementById('modal-item-condition')?.value.trim();
         if (!itemConditionStart) {
@@ -1341,7 +1370,6 @@
       }
 
       // Проверка залога (если указан и не число)
-      let agreedDeposit = null;
       const depositRaw = document.getElementById('modal-agreed-deposit')?.value.trim();
       if (depositRaw) {
         const depositNum = Number(depositRaw);
@@ -1355,7 +1383,6 @@
       }
 
       // Цена для обычного объявления
-      let agreedPrice = null;
       if (!isRental) {
         const priceRaw = document.getElementById('modal-agreed-price')?.value.trim();
         if (priceRaw) {
@@ -1370,10 +1397,18 @@
         }
       }
 
+      // Определяем, изменились ли условия по сравнению с исходными
+      const original = currentOriginalConditions;
+      const priceChanged = (agreedPrice !== null ? agreedPrice : null) !== (original?.price || null);
+      const timeChanged = (agreedTime || null) !== (original?.time || null);          // ошибки больше нет
+      const commentChanged = (agreementComment || null) !== (original?.comment || null);
+      const depositChanged = (agreedDeposit !== null ? agreedDeposit : null) !== (original?.deposit || null);
+      const conditionChanged = isRental && itemConditionStart !== null && itemConditionStart !== '';
+      const somethingChanged = priceChanged || timeChanged || commentChanged || depositChanged || conditionChanged;
+
       if (hasError) return;
 
-      const agreedTime = document.getElementById('modal-agreed-time').value;
-      const agreementComment = document.getElementById('modal-agreement-comment').value;
+      // ... дальше без изменений (кнопка, fetch)
 
       const startBtn = document.querySelector('#start-work-modal button[onclick="submitStartWork()"]');
       if (startBtn) startBtn.disabled = true;
@@ -1387,7 +1422,9 @@
             agreedTime: agreedTime || null,
             agreementComment: agreementComment || null,
             itemConditionStart: itemConditionStart,
-            agreedDeposit: agreedDeposit
+            agreedDeposit: agreedDeposit,
+            is_proposal: true,
+            keep_original: !somethingChanged
           })
         });
         if (response.ok) {

@@ -294,13 +294,13 @@ const acceptAdRequest = async (requestId, userId) => {
 // Может быть вызвано только если запрос в статусе accepted
 // Доступно для обеих сторон
 
-const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime = null, agreementComment = null, itemConditionStart = null, agreedDeposit = null) => {
+const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime = null, agreementComment = null, itemConditionStart = null, agreedDeposit = null, isProposal = false, keepOriginal = false) => {
   try {
     const request = await pool.query(`
       SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status,
-             ads.price as ad_price, ads.preferred_time as ad_time, ads.terms as ad_terms,
-             ads.title, ads.type
-      FROM ad_requests ar
+       ads.price as ad_price, ads.preferred_time as ad_time, ads.terms as ad_terms,
+       ads.title, ads.type, ads.deposit
+FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       WHERE ar.id = $1
     `, [requestId]);
@@ -312,10 +312,7 @@ const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime 
     if (req.ad_owner_id !== userId && req.requester_id !== userId) throw new Error('Not authorized');
 
     // Определяем, является ли вызов сбросом предложения (отклонение)
-    const isClearProposal = (agreedPrice === null || agreedPrice === undefined) &&
-      (agreedTime === null || agreedTime === undefined) &&
-      (agreementComment === null || agreementComment === undefined) &&
-      (itemConditionStart === null || itemConditionStart === undefined);
+    const isClearProposal = !isProposal && (agreedPrice === null || agreedPrice === undefined) && (agreedTime === null || agreedTime === undefined) && (agreementComment === null || agreementComment === undefined) && (itemConditionStart === null || itemConditionStart === undefined);
 
     // Проверка обязательности поля состояния для аренды ТОЛЬКО если это не сброс
     if (!isClearProposal && req.type === 'rental' && !itemConditionStart) {
@@ -339,23 +336,38 @@ const startAdRequest = async (requestId, userId, agreedPrice = null, agreedTime 
       // ... (можете добавить уведомление, если нужно)
     } else {
       // Сохраняем предложение
+      // Вставляем переопределение значений (если keepOriginal)
+      let finalPrice = agreedPrice;
+      let finalTime = agreedTime;
+      let finalComment = agreementComment;
+      let finalDeposit = agreedDeposit;
+
+      if (keepOriginal) {
+        finalPrice = req.ad_price;
+        finalTime = req.ad_time;
+        finalComment = req.ad_terms;
+        finalDeposit = req.deposit; // может быть null
+      }
+
       await pool.query(`
-  UPDATE ad_requests
-  SET proposed_price = $2,
-      proposed_time = $3,
-      proposed_comment = $4,
-      proposed_condition = $5,
-      proposed_deposit = $7,
-      proposed_by = $6,
-      proposal_created_at = NOW(),
-      updated_at = NOW()
-  WHERE id = $1
-`, [requestId, agreedPrice, agreedTime, agreementComment, itemConditionStart, userId, agreedDeposit]);
+        UPDATE ad_requests
+        SET proposed_price = $2,
+            proposed_time = $3,
+            proposed_comment = $4,
+            proposed_condition = $5,
+            proposed_deposit = $7,
+            proposed_by = $6,
+            proposal_created_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+      `, [requestId, finalPrice, finalTime, finalComment, itemConditionStart, userId, finalDeposit]);
 
       const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
-      let proposalText = `Пользователь предложил условия: цена ${agreedPrice || 'не указана'}, время ${agreedTime || 'не указано'}, комментарий: ${agreementComment || 'нет'}`;
-      if (req.type === 'rental' && itemConditionStart) {
-        proposalText += `, состояние при передаче: ${itemConditionStart}`;
+      let proposalText;
+      if (keepOriginal) {
+        proposalText = `Пользователь предлагает начать взаимодействие на изначальных условиях.`;
+      } else {
+        proposalText = `Пользователь предложил новые условия. Ознакомьтесь с ними во вкладке «Активные взаимодействия».`;
       }
       await Notification.createNotification(
         otherUserId,
@@ -517,9 +529,10 @@ const getActiveRequests = async (userId) => {
     SELECT ar.*, ads.title, ads.category, ads.type,
        u1.name as requester_name, u2.name as creator_name,
        ads.price as ad_price, ads.preferred_time as ad_preferred_time, ads.terms as ad_terms,
+       ads.deposit,
        ads.user_id as ad_owner_id
-    FROM ad_requests ar
-    JOIN ads ON ar.ad_id = ads.id
+FROM ad_requests ar
+JOIN ads ON ar.ad_id = ads.id
     JOIN users u1 ON ar.requester_id = u1.id
     JOIN users u2 ON ads.user_id = u2.id
     WHERE (ar.requester_id = $1 OR ads.user_id = $1)

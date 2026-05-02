@@ -305,14 +305,17 @@ router.post('/requests/:requestId/decline', verifyToken, async (req, res) => {
 // Начать выполнение запроса (accepted → in_progress)
 router.post('/requests/:requestId/start', verifyToken, async (req, res) => {
   try {
-    const { agreedPrice, agreedTime, agreementComment, itemConditionStart, agreedDeposit } = req.body; const startedRequest = await Ad.startAdRequest(
+    const { agreedPrice, agreedTime, agreementComment, itemConditionStart, agreedDeposit, is_proposal, keep_original } = req.body;
+    const startedRequest = await Ad.startAdRequest(
       req.params.requestId,
       req.user.id,
       agreedPrice,
       agreedTime,
       agreementComment,
       itemConditionStart,
-      agreedDeposit
+      agreedDeposit,
+      is_proposal || false,
+      keep_original || false
     );
     res.json({ message: 'Request started', request: startedRequest });
   } catch (err) {
