@@ -481,4 +481,30 @@ router.post('/requests/:requestId/confirm-return', verifyToken, async (req, res)
   }
 });
 
+// Согласиться на возврат
+router.post('/requests/:requestId/accept-return', verifyToken, async (req, res) => {
+  try {
+    const updated = await Ad.acceptReturn(req.params.requestId, req.user.id);
+    res.json({ message: 'Return accepted, deal completed', request: updated });
+  } catch (err) {
+    if (err.message.includes('Not authorized')) return res.status(403).json({ message: err.message });
+    if (err.message.includes('not found')) return res.status(404).json({ message: err.message });
+    if (err.message.includes('No active') || err.message.includes('cannot accept')) return res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Отклонить возврат
+router.post('/requests/:requestId/decline-return', verifyToken, async (req, res) => {
+  try {
+    const updated = await Ad.declineReturn(req.params.requestId, req.user.id);
+    res.json({ message: 'Return declined', request: updated });
+  } catch (err) {
+    if (err.message.includes('Not authorized')) return res.status(403).json({ message: err.message });
+    if (err.message.includes('not found')) return res.status(404).json({ message: err.message });
+    if (err.message.includes('No active') || err.message.includes('cannot decline')) return res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

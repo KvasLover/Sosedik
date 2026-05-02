@@ -1203,7 +1203,7 @@
     </div>
   `;
             } else {
-              proposalHtml = '<div style="margin-top: 8px; color: #666;">Вы отправили предложение. Ожидайте ответа.</div>';
+              proposalHtml = '<div style="margin-top: 8px; color: #666;">Вы отправили предложение. Ждем ответ.</div>';
               showStartButton = false;
             }
           }
@@ -1235,20 +1235,19 @@
   <div style="margin-bottom: 5px;">
     <strong>Состояние при передаче:</strong> ${escapeHtml(req.item_condition_start || 'не указано')}
   </div>
-  ${!req.requester_return_confirmed && currentUserId === req.requester_id ? `
-    <button onclick="openReturnModal(${req.id})" style="background: #f39c12;">Подтвердить возврат</button>
-  ` : ''}
-  ${!req.creator_return_confirmed && currentUserId === req.ad_owner_id ? `
-    <button onclick="openReturnModal(${req.id})" style="background: #f39c12;">Подтвердить возврат</button>
-  ` : ''}
-  ${req.requester_return_confirmed && currentUserId === req.requester_id ? '<span style="color:#27ae60;">✓ Вы подтвердили возврат</span>' : ''}
-  ${req.creator_return_confirmed && currentUserId === req.ad_owner_id ? '<span style="color:#27ae60;">✓ Вы подтвердили возврат</span>' : ''}
-  ${((currentUserId === req.requester_id && req.requester_return_confirmed && !req.creator_return_confirmed) ||
-                (currentUserId === req.ad_owner_id && req.creator_return_confirmed && !req.requester_return_confirmed)) ? `
-    <div style="background: #fef3c7; padding: 4px; border-radius: 4px; margin-top: 5px;">
-      ⚠️ Ожидает подтверждения возврата от другой стороны
-    </div>
-  ` : ''}
+  ${req.return_proposed_by ? (
+                req.return_proposed_by === currentUserId ?
+                  '<p>Вы предложили возврат. Ожидайте ответа.</p>' :
+                  `
+      <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
+        <strong>Предложен возврат:</strong><br>
+        Состояние после возврата: ${escapeHtml(req.return_proposed_condition || 'Не указано')}<br>
+        <button onclick="acceptReturnProposal(${req.id})" style="margin-top: 5px;">Согласиться</button>
+        <button onclick="declineReturnProposal(${req.id})" style="margin-top: 5px; margin-left: 5px;">Не согласиться</button>
+      </div>`
+              ) : (
+                `<button onclick="openReturnModal(${req.id})" style="background: #f39c12;">Подтвердить возврат</button>`
+              )}
 ` : ''}
         
         <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
@@ -1894,6 +1893,46 @@
       } else {
         const data = await response.json();
         alert('Ошибка: ' + data.message);
+      }
+    }
+
+    async function acceptReturnProposal(requestId) {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/accept-return`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          alert('Возврат подтверждён, сделка завершена.');
+          loadActiveRequests();
+          loadDashboard();
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + data.message);
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    async function declineReturnProposal(requestId) {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/requests/${requestId}/decline-return`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          alert('Предложение возврата отклонено.');
+          loadActiveRequests();
+          loadDashboard();
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + data.message);
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
       }
     }
   </script>

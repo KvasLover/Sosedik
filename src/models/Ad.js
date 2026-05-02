@@ -934,97 +934,115 @@ const confirmReturn = async (requestId, userId, conditionEnd = null) => {
   try {
     const request = await pool.query(`
       SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status, ads.type,
-             ar.requester_return_confirmed, ar.creator_return_confirmed
+             ar.requester_return_confirmed, ar.creator_return_confirmed,
+             ar.return_proposed_by, ads.title
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       WHERE ar.id = $1
     `, [requestId]);
-
     if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
     if (req.status !== 'in_progress') throw new Error('Cannot confirm return: deal not in progress');
     if (req.type !== 'rental') throw new Error('Only rental deals have return confirmation');
     if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized');
+    if (req.return_proposed_by) throw new Error('Return proposal already exists');
+    if (!conditionEnd) throw new Error('Condition after return is required for rental');
 
-    let field = null;
-    if (userId === req.requester_id) field = 'requester_return_confirmed';
-    else if (userId === req.ad_owner_id) field = 'creator_return_confirmed';
-    else throw new Error('Not a participant');
-
-    // Проверка, не подтверждал ли уже этот пользователь
-    if (req[field] === true) {
-      throw new Error('You have already confirmed return');
-    }
-
-    // Обновляем флаг и состояние после возврата (опционально)
     await pool.query(`
       UPDATE ad_requests
-      SET ${field} = true,
-          item_condition_end = $2,
-          updated_at = CURRENT_TIMESTAMP
+      SET return_proposed_by = $2,
+          return_proposed_condition = $3,
+          updated_at = NOW()
       WHERE id = $1
-    `, [requestId, conditionEnd]);
+    `, [requestId, userId, conditionEnd]);
 
-    // Получаем обновлённые данные
-    const updated = await pool.query(`
-      SELECT ar.*, ads.user_id as ad_owner_id
+    const otherUserId = (userId === req.requester_id) ? req.ad_owner_id : req.requester_id;
+    await Notification.createNotification(
+      otherUserId,
+      'return_proposed',
+      `Пользователь предложил подтвердить возврат по сделке "${req.title}". Состояние: ${conditionEnd}`,
+      null,
+      requestId,
+      'request'
+    );
+
+    await pool.query(`
+      INSERT INTO request_messages (request_id, sender_id, text)
+      VALUES ($1, $2, $3)
+    `, [requestId, userId, `Предложен возврат. Состояние после возврата: ${conditionEnd}`]);
+
+    return { status: 'return_proposed', requestId };
+  } catch (err) {
+    throw err;
+  }
+};
+
+const acceptReturn = async (requestId, userId) => {
+  try {
+    const request = await pool.query(`
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status, ads.title
       FROM ad_requests ar
       JOIN ads ON ar.ad_id = ads.id
       WHERE ar.id = $1
     `, [requestId]);
-    const updatedReq = updated.rows[0];
+    if (request.rows.length === 0) throw new Error('Request not found');
+    const req = request.rows[0];
+    if (req.status !== 'in_progress') throw new Error('Deal not in progress');
+    if (!req.return_proposed_by) throw new Error('No active return proposal');
+    if (req.return_proposed_by === userId) throw new Error('You cannot accept your own proposal');
+    if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized');
 
-    // Если оба подтвердили возврат → завершаем сделку
-    if (updatedReq.requester_return_confirmed && updatedReq.creator_return_confirmed) {
-      await pool.query(`
-        UPDATE ad_requests
-        SET status = 'completed', completed_at = CURRENT_TIMESTAMP
-        WHERE id = $1
-      `, [requestId]);
-
-      // Уведомления обоим участникам о завершении (как в обычных сделках)
-      await Notification.createNotification(
-        updatedReq.requester_id,
-        'review_reminder',
-        `Сделка по объявлению "${req.title}" завершена. Оцените результат во вкладке «Сделки» в Профиле.`,
-        null,
-        requestId,
-        'request'
-      );
-      await Notification.createNotification(
-        updatedReq.ad_owner_id,
-        'review_reminder',
-        `Сделка по объявлению "${req.title}" завершена. Оцените результат во вкладке «Сделки» в Профиле.`,
-        null,
-        requestId,
-        'request'
-      );
-
-      await pool.query(`
-        UPDATE ads
-        SET acceptance_status = 'open', accepted_by = NULL, accepted_at = NULL
-        WHERE id = $1
-      `, [updatedReq.ad_id]);
-    } else {
-      // Первое подтверждение – уведомляем другую сторону
-      const otherUserId = (userId === updatedReq.requester_id) ? updatedReq.ad_owner_id : updatedReq.requester_id;
-      await Notification.createNotification(
-        otherUserId,
-        'request_pending_completion',
-        `Партнёр подтвердил возврат. Пожалуйста, подтвердите и вы, чтобы завершить сделку.`,
-        null,
-        requestId,
-        'request'
-      );
-    }
-
-    // Системное сообщение в чат
     await pool.query(`
-      INSERT INTO request_messages (request_id, sender_id, text)
-      VALUES ($1, $2, $3)
-    `, [requestId, userId, 'Возврат предмета подтверждён']);
+      UPDATE ad_requests
+      SET status = 'completed',
+          completed_at = NOW(),
+          requester_return_confirmed = true,
+          creator_return_confirmed = true,
+          updated_at = NOW()
+      WHERE id = $1
+    `, [requestId]);
 
-    return { status: updatedReq.status === 'completed' ? 'completed' : 'in_progress', requestId };
+    await Notification.createNotification(req.requester_id, 'review_reminder', `Сделка по объявлению "${req.title}" завершена. Оцените результат.`, null, requestId, 'request');
+    await Notification.createNotification(req.ad_owner_id, 'review_reminder', `Сделка по объявлению "${req.title}" завершена. Оцените результат.`, null, requestId, 'request');
+
+    await pool.query(`UPDATE ads SET acceptance_status = 'open', accepted_by = NULL, accepted_at = NULL WHERE id = $1`, [req.ad_id]);
+
+    await pool.query(`INSERT INTO request_messages (request_id, sender_id, text) VALUES ($1, $2, 'Возврат подтверждён. Сделка завершена.')`, [requestId, userId]);
+
+    return { status: 'completed', requestId };
+  } catch (err) {
+    throw err;
+  }
+};
+
+const declineReturn = async (requestId, userId) => {
+  try {
+    const request = await pool.query(`
+      SELECT ar.*, ads.user_id as ad_owner_id, ar.status as current_status, ads.title
+      FROM ad_requests ar
+      JOIN ads ON ar.ad_id = ads.id
+      WHERE ar.id = $1
+    `, [requestId]);
+    if (request.rows.length === 0) throw new Error('Request not found');
+    const req = request.rows[0];
+    if (req.status !== 'in_progress') throw new Error('Deal not in progress');
+    if (!req.return_proposed_by) throw new Error('No active return proposal');
+    if (req.return_proposed_by === userId) throw new Error('You cannot decline your own proposal');
+    if (req.requester_id !== userId && req.ad_owner_id !== userId) throw new Error('Not authorized');
+
+    await pool.query(`
+      UPDATE ad_requests
+      SET return_proposed_by = NULL,
+          return_proposed_condition = NULL,
+          updated_at = NOW()
+      WHERE id = $1
+    `, [requestId]);
+
+    const initiatorId = req.return_proposed_by;
+    await Notification.createNotification(initiatorId, 'return_declined', `Ваше предложение возврата по сделке "${req.title}" отклонено.`, null, requestId, 'request');
+    await pool.query(`INSERT INTO request_messages (request_id, sender_id, text) VALUES ($1, $2, 'Предложение возврата отклонено.')`, [requestId, userId]);
+
+    return { status: 'in_progress', requestId };
   } catch (err) {
     throw err;
   }
@@ -1058,5 +1076,7 @@ module.exports = {
   acceptProposal,
   openDispute,
   resolveDispute,
-  confirmReturn
+  confirmReturn,
+  acceptReturn,
+  declineReturn
 };
