@@ -602,6 +602,13 @@
           <!-- Friends Tab -->
           <div id="friends-tab" class="profile-tab">
             <h2>Мои друзья</h2>
+
+            <div id="incoming-requests-section" style="margin-bottom: 30px;">
+              <h3>Входящие заявки</h3>
+              <div id="incoming-requests-list"></div>
+            </div>
+
+            <h3>Список друзей</h3>
             <div id="friends-list"></div>
           </div>
 
@@ -2055,6 +2062,128 @@
         }
       } catch (error) {
         alert('Ошибка сети: ' + error.message);
+      }
+    }
+
+    async function loadFriends() {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const [friendsRes, requestsRes] = await Promise.all([
+          fetch('/api/friends', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/friends/requests', { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+
+        const friendsData = await friendsRes.json();
+        const requestsData = await requestsRes.json();
+        const friends = friendsData.friends || [];
+        const requests = requestsData.requests || [];
+
+        // Входящие заявки
+        const requestsContainer = document.getElementById('incoming-requests-list');
+        if (!requests.length) {
+          requestsContainer.innerHTML = '<p style="color:#666;">Нет входящих заявок.</p>';
+        } else {
+          requestsContainer.innerHTML = `
+        <table class="profile-table">
+          <thead><tr><th>От кого</th><th>Дата</th><th>Действия</th></tr></thead>
+          <tbody>
+            ${requests.map(req => `
+              <tr>
+                <td>${escapeHtml(req.from_name || 'Пользователь')}</td>
+                <td>${new Date(req.created_at).toLocaleDateString()}</td>
+                <td class="action-buttons">
+                  <button onclick="acceptFriendRequest(${req.id})">Принять</button>
+                  <button class="delete-btn" onclick="declineFriendRequest(${req.id})">Отклонить</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+        }
+
+        // Список друзей
+        const friendsContainer = document.getElementById('friends-list');
+        if (!friends.length) {
+          friendsContainer.innerHTML = '<p style="color:#666;">У вас пока нет друзей.</p>';
+        } else {
+          friendsContainer.innerHTML = `
+        <table class="profile-table">
+          <thead><tr><th>Имя</th><th>Телефон</th><th>Действия</th></tr></thead>
+          <tbody>
+            ${friends.map(friend => `
+              <tr>
+                <td>
+                  <a href="/user-profile.html?userId=${friend.id}">${escapeHtml(friend.name || 'Пользователь')}</a>
+                </td>
+                <td>${escapeHtml(friend.phone || '')}</td>
+                <td class="action-buttons">
+                  <button onclick="location.href='/chat.html?with=${friend.id}'">Написать</button>
+                  <button class="delete-btn" onclick="removeFriend(${friend.id})">Удалить из друзей</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function acceptFriendRequest(requestId) {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const resp = await fetch(`/api/friends/accept/${requestId}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (resp.ok) {
+          loadFriends(); // обновить список
+        } else {
+          const data = await resp.json();
+          alert('Ошибка: ' + data.message);
+        }
+      } catch (err) {
+        alert('Ошибка сети');
+      }
+    }
+
+    async function declineFriendRequest(requestId) {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const resp = await fetch(`/api/friends/decline/${requestId}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (resp.ok) {
+          loadFriends();
+        } else {
+          const data = await resp.json();
+          alert('Ошибка: ' + data.message);
+        }
+      } catch (err) {
+        alert('Ошибка сети');
+      }
+    }
+
+    async function removeFriend(friendId) {
+      if (!confirm('Удалить из друзей?')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const resp = await fetch(`/api/friends/remove/${friendId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (resp.ok) {
+          loadFriends();
+        } else {
+          const data = await resp.json();
+          alert('Ошибка: ' + data.message);
+        }
+      } catch (err) {
+        alert('Ошибка сети');
       }
     }
   </script>

@@ -265,6 +265,8 @@ function initHeader() {
             window.location.href = '/profile.html?tab=deals';
           } else if (type === 'dispute_resolved') {
             window.location.href = '/profile.html?tab=active';
+          } else if (type === 'friend_request' || type === 'friend_request_accepted') {
+            window.location.href = '/profile.html?tab=friends';
           } else {
             window.location.href = '/profile.html';
           }

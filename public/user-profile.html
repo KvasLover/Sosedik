@@ -124,32 +124,48 @@
                 window.location.href = `/chat.html?with=${profile.id}`;
             });
 
-            // Проверяем статус дружбы с сервером
+            // --- Кнопки друзей (логика с запросами) ---
+            const friendBtn = document.getElementById('friend-btn');
+            const writeBtn = document.getElementById('write-btn');
             const token = localStorage.getItem('sosedik_token');
-            if (token) {
-                fetch(`/api/friends/check/${profile.id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        updateFriendButtons(data.isFriend);
-                    })
-                    .catch(err => console.error('Ошибка проверки дружбы:', err));
+            if (!token) return;
 
-                // Обработчик кнопки "Добавить/Удалить из друзей"
-                const friendBtn = document.getElementById('friend-btn');
-                friendBtn.addEventListener('click', async () => {
-                    const currentState = friendBtn.textContent.includes('Удалить');
+            // Проверить статус
+            Promise.all([
+                fetch(`/api/friends/check/${profile.id}`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+                fetch(`/api/friends/check-request-status/${profile.id}`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+            ]).then(([friendData, requestData]) => {
+                const isFriend = friendData.isFriend;
+                const requestStatus = requestData.status; // 'pending', 'accepted', 'rejected' или null
+
+                if (isFriend) {
+                    friendBtn.textContent = 'Удалить из друзей';
+                    writeBtn.style.display = 'inline-block';
+                } else if (requestStatus === 'pending') {
+                    friendBtn.textContent = 'Запрос отправлен';
+                    friendBtn.disabled = true;
+                    writeBtn.style.display = 'none';
+                } else {
+                    friendBtn.textContent = 'Добавить в друзья';
+                    friendBtn.disabled = false;
+                    writeBtn.style.display = 'none';
+                }
+            });
+
+            friendBtn.addEventListener('click', async () => {
+                const currentText = friendBtn.textContent;
+                if (currentText === 'Запрос отправлен') return; // нельзя отменить пока
+
+                if (currentText === 'Удалить из друзей') {
                     try {
-                        const resp = await fetch(
-                            `/api/friends/${currentState ? 'remove' : 'add'}/${profile.id}`,
-                            {
-                                method: currentState ? 'DELETE' : 'POST',
-                                headers: { 'Authorization': `Bearer ${token}` }
-                            }
-                        );
+                        const resp = await fetch(`/api/friends/remove/${profile.id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
                         if (resp.ok) {
-                            updateFriendButtons(!currentState);
+                            friendBtn.textContent = 'Добавить в друзья';
+                            friendBtn.disabled = false;
+                            writeBtn.style.display = 'none';
                         } else {
                             const err = await resp.json();
                             alert('Ошибка: ' + err.message);
@@ -157,16 +173,31 @@
                     } catch (err) {
                         alert('Ошибка сети: ' + err.message);
                     }
-                });
-            }
+                } else {
+                    // Добавить в друзья (отправить запрос)
+                    try {
+                        const resp = await fetch(`/api/friends/add/${profile.id}`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const data = await resp.json();
+                        if (resp.ok) {
+                            friendBtn.textContent = 'Запрос отправлен';
+                            friendBtn.disabled = true;
+                            writeBtn.style.display = 'none';
+                        } else {
+                            alert('Ошибка: ' + (data.message || 'Не удалось отправить запрос'));
+                        }
+                    } catch (err) {
+                        alert('Ошибка сети: ' + err.message);
+                    }
+                }
+            });
 
-            // Вспомогательная функция, обновляющая текст кнопок
-            function updateFriendButtons(isFriend) {
-                const friendBtn = document.getElementById('friend-btn');
-                const writeBtn = document.getElementById('write-btn');
-                friendBtn.textContent = isFriend ? 'Удалить из друзей' : 'Добавить в друзья';
-                writeBtn.style.display = isFriend ? 'inline-block' : 'none';
-            }
+            // Кнопка "Написать" (уже есть обработчик)
+            writeBtn.addEventListener('click', () => {
+                window.location.href = `/chat.html?with=${profile.id}`;
+            });
         }
 
         function escapeHtml(str) {
