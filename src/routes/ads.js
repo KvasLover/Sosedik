@@ -213,13 +213,17 @@ router.post('/:id/request', verifyToken, async (req, res) => {
     const request = await Ad.createAdRequest(adId, req.user.id, message);
 
     // Уведомление автору объявления
+    let notificationText = `Новый запрос на ваше объявление "${ad.title}"`;
+    if (message && message.trim()) {
+      notificationText += `. Сообщение: "${message.trim()}"`;
+    }
     await Notification.createNotification(
       ad.user_id,
       'new_request',
-      `Новый запрос на ваше объявление "${ad.title}"`,
+      notificationText,
       null,
-      request.id,          // related_id
-      'request'            // related_type
+      request.id,
+      'request'
     );
 
     res.status(201).json({ message: 'Request sent', request });

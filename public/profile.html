@@ -1193,9 +1193,9 @@
               proposalHtml = `
     <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
       <strong>Предложенные условия:</strong><br>
-      Цена: ${req.proposed_price || '—'}<br>
-      Время: ${req.proposed_time || '—'}<br>
-      Условия: ${req.proposed_comment || '—'}<br>
+          Цена: ${req.proposed_price ? req.proposed_price + ' руб.' : 'Не указана'}<br>
+    Время: ${req.proposed_time || 'Не указано'}<br>
+    Условия: ${req.proposed_comment || 'Не указаны'}<br>
       ${req.proposed_deposit ? `Залог: ${req.proposed_deposit} руб.<br>` : ''}
       ${req.proposed_condition ? `Состояние при передаче: ${req.proposed_condition}<br>` : ''}
       <button onclick="acceptProposal(${req.id})" style="margin-top: 5px;">Принять</button>
@@ -1228,7 +1228,7 @@
         
         ${req.status === 'in_progress' && req.type !== 'rental' ? `
           ${!req.userConfirmed ? `<button onclick="confirmCompletion(${req.id})">Подтвердить выполнение</button>` : ''}
-          ${req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили</span>` : ''}
+          ${req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили. Ждем ответ</span>` : ''}
         ` : ''}
         
         ${req.status === 'in_progress' && req.type === 'rental' ? `
@@ -1278,20 +1278,34 @@
           const deals = await activeResp.json();
           const deal = deals.find(d => d.id === requestId);
           if (deal) {
-            // Для обычных: цену, если нужно – но убрали, оставим для совместимости, но не используем
+            // Заполняем поля
             document.getElementById('modal-agreed-time').value = deal.ad_preferred_time || '';
             document.getElementById('modal-agreement-comment').value = deal.ad_terms || '';
+
             const isRental = (deal.type === 'rental');
+            const priceGroup = document.getElementById('price-group');
             const conditionGroup = document.getElementById('item-condition-group');
-            if (conditionGroup) conditionGroup.style.display = isRental ? 'block' : 'none';
             const depositGroup = document.getElementById('deposit-group');
-            if (depositGroup) {
-              if (isRental) {
+
+            if (isRental) {
+              // Скрываем цену, показываем арендные поля
+              if (priceGroup) priceGroup.style.display = 'none';
+              if (conditionGroup) {
+                conditionGroup.style.display = 'block';
+                document.getElementById('modal-item-condition').value = ''; // очищаем
+              }
+              if (depositGroup) {
                 depositGroup.style.display = 'block';
                 document.getElementById('modal-agreed-deposit').value = deal.deposit || '';
-              } else {
-                depositGroup.style.display = 'none';
               }
+            } else {
+              // Показываем цену, скрываем арендные поля
+              if (priceGroup) {
+                priceGroup.style.display = 'block';
+                document.getElementById('modal-agreed-price').value = deal.ad_price || '';
+              }
+              if (conditionGroup) conditionGroup.style.display = 'none';
+              if (depositGroup) depositGroup.style.display = 'none';
             }
           }
         }
@@ -1307,37 +1321,72 @@
     async function submitStartWork() {
       if (!currentStartRequestId) return;
 
-      const conditionGroup = document.getElementById('item-condition-group');
-      if (conditionGroup && conditionGroup.style.display === 'block') {
-        const itemCondition = document.getElementById('modal-item-condition').value.trim();
-        const errorSpan = document.getElementById('item-condition-error');
-        if (!itemCondition) {
-          if (errorSpan) errorSpan.style.display = 'block';
-          return;
-        } else if (errorSpan) {
-          errorSpan.style.display = 'none';
+      // Сброс ошибок
+      document.querySelectorAll('#start-work-modal .error-hint').forEach(el => el.style.display = 'none');
+
+      const isRental = document.getElementById('item-condition-group')?.style.display === 'block';
+      const token = localStorage.getItem('sosedik_token');
+
+      let hasError = false;
+
+      // Проверка для аренды: состояние обязательно
+      let itemConditionStart = null;
+      if (isRental) {
+        itemConditionStart = document.getElementById('modal-item-condition')?.value.trim();
+        if (!itemConditionStart) {
+          document.getElementById('item-condition-error').style.display = 'block';
+          hasError = true;
         }
       }
 
-      const startBtn = document.querySelector('#start-work-modal button[onclick="submitStartWork()"]');
-      if (startBtn) startBtn.disabled = true;
+      // Проверка залога (если указан и не число)
+      let agreedDeposit = null;
+      const depositRaw = document.getElementById('modal-agreed-deposit')?.value.trim();
+      if (depositRaw) {
+        const depositNum = Number(depositRaw);
+        if (isNaN(depositNum) || depositNum < 0 || !Number.isInteger(depositNum)) {
+          document.getElementById('deposit-error').textContent = 'Введите целое число';
+          document.getElementById('deposit-error').style.display = 'block';
+          hasError = true;
+        } else {
+          agreedDeposit = depositNum;
+        }
+      }
+
+      // Цена для обычного объявления
+      let agreedPrice = null;
+      if (!isRental) {
+        const priceRaw = document.getElementById('modal-agreed-price')?.value.trim();
+        if (priceRaw) {
+          const priceNum = Number(priceRaw);
+          if (isNaN(priceNum) || priceNum < 0) {
+            document.getElementById('price-error').textContent = 'Введите корректную цену (число)';
+            document.getElementById('price-error').style.display = 'block';
+            hasError = true;
+          } else {
+            agreedPrice = priceNum;
+          }
+        }
+      }
+
+      if (hasError) return;
 
       const agreedTime = document.getElementById('modal-agreed-time').value;
       const agreementComment = document.getElementById('modal-agreement-comment').value;
-      const itemConditionStart = document.getElementById('modal-item-condition')?.value || null;
-      const agreedDeposit = document.getElementById('modal-agreed-deposit')?.value || null;
-      const token = localStorage.getItem('sosedik_token');
+
+      const startBtn = document.querySelector('#start-work-modal button[onclick="submitStartWork()"]');
+      if (startBtn) startBtn.disabled = true;
 
       try {
         const response = await fetch(`/api/ads/requests/${currentStartRequestId}/start`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            agreedPrice: null, // цена не используется для аренды
+            agreedPrice: agreedPrice,          // null если не указана или аренда
             agreedTime: agreedTime || null,
             agreementComment: agreementComment || null,
             itemConditionStart: itemConditionStart,
-            agreedDeposit: agreedDeposit ? Number(agreedDeposit) : null
+            agreedDeposit: agreedDeposit
           })
         });
         if (response.ok) {
@@ -1854,27 +1903,40 @@
     style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
     <div style="background: white; padding:1.5rem; border-radius:8px; max-width:500px; width:90%;">
       <h3>Уточните условия сделки</h3>
+      <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 1rem;">
+        Оставьте поля пустыми, чтобы использовать изначальные условия.
+      </p>
+
+      <!-- Цена — показывается только для обычных объявлений -->
+      <div class="form-group" id="price-group" style="display: none;">
+        <label for="modal-agreed-price">Цена (руб.):</label>
+        <input type="text" id="modal-agreed-price" class="form-control" placeholder="Безвозмездно">
+        <span class="error-hint" id="price-error"></span>
+      </div>
+
       <div class="form-group">
-        <label>Время/дата: <span style="font-weight: normal; color: #6c757d;">(необязательно)</span></label>
+        <label for="modal-agreed-time">Время/дата:</label>
         <input type="text" id="modal-agreed-time" class="form-control" placeholder="Например: завтра в 15:00">
       </div>
+
       <div class="form-group">
-        <label>Условия: <span style="font-weight: normal; color: #6c757d;">(необязательно)</span></label>
+        <label for="modal-agreement-comment">Условия:</label>
         <textarea id="modal-agreement-comment" class="form-control" rows="3"></textarea>
       </div>
+
+      <!-- Только для аренды -->
       <div class="form-group" id="item-condition-group" style="display: none;">
-        <label for="modal-item-condition">Состояние предмета при передаче: <span style="color: #dc3545;">*</span> <span
-            style="font-weight: normal; color: #6c757d;">(обязательно)</span></label>
-        <textarea id="modal-item-condition" class="form-control" rows="2"
-          placeholder="Царапины, сколы, работоспособность..."></textarea>
+        <label for="modal-item-condition">Состояние при передаче: <span style="color: red;">*</span></label>
+        <textarea id="modal-item-condition" class="form-control" rows="2"></textarea>
         <small id="item-condition-error" style="color: #dc3545; display: none;">Пожалуйста, опишите состояние
           предмета.</small>
       </div>
       <div class="form-group" id="deposit-group" style="display: none;">
-        <label for="modal-agreed-deposit">Залог (руб): <span
-            style="font-weight: normal; color: #6c757d;">(необязательно, можно изменить)</span></label>
-        <input type="number" id="modal-agreed-deposit" class="form-control">
+        <label for="modal-agreed-deposit">Залог (руб.):</label>
+        <input type="text" id="modal-agreed-deposit" class="form-control" inputmode="numeric" pattern="[0-9]*">
+        <span class="error-hint" id="deposit-error"></span>
       </div>
+
       <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
         <button class="btn-secondary" onclick="closeStartModal()">Отмена</button>
         <button class="btn-success" onclick="submitStartWork()">Начать работу</button>

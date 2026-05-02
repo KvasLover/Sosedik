@@ -61,17 +61,22 @@
             document.getElementById('deal-info').insertAdjacentHTML('beforeend', disputeHtml);
           }
           document.getElementById('deal-status').innerText = getStatusName(data.status);
-          const time = data.agreed_time ?? data.ad_time ?? '—';
-          const comment = data.agreement_comment ?? data.ad_terms ?? '—';
-          document.getElementById('deal-time').innerText = time;
-          document.getElementById('deal-comment').innerText = comment;
+          const time = data.agreed_time || data.ad_time || null;
+          const comment = data.agreement_comment || data.ad_terms || null;
+          document.getElementById('deal-time').innerText = time || 'Не указано';
+          document.getElementById('deal-comment').innerText = comment || 'Не указаны';
 
           // Определяем тип и отображаем залог или цену
           const isRental = (data.type === 'rental');
           const priceLabel = isRental ? 'Залог:' : 'Цена:';
-          const priceValue = isRental
-            ? (data.agreed_deposit ?? data.deposit ?? '—')
-            : (data.agreed_price ?? data.ad_price ?? '—');
+          let priceValue;
+          if (isRental) {
+            const deposit = data.agreed_deposit ?? data.deposit;
+            priceValue = deposit ? deposit + ' руб.' : 'Не указан';
+          } else {
+            const price = data.agreed_price ?? data.ad_price;
+            priceValue = price ? price + ' руб.' : 'Не указана';
+          }
           document.getElementById('deal-price-label').innerText = priceLabel;
           document.getElementById('deal-price').innerText = priceValue;
 
