@@ -257,6 +257,8 @@ function initHeader() {
             window.location.href = '/profile.html?tab=active';
           } else if (type === 'request_proposal_declined') {
             window.location.href = '/profile.html?tab=active';
+          } else if (type === 'return_proposed') {
+            window.location.href = '/profile.html?tab=active';
           } else if (type === 'pending_request_cancelled') {
             window.location.href = '/profile.html';
           } else if (type === 'review_reminder') {

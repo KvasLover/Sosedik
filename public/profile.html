@@ -1231,25 +1231,29 @@
           ${req.userConfirmed ? `<span style="color:#27ae60;">✓ Вы подтвердили. Ждем ответ</span>` : ''}
         ` : ''}
         
-        ${req.status === 'in_progress' && req.type === 'rental' ? `
-  <div style="margin-bottom: 5px;">
-    <strong>Состояние при передаче:</strong> ${escapeHtml(req.item_condition_start || 'не указано')}
-  </div>
-  ${req.return_proposed_by ? (
+                ${req.status === 'in_progress' && req.type === 'rental' ? `
+          <div style="margin-bottom: 5px;">
+            <strong>Состояние при передаче:</strong> ${escapeHtml(req.item_condition_start || 'не указано')}
+          </div>
+          ${req.return_proposed_by ? (
                 req.return_proposed_by === currentUserId ?
                   '<p>Вы предложили возврат. Ожидайте ответа.</p>' :
                   `
-      <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
-        <strong>Предложен возврат:</strong><br>
-        Состояние после возврата: ${escapeHtml(req.return_proposed_condition || 'Не указано')}<br>
-        <button onclick="acceptReturnProposal(${req.id})" style="margin-top: 5px;">Согласиться</button>
-        <button onclick="declineReturnProposal(${req.id})" style="margin-top: 5px; margin-left: 5px;">Не согласиться</button>
-      </div>`
+              <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
+                <strong>Предложен возврат:</strong><br>
+                Состояние после возврата: ${escapeHtml(req.return_proposed_condition || 'Не указано')}<br>
+                <button onclick="acceptReturnProposal(${req.id})" style="margin-top: 5px;">Согласиться</button>
+                <button onclick="declineReturnProposal(${req.id})" style="margin-top: 5px; margin-left: 5px;">Не согласиться</button>
+              </div>`
               ) : (
                 `<button onclick="openReturnModal(${req.id})" style="background: #f39c12;">Подтвердить возврат</button>`
               )}
-` : ''}
-        
+        ` : ''}
+
+        ${req.status === 'in_progress' ?
+              `<button onclick="openDispute(${req.id})" class="delete-btn" style="margin-left:5px;">Открыть спор</button>`
+              : ''}
+
         <a href="/request-chat.html?requestId=${req.id}" class="chat-link">💬 Чат сделки</a>
       `}
     </td>
@@ -1461,7 +1465,6 @@
           body: JSON.stringify({ conditionEnd })
         });
         if (response.ok) {
-          alert('Возврат подтверждён');
           closeReturnModal();
           loadActiveRequests(); // обновить список активных сделок
         } else {
