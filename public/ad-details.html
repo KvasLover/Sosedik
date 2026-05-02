@@ -16,10 +16,10 @@
   <main>
     <div id="ad-details" style="max-width: 800px; margin: 0 auto; padding: 0 20px;">
       <button class="btn-ghost" onclick="history.back()" style="margin-bottom: 20px;">← Назад</button>
-      
+
       <div id="ad-content" class="detail-card">
         <h1 id="ad-title" class="detail-title">Загрузка...</h1>
-        
+
         <div class="detail-meta">
           <span class="meta-badge" id="ad-category">Категория</span>
           <span class="meta-separator">•</span>
@@ -142,21 +142,18 @@
 
           document.getElementById('ad-title').textContent = ad.title + (isOwner ? ' (Ваше объявление)' : '');
           document.getElementById('ad-category').textContent = ad.category;
-          document.getElementById('ad-description').textContent = ad.description;
+          document.getElementById('ad-description').textContent = ad.description || 'Не указано';
+          // Цена – показываем всегда
+          document.getElementById('ad-price-section').style.display = 'block';
+          document.getElementById('price-value').textContent = ad.price ? ad.price + ' руб.' : 'Не указана';
 
-          if (ad.price) {
-            document.getElementById('ad-price-section').style.display = 'block';
-            document.getElementById('price-value').textContent = ad.price + ' руб.';
-          }
+          // Желаемое время/дата – показываем всегда
+          document.getElementById('ad-preferred-time-section').style.display = 'block';
+          document.getElementById('preferred-time-value').textContent = ad.preferred_time ? ad.preferred_time : 'Не указано';
 
-          if (ad.preferred_time) {
-            document.getElementById('ad-preferred-time-section').style.display = 'block';
-            document.getElementById('preferred-time-value').textContent = ad.preferred_time;
-          }
-          if (ad.terms) {
-            document.getElementById('ad-terms-section').style.display = 'block';
-            document.getElementById('terms-value').textContent = ad.terms;
-          }
+          // Условия – показываем всегда
+          document.getElementById('ad-terms-section').style.display = 'block';
+          document.getElementById('terms-value').textContent = ad.terms ? ad.terms : 'Не указаны';
 
           if (ad.urgency) {
             document.getElementById('ad-urgency-section').style.display = 'block';
@@ -187,7 +184,7 @@
           actionsDiv.innerHTML = ''; // Очистить существующие кнопки
 
           // Кнопки для чужих объявлений
-                    // Кнопки для чужих объявлений
+          // Кнопки для чужих объявлений
           if (!isOwner) {
             // Кнопка "В избранное"
             const favoriteBtn = document.createElement('button');

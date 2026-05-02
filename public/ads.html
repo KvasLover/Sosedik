@@ -32,8 +32,12 @@
           <h2>Создать объявление</h2>
           <button class="btn-sm btn-secondary" onclick="toggleCreateForm()">✕</button>
         </div>
+        <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">
+          <span style="color: red;">*</span> – обязательные поля
+        </p>
         <div class="form-group">
-          <label for="ad-category">Категория:</label>
+          <label for="ad-category">Категория: <span style="color: red;">*</span></label>
+          <span class="error-hint" id="ad-category-error"></span>
           <select id="ad-category" required>
             <option value="">Выберите категорию</option>
             <option value="продажа">Продажа</option>
@@ -44,27 +48,29 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="ad-title">Название:</label>
+          <label for="ad-title">Название: <span style="color: red;">*</span></label>
+          <span class="error-hint" id="ad-title-error"></span>
           <input type="text" id="ad-title" placeholder="Название объявления" required>
         </div>
         <div class="form-group">
-          <label for="ad-description">Описание:</label>
-          <textarea id="ad-description" placeholder="Описание объявления" rows="4" required></textarea>
+          <label for="ad-description">Описание:</label> <textarea id="ad-description" placeholder="Описание объявления"
+            rows="4" required></textarea>
         </div>
         <div class="form-group">
           <label for="ad-contact">Контактная информация:</label>
           <input type="text" id="ad-contact" placeholder="Телефон или email">
         </div>
         <div class="form-group">
-          <label for="ad-price">Цена (необязательно):</label>
-          <input type="number" id="ad-price" placeholder="Цена в рублях">
+          <label for="ad-price">Цена:</label>
+          <input type="text" id="ad-price" placeholder="Цена в рублях">
+          <span class="error-hint" id="ad-price-error"></span>
         </div>
         <div class="form-group">
-          <label for="ad-preferred-time">Желаемое время/дата (необязательно):</label>
+          <label for="ad-preferred-time">Желаемое время/дата:</label>
           <input type="text" id="ad-preferred-time" placeholder="Например: завтра с 14 до 16, или 25.04 в 10:00">
         </div>
         <div class="form-group">
-          <label for="ad-terms">Условия (необязательно):</label>
+          <label for="ad-terms">Условия:</label>
           <textarea id="ad-terms" placeholder="Дополнительные условия: нужна дрель, требуются грузчики и т.п."
             rows="2"></textarea>
         </div>
@@ -231,13 +237,14 @@
         const contentDiv = document.createElement('div');
         contentDiv.className = 'ad-content';
         contentDiv.onclick = () => window.location.href = `/ad-details.html?id=${ad.id}`;
-        contentDiv.innerHTML = '<p><strong>Автор:</strong> <a href="/user-profile.html?userId=' + ad.user_id + '">' + (ad.author_name || ('Пользователь #' + ad.user_id)) + '</a></p>' +
+        contentDiv.innerHTML =
+          '<p><strong>Автор:</strong> <a href="/user-profile.html?userId=' + ad.user_id + '">' + (ad.author_name || ('Пользователь #' + ad.user_id)) + '</a></p>' +
           '<p><strong>Категория:</strong> ' + ad.category + '</p>' +
-          '<p>' + ad.description + '</p>' +
-          (ad.price ? '<p><strong>Цена:</strong> ' + ad.price + ' руб.</p>' : '') +
-          (ad.contact ? '<p><strong>Контакт:</strong> ' + ad.contact + '</p>' : '') +
-          (ad.preferred_time ? '<p><strong>Желаемое время/дата:</strong> ' + ad.preferred_time + '</p>' : '') +
-          (ad.terms ? '<p><strong>Условия:</strong> ' + ad.terms.substring(0, 100) + (ad.terms.length > 100 ? '...' : '') + '</p>' : '') +
+          '<p><strong>Описание:</strong> ' + (ad.description || 'Не указано') + '</p>' +
+          '<p><strong>Цена:</strong> ' + (ad.price ? ad.price + ' руб.' : 'Не указана') + '</p>' +
+          '<p><strong>Контакт:</strong> ' + (ad.contact || 'Не указан') + '</p>' +
+          '<p><strong>Желаемое время/дата:</strong> ' + (ad.preferred_time || 'Не указано') + '</p>' +
+          '<p><strong>Условия:</strong> ' + (ad.terms ? ad.terms.substring(0, 100) + (ad.terms.length > 100 ? '...' : '') : 'Не указаны') + '</p>' +
           '<p><small>Создано: ' + new Date(ad.created_at).toLocaleDateString() + '</small></p>' +
           (isOwner && ad.accepted_by ? '<p style="color: #27ae60; font-weight: bold;">Принято пользователем ' + (ad.acceptor_name || ('#' + ad.accepted_by)) + '</p>' : '');
 
@@ -350,17 +357,53 @@
     }
 
     async function createAd() {
+      // Сбросить все видимые ошибки
+      document.querySelectorAll('.error-hint').forEach(el => {
+        el.style.display = 'none';
+      });
+
       const token = localStorage.getItem('sosedik_token');
       const category = document.getElementById('ad-category').value;
-      const title = document.getElementById('ad-title').value;
-      const description = document.getElementById('ad-description').value;
-      const price = document.getElementById('ad-price').value;
-      const contact = document.getElementById('ad-contact').value;
-      const preferredTime = document.getElementById('ad-preferred-time').value;
-      const terms = document.getElementById('ad-terms').value;
+      const title = document.getElementById('ad-title').value.trim();
+      const description = document.getElementById('ad-description').value.trim();
+      const contact = document.getElementById('ad-contact').value.trim();
+      const preferredTime = document.getElementById('ad-preferred-time').value.trim();
+      const terms = document.getElementById('ad-terms').value.trim();
 
-      if (!category || !title || !description) {
-        alert('Заполните все обязательные поля');
+      let hasError = false;
+
+      let priceValue = null;
+      const price = document.getElementById('ad-price').value.trim();
+      if (price !== '') {
+        const priceNum = Number(price);
+        if (isNaN(priceNum) || priceNum < 0) {
+          document.getElementById('ad-price-error').textContent = 'Введите корректную цену (число)';
+          document.getElementById('ad-price-error').style.display = 'block';
+          hasError = true;
+        } else {
+          priceValue = priceNum;
+        }
+      }
+
+      if (!category) {
+        document.getElementById('ad-category-error').textContent = 'Укажите категорию';
+        document.getElementById('ad-category-error').style.display = 'block';
+        hasError = true;
+      }
+
+      if (!title) {
+        document.getElementById('ad-title-error').textContent = 'Введите название объявления';
+        document.getElementById('ad-title-error').style.display = 'block';
+        hasError = true;
+      }
+
+      // Дополнительно: цена может быть только числом, если указана
+      if (price && (isNaN(price) || Number(price) < 0)) {
+        // можно добавить отдельную проверку, но цена не обязательна, поэтому пропустим
+        // или вывести ошибку, но поле type="number" не даст ввести буквы
+      }
+
+      if (hasError) {
         return;
       }
 
@@ -375,7 +418,7 @@
             category,
             title,
             description,
-            price: price || null,
+            price: priceValue,
             contact: contact || null,
             preferredTime: preferredTime || null,
             terms: terms || null
@@ -395,7 +438,7 @@
           document.getElementById('ad-preferred-time').value = '';
           document.getElementById('ad-terms').value = '';
           toggleCreateForm();
-          loadAds(); // перезагрузить список объявлений
+          loadAds();
         } else {
           showCreateMessage(data.message || 'Ошибка создания объявления', false);
         }
