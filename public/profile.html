@@ -512,23 +512,23 @@
             <h2>Dashboard</h2>
             <div
               style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
-              <div
-                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+              <div onclick="showProfileTab('myads')"
+                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer;">
                 <div style="font-size: 32px; font-weight: bold;" id="stat-ads">0</div>
                 <div style="font-size: 14px; opacity: 0.9;">Мои объявления</div>
               </div>
-              <div
-                style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+              <div onclick="showProfileTab('incoming')"
+                style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer;">
                 <div style="font-size: 32px; font-weight: bold;" id="stat-incoming">0</div>
                 <div style="font-size: 14px; opacity: 0.9;">Входящих запросов</div>
               </div>
-              <div
-                style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+              <div onclick="showProfileTab('active')"
+                style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer;">
                 <div style="font-size: 32px; font-weight: bold;" id="stat-active">0</div>
                 <div style="font-size: 14px; opacity: 0.9;">Активных сделок</div>
               </div>
-              <div
-                style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
+              <div onclick="showProfileTab('favorites')"
+                style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer;">
                 <div style="font-size: 32px; font-weight: bold;" id="stat-favorites">0</div>
                 <div style="font-size: 14px; opacity: 0.9;">В избранном</div>
               </div>

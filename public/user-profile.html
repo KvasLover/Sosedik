@@ -119,25 +119,54 @@
             const commonDealsDiv = document.getElementById('common-deals');
             commonDealsDiv.textContent = profile.hasCommonDeals ? '✓ У вас есть общие сделки' : '✗ У вас нет общих сделок';
 
-            // Логика кнопки "Добавить в друзья" (без бэкенда)
-            const friendBtn = document.getElementById('friend-btn');
-            const writeBtn = document.getElementById('write-btn');
-            let isFriend = false; // временное состояние, не сохраняется
-
-            friendBtn.addEventListener('click', () => {
-                isFriend = !isFriend;
-                if (isFriend) {
-                    friendBtn.textContent = 'Удалить из друзей';
-                    writeBtn.style.display = 'inline-block';
-                } else {
-                    friendBtn.textContent = 'Добавить в друзья';
-                    writeBtn.style.display = 'none';
-                }
-            });
-
-            writeBtn.addEventListener('click', () => {
+            // Кнопка "Написать" всегда перенаправляет в глобальный чат (доступен только если друзья)
+            document.getElementById('write-btn').addEventListener('click', () => {
                 window.location.href = `/chat.html?with=${profile.id}`;
             });
+
+            // Проверяем статус дружбы с сервером
+            const token = localStorage.getItem('sosedik_token');
+            if (token) {
+                fetch(`/api/friends/check/${profile.id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        updateFriendButtons(data.isFriend);
+                    })
+                    .catch(err => console.error('Ошибка проверки дружбы:', err));
+
+                // Обработчик кнопки "Добавить/Удалить из друзей"
+                const friendBtn = document.getElementById('friend-btn');
+                friendBtn.addEventListener('click', async () => {
+                    const currentState = friendBtn.textContent.includes('Удалить');
+                    try {
+                        const resp = await fetch(
+                            `/api/friends/${currentState ? 'remove' : 'add'}/${profile.id}`,
+                            {
+                                method: currentState ? 'DELETE' : 'POST',
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            }
+                        );
+                        if (resp.ok) {
+                            updateFriendButtons(!currentState);
+                        } else {
+                            const err = await resp.json();
+                            alert('Ошибка: ' + err.message);
+                        }
+                    } catch (err) {
+                        alert('Ошибка сети: ' + err.message);
+                    }
+                });
+            }
+
+            // Вспомогательная функция, обновляющая текст кнопок
+            function updateFriendButtons(isFriend) {
+                const friendBtn = document.getElementById('friend-btn');
+                const writeBtn = document.getElementById('write-btn');
+                friendBtn.textContent = isFriend ? 'Удалить из друзей' : 'Добавить в друзья';
+                writeBtn.style.display = isFriend ? 'inline-block' : 'none';
+            }
         }
 
         function escapeHtml(str) {
