@@ -489,6 +489,10 @@
             <button class="menu-item" onclick="showProfileTab('deals')">Сделки</button>
           </div>
           <div class="menu-group">
+            <div class="menu-group-title">👥 Друзья</div>
+            <button class="menu-item" onclick="showProfileTab('friends')">Мои друзья</button>
+          </div>
+          <div class="menu-group">
             <div class="menu-group-title">⭐ Сохраненное</div>
             <button class="menu-item" onclick="showProfileTab('favorites')">Избранное</button>
           </div>
@@ -593,6 +597,12 @@
                 style="border-color: #d32f2f; color: #d32f2f;">Убрать все из избранного</button>
             </div>
             <div id="favorites-list"></div>
+          </div>
+
+          <!-- Friends Tab -->
+          <div id="friends-tab" class="profile-tab">
+            <h2>Мои друзья</h2>
+            <div id="friends-list"></div>
           </div>
 
           <!-- Edit Profile Tab -->
@@ -746,6 +756,7 @@
         case 'myads': loadMyAds(); break;
         case 'favorites': loadFavorites(); break;
         case 'deals': loadDeals(); break;
+        case 'friends': loadFriends(); break;
       }
     }
 
@@ -1785,6 +1796,8 @@
           loadMyAds();
         } else if (tabId === 'favorites-tab') {
           loadFavorites(currentFavoriteFilter.itemType, currentFavoriteFilter.adType);
+        } else if (tabId === 'friends-tab') {
+          loadFriends();
         }
       }, 3000); // 3 секунды
     }
@@ -1972,6 +1985,76 @@
         }
       } catch (error) {
         alert('Ошибка: ' + error.message);
+      }
+    }
+
+    async function loadFriends() {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch('/api/friends', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Ошибка загрузки');
+        const data = await response.json();
+        const friends = data.friends || [];
+
+        const container = document.getElementById('friends-list');
+        if (!friends.length) {
+          container.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">У вас пока нет друзей</p>';
+          return;
+        }
+
+        container.innerHTML = `
+      <div class="profile-table-wrapper">
+        <table class="profile-table">
+          <thead>
+            <tr>
+              <th>Имя</th>
+              <th>Телефон</th>
+              <th style="width: 200px;">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${friends.map(friend => `
+              <tr>
+                <td>
+                  <a href="/user-profile.html?userId=${friend.id}">
+                    ${escapeHtml(friend.name || 'Пользователь')}
+                  </a>
+                </td>
+                <td>${escapeHtml(friend.phone || '')}</td>
+                <td class="action-buttons">
+                  <button onclick="location.href='/chat.html?with=${friend.id}'">Написать</button>
+                  <button class="delete-btn" onclick="removeFriend(${friend.id})">Удалить из друзей</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+      } catch (error) {
+        console.error('Ошибка загрузки друзей:', error);
+        document.getElementById('friends-list').innerHTML = '<p style="color:#d32f2f;">Ошибка загрузки</p>';
+      }
+    }
+
+    async function removeFriend(friendId) {
+      if (!confirm('Удалить этого пользователя из друзей?')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/friends/remove/${friendId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          loadFriends(); // обновить список
+        } else {
+          const data = await response.json();
+          alert('Ошибка: ' + data.message);
+        }
+      } catch (error) {
+        alert('Ошибка сети: ' + error.message);
       }
     }
   </script>

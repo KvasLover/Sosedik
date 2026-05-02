@@ -47,4 +47,15 @@ router.delete('/remove/:friendId', verifyToken, async (req, res) => {
   }
 });
 
+// GET /api/friends — список друзей текущего пользователя
+router.get('/', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const friends = await Friend.getFriends(userId);
+    res.json({ friends });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
