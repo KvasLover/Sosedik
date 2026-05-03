@@ -70,139 +70,242 @@
 <body>
     <div id="header-root"></div>
     <main>
-        <button onclick="history.back()" style="margin-bottom: 20px;">← Назад</button>
-        <div id="profile-container" class="profile-container">Загрузка...</div>
-        <div id="common-deals" class="stat-item"></div>
-        <div id="friend-section">
-            <button id="friend-btn">Добавить в друзья</button>
-            <button id="write-btn" style="display: none; margin-left: 10px;">Написать</button>
+        <button onclick="history.back()" style="margin-bottom: 20px;" class="btn-ghost">← Назад</button>
+
+        <div id="profile-container" class="user-profile-card" style="display: none;">
+            <!-- Шапка профиля -->
+            <div class="profile-header">
+                <div class="profile-avatar-large" id="profile-avatar">
+                    <span id="avatar-placeholder">👤</span>
+                </div>
+                <div class="profile-header-info">
+                    <h1 id="profile-name">Загрузка...</h1>
+                    <div class="profile-badges">
+                        <span id="profile-level" class="badge badge-level"></span>
+                        <span id="profile-verified" class="badge badge-verified" style="display:none;">✅
+                            Верифицирован</span>
+                        <span id="profile-moderator" class="badge badge-moderator" style="display:none;">🛡
+                            Модератор</span>
+                    </div>
+                    <p class="profile-date">На сайте с <span id="profile-date"></span></p>
+                </div>
+            </div>
+
+            <!-- Статистика -->
+            <div class="profile-stats-grid">
+                <div class="stat-box">
+                    <span class="stat-icon">🤝</span>
+                    <div class="stat-text">
+                        <span class="stat-number" id="stat-completed">0</span>
+                        <span>сделок завершено</span>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-icon">⭐</span>
+                    <div class="stat-text">
+                        <span class="stat-number" id="stat-reputation">—</span>
+                        <span>репутация</span>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-icon">📦</span>
+                    <div class="stat-text">
+                        <span class="stat-number" id="stat-active-ads">0</span>
+                        <span>активных объявлений</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Общие сделки -->
+            <div id="common-deals-section" class="common-deals" style="display: none;">
+                <span>🤝 У вас есть общие сделки с этим пользователем</span>
+            </div>
+
+            <!-- Кнопки действий -->
+            <div class="profile-actions" id="profile-actions">
+                <button id="friend-btn" class="btn-primary">Загрузка...</button>
+                <button id="write-btn" class="btn-secondary" style="display:none;">💬 Написать</button>
+            </div>
+
+            <!-- Объявления -->
+            <div class="profile-ads-section">
+                <h2>Активные объявления</h2>
+                <div id="profile-ads-list"></div>
+            </div>
         </div>
+        <div id="profile-loading">Загрузка...</div>
     </main>
     <script src="js/header_new.js"></script>
     <script>
         const userId = new URLSearchParams(window.location.search).get('userId');
+        const token = localStorage.getItem('sosedik_token');
+        let currentFriendStatus = null;
+
         if (!userId) {
-            document.getElementById('profile-container').innerHTML = '<p>Не указан пользователь</p>';
+            document.getElementById('profile-loading').innerHTML = '<p>Не указан пользователь</p>';
         } else {
-            fetch(`/api/users/${userId}/profile`)
-                .then(res => { if (!res.ok) throw new Error('Пользователь не найден'); return res.json(); })
-                .then(profile => renderProfile(profile))
-                .catch(err => { document.getElementById('profile-container').innerHTML = `<p>Ошибка: ${err.message}</p>`; });
+            loadUserProfile(userId);
+        }
+
+        async function loadUserProfile(profileId) {
+            try {
+                // Загружаем профиль (публичный)
+                const resp = await fetch(`/api/users/${profileId}/profile`);
+                if (!resp.ok) throw new Error('Пользователь не найден');
+                const profile = await resp.json();
+                renderProfile(profile);
+                document.getElementById('profile-container').style.display = 'block';
+                document.getElementById('profile-loading').style.display = 'none';
+            } catch (err) {
+                document.getElementById('profile-loading').innerHTML = `<p>Ошибка: ${err.message}</p>`;
+            }
         }
 
         function renderProfile(profile) {
-            let statsHtml = '';
-            if (profile.completedCount === 0) {
-                statsHtml = '<div class="stat-item">✨ Новый пользователь</div>';
+            // Основная информация
+            document.getElementById('profile-name').textContent = profile.name || 'Соседик без имени';
+            document.getElementById('profile-date').textContent = new Date(profile.createdAt).toLocaleDateString();
+
+            // Аватар (если есть фото)
+            const avatarContainer = document.getElementById('profile-avatar');
+            const savedPhoto = localStorage.getItem(`sosedik_photo_${profile.id}`);
+            if (savedPhoto) {
+                avatarContainer.innerHTML = `<img src="${savedPhoto}" alt="Аватар">`;
+            } else if (profile.photo) {
+                avatarContainer.innerHTML = `<img src="${profile.photo}" alt="Аватар">`;
             } else {
-                statsHtml = `<div class="stat-item">✔ Завершено: ${profile.completedCount}</div>`;
-                if (profile.hasPositive) statsHtml += '<div class="stat-item">✔ Есть положительные отзывы</div>';
+                avatarContainer.innerHTML = `<span id="avatar-placeholder">👤</span>`;
             }
 
-            const adsHtml = profile.activeAds?.length
-                ? profile.activeAds.map(ad => `
-          <div class="ad-card" onclick="location.href='/ad-details.html?id=${ad.id}'">
-            <div class="ad-title">${escapeHtml(ad.title)}</div>
-            <div class="ad-details">Категория: ${escapeHtml(ad.category)}${ad.price ? ` • ${ad.price} руб.` : ''}</div>
-          </div>
-        `).join('')
-                : '<div class="no-ads">Нет активных объявлений</div>';
+            // Уровень и статусы (если API возвращает level, verified, moderator)
+            // Пока используем заглушки, т.к. API /users/:id/profile не все поля возвращает
+            // Мы можем дополнить API или просто показать, что есть. Для красоты покажем уровень, если есть.
+            const levelEl = document.getElementById('profile-level');
+            if (profile.level !== undefined) {
+                levelEl.textContent = getLevelName(profile.level);
+                if (profile.level >= 2) document.getElementById('profile-verified').style.display = 'inline';
+                if (profile.level >= 3) document.getElementById('profile-moderator').style.display = 'inline';
+            } else {
+                levelEl.textContent = 'Участник';
+            }
 
-            document.getElementById('profile-container').innerHTML = `
-        <div class="profile-name">${escapeHtml(profile.name || 'Соседик без имени')}</div>
-        <div class="profile-meta">На сайте с ${new Date(profile.createdAt).toLocaleDateString()}</div>
-        <div class="stats-section"><h3>Статистика</h3>${statsHtml}</div>
-        <div class="ads-list"><h3>Активные объявления</h3>${adsHtml}</div>
-      `;
+            // Статистика
+            document.getElementById('stat-completed').textContent = profile.completedCount || 0;
+            document.getElementById('stat-reputation').textContent = profile.hasPositive ? '👍 Положительная' : 'Нейтральная';
+            document.getElementById('stat-active-ads').textContent = profile.activeAds ? profile.activeAds.length : 0;
 
-            // Отображение общих сделок
-            const commonDealsDiv = document.getElementById('common-deals');
-            commonDealsDiv.textContent = profile.hasCommonDeals ? '✓ У вас есть общие сделки' : '✗ У вас нет общих сделок';
+            // Общие сделки
+            if (profile.hasCommonDeals) {
+                document.getElementById('common-deals-section').style.display = 'block';
+            }
 
-            // Кнопка "Написать" всегда перенаправляет в глобальный чат (доступен только если друзья)
-            document.getElementById('write-btn').addEventListener('click', () => {
-                window.location.href = `/chat.html?with=${profile.id}`;
-            });
+            // Список активных объявлений
+            const adsList = document.getElementById('profile-ads-list');
+            if (profile.activeAds && profile.activeAds.length > 0) {
+                adsList.innerHTML = profile.activeAds.map(ad => `
+      <div class="mini-ad" onclick="location.href='/ad-details.html?id=${ad.id}'">
+        <strong>${escapeHtml(ad.title)}</strong>
+        <small>${escapeHtml(ad.category)}${ad.price ? ` • ${ad.price} руб.` : ''}</small>
+      </div>
+    `).join('');
+            } else {
+                adsList.innerHTML = '<p class="no-ads">Нет активных объявлений</p>';
+            }
 
-            // --- Кнопки друзей (логика с запросами) ---
+            // Кнопки друзей (только для авторизованных и не себя)
+            if (token && profile.id !== getUserIdFromToken()) {
+                setupFriendButtons(profile.id);
+            } else {
+                document.getElementById('profile-actions').style.display = 'none';
+            }
+        }
+
+        async function setupFriendButtons(profileId) {
             const friendBtn = document.getElementById('friend-btn');
             const writeBtn = document.getElementById('write-btn');
-            const token = localStorage.getItem('sosedik_token');
-            if (!token) return;
 
-            // Проверить статус
-            Promise.all([
-                fetch(`/api/friends/check/${profile.id}`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
-                fetch(`/api/friends/check-request-status/${profile.id}`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
-            ]).then(([friendData, requestData]) => {
-                const isFriend = friendData.isFriend;
-                const requestStatus = requestData.status; // 'pending', 'accepted', 'rejected' или null
+            try {
+                const [friendResp, requestResp] = await Promise.all([
+                    fetch(`/api/friends/check/${profileId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(`/api/friends/check-request-status/${profileId}`, { headers: { 'Authorization': `Bearer ${token}` } })
+                ]);
+                const friendData = await friendResp.json();
+                const requestData = await requestResp.json();
 
-                if (isFriend) {
+                if (friendData.isFriend) {
                     friendBtn.textContent = 'Удалить из друзей';
+                    friendBtn.className = 'btn-danger';
                     writeBtn.style.display = 'inline-block';
-                } else if (requestStatus === 'pending') {
+                    currentFriendStatus = 'friend';
+                } else if (requestData.status === 'pending') {
                     friendBtn.textContent = 'Запрос отправлен';
                     friendBtn.disabled = true;
-                    writeBtn.style.display = 'none';
+                    friendBtn.className = 'btn-secondary';
+                    currentFriendStatus = 'pending';
                 } else {
                     friendBtn.textContent = 'Добавить в друзья';
-                    friendBtn.disabled = false;
-                    writeBtn.style.display = 'none';
+                    friendBtn.className = 'btn-primary';
+                    currentFriendStatus = 'none';
                 }
-            });
 
-            friendBtn.addEventListener('click', async () => {
-                const currentText = friendBtn.textContent;
-                if (currentText === 'Запрос отправлен') return; // нельзя отменить пока
+                friendBtn.onclick = () => handleFriendAction(profileId);
+                writeBtn.onclick = () => location.href = `/chat.html?with=${profileId}`;
+            } catch (e) {
+                console.error(e);
+                friendBtn.textContent = 'Ошибка';
+            }
+        }
 
-                if (currentText === 'Удалить из друзей') {
-                    try {
-                        const resp = await fetch(`/api/friends/remove/${profile.id}`, {
-                            method: 'DELETE',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        if (resp.ok) {
-                            friendBtn.textContent = 'Добавить в друзья';
-                            friendBtn.disabled = false;
-                            writeBtn.style.display = 'none';
-                        } else {
-                            const err = await resp.json();
-                            alert('Ошибка: ' + err.message);
-                        }
-                    } catch (err) {
-                        alert('Ошибка сети: ' + err.message);
+        async function handleFriendAction(profileId) {
+            try {
+                if (currentFriendStatus === 'friend') {
+                    const resp = await fetch(`/api/friends/remove/${profileId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (resp.ok) {
+                        location.reload();
+                    } else {
+                        const err = await resp.json();
+                        alert('Ошибка: ' + err.message);
                     }
-                } else {
-                    // Добавить в друзья (отправить запрос)
-                    try {
-                        const resp = await fetch(`/api/friends/add/${profile.id}`, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        const data = await resp.json();
-                        if (resp.ok) {
-                            friendBtn.textContent = 'Запрос отправлен';
-                            friendBtn.disabled = true;
-                            writeBtn.style.display = 'none';
-                        } else {
-                            alert('Ошибка: ' + (data.message || 'Не удалось отправить запрос'));
-                        }
-                    } catch (err) {
-                        alert('Ошибка сети: ' + err.message);
+                } else if (currentFriendStatus === 'none') {
+                    const resp = await fetch(`/api/friends/add/${profileId}`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const data = await resp.json();
+                    if (resp.ok) {
+                        document.getElementById('friend-btn').textContent = 'Запрос отправлен';
+                        document.getElementById('friend-btn').disabled = true;
+                        document.getElementById('friend-btn').className = 'btn-secondary';
+                        currentFriendStatus = 'pending';
+                    } else {
+                        alert('Ошибка: ' + (data.message || 'Не удалось'));
                     }
                 }
-            });
+            } catch (e) {
+                alert('Ошибка сети');
+            }
+        }
 
-            // Кнопка "Написать" (уже есть обработчик)
-            writeBtn.addEventListener('click', () => {
-                window.location.href = `/chat.html?with=${profile.id}`;
-            });
+        function getUserIdFromToken() {
+            if (!token) return null;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return payload.id;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function getLevelName(level) {
+            const names = { 0: 'Гость', 1: 'Зарегистрированный жилец', 2: 'Верифицированный жилец', 3: 'Модератор', 4: 'Администратор' };
+            return names[level] || '';
         }
 
         function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
+            return String(str).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]);
         }
     </script>
 </body>

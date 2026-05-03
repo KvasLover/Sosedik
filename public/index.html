@@ -24,10 +24,90 @@
       <button class="btn-primary btn-lg" onclick="window.location.href='/login.html'">Присоединиться</button>
     </div>
 
-    <!-- Auth content -->
     <div id="user-content" class="hidden-content">
-      <h1>Добро пожаловать!</h1>
-      <p>Вы авторизованы. Используйте навигацию для просмотра объявлений и управления профилем.</p>
+      <div class="welcome-dashboard">
+        <!-- Приветствие и быстрые действия -->
+        <div class="welcome-header">
+          <div>
+            <h1>👋 С возвращением, <span id="dashboard-username">сосед</span>!</h1>
+            <p>Готовы помочь или попросить о помощи?</p>
+          </div>
+          <div class="quick-stats">
+            <div class="stat-card">
+              <div class="stat-number" id="quick-balance">0</div>
+              <div>баллов</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="quick-deals">0</div>
+              <div>сделок</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Быстрые действия -->
+        <div class="quick-actions">
+          <a href="/ads.html" class="action-card">
+            <span class="action-icon">📋</span>
+            <span>Объявления</span>
+          </a>
+          <a href="/rentals.html" class="action-card">
+            <span class="action-icon">🔧</span>
+            <span>Аренда</span>
+          </a>
+          <a href="/chats.html" class="action-card">
+            <span class="action-icon">💬</span>
+            <span>Чаты</span>
+          </a>
+          <a href="/profile.html" class="action-card">
+            <span class="action-icon">👤</span>
+            <span>Профиль</span>
+          </a>
+        </div>
+
+        <!-- Сводка и последние объявления -->
+        <div class="dashboard-grid">
+          <div class="dashboard-card">
+            <h3>📊 Сводка активности</h3>
+            <div class="summary-items">
+              <div class="summary-item">
+                <span class="summary-value" id="dash-active-ads">0</span>
+                <span>ваших активных объявлений</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-value" id="dash-pending-in">0</span>
+                <span>входящих запросов</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-value" id="dash-active-deals">0</span>
+                <span>активных взаимодействий</span>
+              </div>
+            </div>
+          </div>
+          <div class="dashboard-card">
+            <h3>📌 Последние объявления</h3>
+            <div id="latest-ads-list">
+              <p style="color:#718096;">Загрузка...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Блок возможностей (рост) -->
+        <div class="growth-section">
+          <h3>🚀 Возможности роста</h3>
+          <div class="growth-cards" id="growth-cards">
+            <div class="growth-card locked">
+              <h4>🔒 Верификация</h4>
+              <p>Подтвердите свой адрес, чтобы открыть все возможности аренды.</p>
+              <button onclick="window.location.href='/profile.html?tab=edit'">Верифицироваться</button>
+            </div>
+            <div class="growth-card locked">
+              <h4>🛡 Стать модератором</h4>
+              <p>Активно помогайте сообществу и получите право голоса в управлении.</p>
+              <button onclick="window.location.href='/profile.html?tab=edit'">Стать модератором</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -55,6 +135,98 @@
           .catch(() => {
             document.getElementById('public-stats').innerHTML = '<p>Не удалось загрузить статистику</p>';
           });
+      }
+    });
+  </script>
+  <script>
+    async function loadDashboardData() {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      try {
+        // Загружаем профиль
+        const profileRes = await fetch('/api/users/me', { headers: { 'Authorization': `Bearer ${token}` } });
+        const profile = await profileRes.json();
+
+        // Устанавливаем имя
+        const nameEl = document.getElementById('dashboard-username');
+        if (nameEl) nameEl.textContent = profile.name || 'Соседик без имени';
+
+        // Обновляем уровень и карточки роста
+        updateGrowthCards(profile);
+
+        // Загружаем статистику
+        const [adsRes, incRes, activeRes, ptsRes] = await Promise.all([
+          fetch('/api/ads', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/ads/requests/incoming', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/ads/requests/active', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/points', { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+
+        const allAds = await adsRes.json();
+        const incoming = incRes.ok ? await incRes.json() : [];
+        const active = activeRes.ok ? await activeRes.json() : [];
+        const pointsData = ptsRes.ok ? await ptsRes.json() : { balance: 0 };
+
+        const myAds = allAds.filter(ad => ad.user_id === profile.id);
+
+        // Быстрые показатели
+        document.getElementById('quick-balance').textContent = pointsData.balance;
+        document.getElementById('quick-deals').textContent = profile.points; // или другой показатель
+
+        // Сводка
+        document.getElementById('dash-active-ads').textContent = myAds.length;
+        document.getElementById('dash-pending-in').textContent = incoming.length;
+        document.getElementById('dash-active-deals').textContent = active.length;
+
+        // Последние объявления (не более 4, чужие)
+        const latestAds = allAds.filter(ad => ad.user_id !== profile.id).slice(0, 4);
+        const latestList = document.getElementById('latest-ads-list');
+        if (latestAds.length === 0) {
+          latestList.innerHTML = '<p style="color:#718096;">Пока нет новых объявлений</p>';
+        } else {
+          latestList.innerHTML = latestAds.map(ad => `
+          <div class="mini-ad" onclick="location.href='/ad-details.html?id=${ad.id}'">
+            <strong>${escapeHtml(ad.title)}</strong>
+            <small>${ad.category} • ${new Date(ad.created_at).toLocaleDateString()}</small>
+          </div>
+        `).join('');
+        }
+
+      } catch (err) {
+        console.error('Ошибка загрузки дашборда:', err);
+      }
+    }
+
+    function updateGrowthCards(user) {
+      const container = document.getElementById('growth-cards');
+      if (!container) return;
+      let html = '';
+      // Верификация
+      if (user.level === 1) {
+        html += `<div class="growth-card locked"><h4>🔒 Верификация</h4><p>Подтвердите адрес, чтобы открыть аренду без ограничений.</p><button onclick="window.location.href='/profile.html?tab=edit'">Пройти верификацию</button></div>`;
+      } else if (user.level >= 2) {
+        html += `<div class="growth-card unlocked"><h4>✅ Вы верифицированы</h4><p>Вам доступны все возможности аренды.</p></div>`;
+      }
+      // Модератор
+      if (user.level === 2) {
+        html += `<div class="growth-card locked"><h4>🛡 Стать модератором</h4><p>Активно помогайте сообществу и получите больше прав.</p><button onclick="window.location.href='/profile.html?tab=edit'">Подать заявку</button></div>`;
+      } else if (user.level >= 3) {
+        html += `<div class="growth-card unlocked"><h4>🛡 Вы — модератор</h4><p>Спасибо за вклад в сообщество!</p></div>`;
+      }
+      container.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('sosedik_token');
+      if (token) {
+        loadDashboardData();
       }
     });
   </script>
