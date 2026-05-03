@@ -38,7 +38,7 @@ router.post('/add/:friendId', verifyToken, async (req, res) => {
 
     // Уведомление получателю
     const sender = await pool.query('SELECT name FROM users WHERE id = $1', [userId]);
-    const senderName = sender.rows[0]?.name || 'Пользователь';
+    const senderName = sender.rows[0]?.name || 'Соседик без имени';
     await Notification.createNotification(
       friendId,
       'friend_request',

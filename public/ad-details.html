@@ -168,7 +168,7 @@
           if (!currentUserId) {
             document.getElementById('ad-author').parentNode.style.display = 'none'; // скрываем <p><strong>Автор:</strong>...</p>
           } else {
-            document.getElementById('ad-author').textContent = ad.author_name || `Пользователь ${ad.user_id}`;
+            document.getElementById('ad-author').textContent = ad.author_name || 'Соседик без имени';
           }
           document.getElementById('ad-contact').textContent = ad.contact || 'Не указан';
           // Скрыть весь блок "Контакт с автором" для гостя
@@ -184,7 +184,7 @@
             const acceptedInfo = document.createElement('p');
             acceptedInfo.style.color = '#27ae60';
             acceptedInfo.style.fontWeight = 'bold';
-            acceptedInfo.textContent = `Принято пользователем ${ad.acceptor_name || ('#' + ad.accepted_by)}`;
+            acceptedInfo.textContent = `Принято пользователем ${ad.acceptor_name || 'Соседик без имени'}`; 
             document.getElementById('ad-content').appendChild(acceptedInfo);
           }
 
@@ -235,7 +235,7 @@
               statusSpan.textContent = 'Принято другим пользователем';
               statusSpan.style.cssText = 'color: #95a5a6; display: inline-block; padding: 10px 16px; border-radius: 6px; background: #f1f5f9;';
               actionsDiv.appendChild(statusSpan);
-            }            
+            }
           } else {
             // Кнопка "Удалить" для владельца
             const deleteBtn = document.createElement('button');

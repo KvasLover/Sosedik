@@ -109,7 +109,7 @@
                 : '<div class="no-ads">Нет активных объявлений</div>';
 
             document.getElementById('profile-container').innerHTML = `
-        <div class="profile-name">${escapeHtml(profile.name)}</div>
+        <div class="profile-name">${escapeHtml(profile.name || 'Соседик без имени')}</div>
         <div class="profile-meta">На сайте с ${new Date(profile.createdAt).toLocaleDateString()}</div>
         <div class="stats-section"><h3>Статистика</h3>${statsHtml}</div>
         <div class="ads-list"><h3>Активные объявления</h3>${adsHtml}</div>

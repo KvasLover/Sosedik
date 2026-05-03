@@ -802,7 +802,7 @@
         document.getElementById('user-level').textContent = getLevelName(user.level);
         document.getElementById('user-points').textContent = user.points;
         document.getElementById('user-created-display').innerHTML = `<strong>Дата регистрации:</strong> ${new Date(user.created_at).toLocaleDateString()}`;
-        document.getElementById('user-display-name').textContent = user.name || 'Пользователь';
+        document.getElementById('user-display-name').textContent = user.name || 'Соседик без имени';
 
         if (user.apartment && user.show_apartment) {
           document.getElementById('apartment-display').innerHTML = `<strong>Квартира:</strong> ${user.apartment}`;

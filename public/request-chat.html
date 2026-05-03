@@ -85,7 +85,7 @@
           const otherName = (currentUserId === data.requester_id) ? data.creator_name : data.requester_name;
           const linkEl = document.getElementById('partner-link');
           if (linkEl) {
-            linkEl.innerHTML = `<a href="/user-profile.html?userId=${otherUserId}">${escapeHtml(otherName)}</a>`;
+            linkEl.innerHTML = `<a href="/user-profile.html?userId=${otherUserId}">${escapeHtml(otherName || 'Соседик без имени')}</a>`;
           }
         } else {
           console.error('Ошибка загрузки данных сделки');
@@ -104,7 +104,7 @@
           if (data.messages && data.messages.length) {
             data.messages.forEach(msg => {
               const div = document.createElement('div');
-              div.innerHTML = `<strong>${escapeHtml(msg.sender_name || 'Пользователь')}:</strong> ${escapeHtml(msg.text)} <small>${new Date(msg.created_at).toLocaleString()}</small>`;
+              div.innerHTML = `<strong>${escapeHtml(msg.sender_name || 'Соседик без имени')}:</strong> ${escapeHtml(msg.text)} <small>${new Date(msg.created_at).toLocaleString()}</small>`;
               container.appendChild(div);
             });
             container.scrollTop = container.scrollHeight;

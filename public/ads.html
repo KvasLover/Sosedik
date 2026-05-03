@@ -251,7 +251,7 @@
         contentDiv.className = 'ad-content';
         contentDiv.onclick = () => window.location.href = `/ad-details.html?id=${ad.id}`;
         contentDiv.innerHTML =
-          (currentUserId ? '<p><strong>Автор:</strong> <a href="/user-profile.html?userId=' + ad.user_id + '">' + (ad.author_name || ('Пользователь #' + ad.user_id)) + '</a></p>' : '') +
+          (currentUserId ? '<p><strong>Автор:</strong> <a href="/user-profile.html?userId=' + ad.user_id + '">' + (ad.author_name || 'Соседик без имени') + '</a></p>' : '') +
           '<p><strong>Категория:</strong> ' + ad.category + '</p>' +
           '<p><strong>Описание:</strong> ' + (ad.description || 'Не указано') + '</p>' +
           '<p><strong>Цена:</strong> ' + (ad.price ? ad.price + ' руб.' : 'Не указана') + '</p>' +
@@ -259,7 +259,7 @@
           '<p><strong>Желаемое время/дата:</strong> ' + (ad.preferred_time || 'Не указано') + '</p>' +
           '<p><strong>Условия:</strong> ' + (ad.terms ? ad.terms.substring(0, 100) + (ad.terms.length > 100 ? '...' : '') : 'Не указаны') + '</p>' +
           '<p><small>Создано: ' + new Date(ad.created_at).toLocaleDateString() + '</small></p>' +
-          (isOwner && ad.accepted_by ? '<p style="color: #27ae60; font-weight: bold;">Принято пользователем ' + (ad.acceptor_name || ('#' + ad.accepted_by)) + '</p>' : '');
+          (isOwner && ad.accepted_by ? '<p style="color: #27ae60; font-weight: bold;">Принято пользователем ' + (ad.acceptor_name || 'Соседик без имени') + '</p>' : '');
 
         // Footer с кнопками
         const footerDiv = document.createElement('div');

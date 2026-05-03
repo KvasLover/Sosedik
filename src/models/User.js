@@ -153,7 +153,7 @@ const getPublicProfileData = async (userId, currentUserId = null) => {
 
     return {
       id: user.id,
-      name: user.name || 'Пользователь',
+      name: user.name || 'Соседик без имени',
       createdAt: user.created_at,
       completedCount,
       hasPositive,

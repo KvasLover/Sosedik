@@ -124,7 +124,7 @@ module.exports = {
     processExpiredElections: async () => {
         const expired = await pool.query(
             `SELECT id FROM moderator_elections
-       WHERE status = 'active' AND end_time < NOW()`
+         WHERE status = 'active' AND end_time < NOW()`
         );
 
         for (const row of expired.rows) {
@@ -137,7 +137,8 @@ module.exports = {
 
             let newStatus;
             let candidateId;
-            if (yes >= 1 && yes > no) {
+
+            if (yes >= 3 && yes > no) {
                 const election = await pool.query('SELECT candidate_id FROM moderator_elections WHERE id = $1', [row.id]);
                 candidateId = election.rows[0].candidate_id;
                 await pool.query('UPDATE users SET level = 3 WHERE id = $1', [candidateId]);
@@ -153,7 +154,7 @@ module.exports = {
                 [newStatus, row.id]
             );
 
-            // Отправляем уведомление кандидату о результате голосования
+            // Уведомление кандидату
             const message = newStatus === 'approved'
                 ? 'Поздравляем! Вы избраны модератором сообщества.'
                 : 'Ваше голосование на роль модератора завершилось. Условия не выполнены.';
@@ -163,12 +164,11 @@ module.exports = {
                 'election_finished',
                 message,
                 null,
-                row.id,          // related_id – ID выборов
-                'election'       // related_type – чтобы можно было связать
+                row.id,
+                'election'
             ).catch(err => console.error('Ошибка создания уведомления о завершении голосования:', err));
-
-            // Отправка уведомления кандидату (реализуй позже или используй Notification.createNotification)
         }
+
         return expired.rows.length;
     },
 
