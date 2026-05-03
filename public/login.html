@@ -23,6 +23,7 @@
         <div class="form-group">
           <label for="login-password">Пароль:</label>
           <input type="password" id="login-password" required>
+          <span class="error-hint" id="login-password-error"></span>
         </div>
         <button class="btn-primary" onclick="login()">Войти</button>
       </div>
@@ -180,8 +181,16 @@
       if (!phone) return;
 
       const password = document.getElementById('login-password').value;
+      const passwordError = document.getElementById('login-password-error');
+      const phoneError = document.getElementById('login-phone-error');
+
+      // Сброс предыдущих ошибок
+      phoneError.style.display = 'none';
+      passwordError.style.display = 'none';
+
       if (!password) {
-        alert('Введите пароль');
+        passwordError.textContent = 'Введите пароль';
+        passwordError.style.display = 'block';
         return;
       }
 
@@ -196,10 +205,19 @@
           localStorage.setItem('sosedik_token', data.token);
           window.location.href = '/';
         } else {
-          alert(data.message || 'Ошибка входа');
+          // Определяем, к какому полю относится ошибка
+          const msg = data.message || 'Ошибка входа';
+          if (msg.includes('номер') || msg.includes('телефон') || msg.includes('пользователь с таким')) {
+            phoneError.textContent = msg;
+            phoneError.style.display = 'block';
+          } else {
+            passwordError.textContent = msg;
+            passwordError.style.display = 'block';
+          }
         }
       } catch (error) {
-        alert('Ошибка: ' + error.message);
+        passwordError.textContent = 'Ошибка сети';
+        passwordError.style.display = 'block';
       }
     }
 

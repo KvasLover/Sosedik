@@ -46,19 +46,19 @@ router.post('/login', async (req, res) => {
     const { phone, password } = req.body;
 
     if (!phone || !password) {
-      return res.status(400).json({ message: 'Phone and password required' });
+      return res.status(400).json({ message: 'Телефон и пароль обязательны' });
     }
 
     // Find user
     const user = await User.getUserByPhone(phone);
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Пользователь с таким номером не найден' });
     }
 
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Неверный пароль' });
     }
 
     // Generate token

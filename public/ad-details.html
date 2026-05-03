@@ -168,7 +168,10 @@
           if (!currentUserId) {
             document.getElementById('ad-author').parentNode.style.display = 'none'; // скрываем <p><strong>Автор:</strong>...</p>
           } else {
-            document.getElementById('ad-author').textContent = ad.author_name || 'Соседик без имени';
+            const authorName = ad.author_name || 'Соседик без имени';
+            document.getElementById('ad-author').innerHTML = currentUserId
+              ? `<a href="/user-profile.html?userId=${ad.user_id}">${authorName}</a>`
+              : 'Скрыто';
           }
           document.getElementById('ad-contact').textContent = ad.contact || 'Не указан';
           // Скрыть весь блок "Контакт с автором" для гостя
@@ -184,7 +187,7 @@
             const acceptedInfo = document.createElement('p');
             acceptedInfo.style.color = '#27ae60';
             acceptedInfo.style.fontWeight = 'bold';
-            acceptedInfo.textContent = `Принято пользователем ${ad.acceptor_name || 'Соседик без имени'}`; 
+            acceptedInfo.textContent = `Принято пользователем ${ad.acceptor_name || 'Соседик без имени'}`;
             document.getElementById('ad-content').appendChild(acceptedInfo);
           }
 
