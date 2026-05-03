@@ -16,6 +16,7 @@ const adminRoutes = require('./routes/admin');
 const friendsRoutes = require('./routes/friends');
 const statsRoutes = require('./routes/stats');
 const verificationRoutes = require('./routes/verification');
+const electionsRoutes = require('./routes/elections');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -38,6 +39,7 @@ app.use('/api', reputationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/verification', verificationRoutes);
+app.use('/api/elections', electionsRoutes);
 
 // Test database connection
 app.get('/api/health', async (req, res) => {
@@ -64,3 +66,8 @@ app.listen(port, () => {
 setInterval(() => {
   autoCancelExpiredAcceptedRequests().catch(err => console.error('Ошибка в автоотмене:', err));
 }, 60000);
+
+const Election = require('./models/Election');
+setInterval(() => {
+  Election.processExpiredElections().catch(err => console.error('Ошибка обработки голосований:', err));
+}, 60000); // каждую минуту

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Голосования – Соседик</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div id="header-root"></div>
+  <main>
+    <h1>Активные голосования</h1>
+    <div id="elections-list" style="max-width: 800px; margin: 0 auto;"></div>
+  </main>
+  <script src="js/header_new.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    const token = localStorage.getItem('sosedik_token');
+    if (!token) window.location.href = '/login.html';
+
+    async function loadElections() {
+      try {
+        const response = await fetch('/api/elections/active', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Ошибка загрузки');
+        const { elections } = await response.json();
+        renderElections(elections);
+      } catch (err) {
+        document.getElementById('elections-list').innerHTML = `<p>${err.message}</p>`;
+      }
+    }
+
+    function renderElections(elections) {
+      const container = document.getElementById('elections-list');
+      if (elections.length === 0) {
+        container.innerHTML = '<p>Нет активных голосований</p>';
+        return;
+      }
+
+      container.innerHTML = elections.map(e => `
+        <div class="detail-card" style="margin-bottom: 20px;">
+          <h3>Кандидат: ${escapeHtml(e.candidate_name)}</h3>
+          <p>Начало: ${new Date(e.start_time).toLocaleString()}</p>
+          <p>Окончание: ${new Date(e.end_time).toLocaleString()}</p>
+          <p>Голосов «за»: ${e.yes_votes} | «против»: ${e.no_votes}</p>
+          <div class="detail-actions">
+            <button class="btn-success" onclick="vote(${e.id}, true)">👍 За</button>
+            <button class="btn-danger" onclick="vote(${e.id}, false)">👎 Против</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function vote(electionId, voteValue) {
+      try {
+        const response = await fetch(`/api/elections/vote/${electionId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ vote: voteValue })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          alert('Голос учтён');
+          loadElections(); // обновить список
+        } else {
+          alert(data.message);
+        }
+      } catch (err) {
+        alert('Ошибка сети');
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;"})[m]);
+    }
+
+    // Периодическое обновление раз в 10 секунд
+    loadElections();
+    setInterval(loadElections, 10000);
+  </script>
+</body>
+</html>

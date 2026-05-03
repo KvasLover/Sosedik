@@ -30,6 +30,7 @@ const headerTemplate = `
         <a href="/">Главная</a>
         <a href="/ads.html">Объявления</a>
         <a href="/rentals.html">Аренда</a>
+        <a href="/elections.html">Голосования</a>
         <a href="/chats.html">Чаты</a>
         <a href="/profile.html">Профиль</a>
         <a href="#" onclick="logout(); return false;">Выйти</a>

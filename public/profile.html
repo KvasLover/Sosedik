@@ -467,6 +467,12 @@
             <span id="upgrade-pending-text" style="display: none; margin-left: 10px; color: #f39c12;">
               Заявка на рассмотрении
             </span>
+            <button id="become-moderator-btn" class="btn-sm btn-secondary" style="display: none; margin-left: 10px;">
+              Стать модератором
+            </button>
+            <span id="moderator-candidacy-text" style="display: none; margin-left: 10px; color: #f39c12;">
+              Заявка на рассмотрении
+            </span>
           </p>
           <p><strong>Баллы репутации:</strong> <span id="user-points"></span></p>
           <p id="apartment-display"></p>
@@ -837,6 +843,34 @@
           // Скрываем кнопку и текст, если уровень не 1
           upgradeBtn.style.display = 'none';
           pendingText.style.display = 'none';
+        }
+
+        // Проверка возможности стать модератором (уровень 2)
+        const moderatorBtn = document.getElementById('become-moderator-btn');
+        const moderatorText = document.getElementById('moderator-candidacy-text');
+        if (user.level === 2) {
+          try {
+            const canStartRes = await fetch('/api/elections/can-start', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (canStartRes.ok) {
+              const { allowed, reason } = await canStartRes.json();
+              if (allowed) {
+                moderatorBtn.style.display = 'inline-block';
+                moderatorBtn.onclick = startModeratorElection;
+                moderatorText.style.display = 'none';
+              } else {
+                moderatorBtn.style.display = 'none';
+                moderatorText.style.display = 'inline';
+                moderatorText.textContent = reason || 'Недоступно';
+              }
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          moderatorBtn.style.display = 'none';
+          moderatorText.style.display = 'none';
         }
 
         document.getElementById('user-name').value = user.name || '';
@@ -2287,6 +2321,28 @@
           alert('Ошибка: ' + data.message);
         }
       } catch (err) {
+        alert('Ошибка сети');
+      }
+    }
+
+    async function startModeratorElection() {
+      if (!confirm('Вы хотите подать заявку на роль модератора? Начнётся голосование длительностью 7 дней.')) return;
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch('/api/elections/start', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok) {
+          alert('Голосование запущено!');
+          document.getElementById('become-moderator-btn').style.display = 'none';
+          document.getElementById('moderator-candidacy-text').style.display = 'inline';
+          document.getElementById('moderator-candidacy-text').textContent = 'Голосование активно';
+        } else {
+          alert(data.message || 'Ошибка');
+        }
+      } catch (error) {
         alert('Ошибка сети');
       }
     }
