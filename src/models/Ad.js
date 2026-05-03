@@ -1,5 +1,6 @@
 const pool = require('../database');
 const Notification = require('./Notification');
+const Points = require('./Points');
 
 // Get all active ads
 const getAds = async (filters = {}) => {
@@ -434,7 +435,6 @@ const confirmAdCompletion = async (requestId, userId) => {
     if (request.rows.length === 0) throw new Error('Request not found');
     const req = request.rows[0];
 
-    // Если это аренда и возврат не подтверждён, нельзя завершить
     if (req.type === 'rental' && !req.item_return_confirmed) {
       throw new Error('Cannot complete rental deal without confirming return');
     }
@@ -443,43 +443,36 @@ const confirmAdCompletion = async (requestId, userId) => {
       throw new Error('Cannot complete disputed request');
     }
 
-    // Автоматически определяем, кто подтверждает
     let isRequester = false;
     if (req.requester_id === userId) isRequester = true;
     else if (req.ad_owner_id === userId) isRequester = false;
     else throw new Error('Not authorized');
 
-    // Проверка статуса
     if (req.current_status !== 'in_progress') {
       throw new Error('Can only confirm completion for in_progress requests');
     }
 
-    // Защита от повторного подтверждения
     const field = isRequester ? 'requester_confirmed' : 'creator_confirmed';
     if (req[field] === true) {
       throw new Error('You have already confirmed this request');
     }
 
-    // Обновляем подтверждение
     await pool.query(`
       UPDATE ad_requests
       SET ${field} = true, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
     `, [requestId]);
 
-    // Получаем обновлённую запись
     const updated = await pool.query(`SELECT * FROM ad_requests WHERE id = $1`, [requestId]);
     const updatedReq = updated.rows[0];
 
-    // Если оба подтвердили → завершаем сделку, уведомление - только первому подтвердившему
     if (updatedReq.requester_confirmed && updatedReq.creator_confirmed) {
       await pool.query(`
-    UPDATE ad_requests
-    SET status = 'completed', completed_at = CURRENT_TIMESTAMP
-    WHERE id = $1
-  `, [requestId]);
+        UPDATE ad_requests
+        SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+      `, [requestId]);
 
-      // Уведомления обоим участникам
       await Notification.createNotification(
         req.requester_id,
         'review_reminder',
@@ -498,22 +491,37 @@ const confirmAdCompletion = async (requestId, userId) => {
       );
 
       await pool.query(`
-    UPDATE ads
-    SET acceptance_status = 'open',
-        accepted_by = NULL,
-        accepted_at = NULL
-    WHERE id = $1
-  `, [req.ad_id]);
+        UPDATE ads
+        SET acceptance_status = 'open',
+            accepted_by = NULL,
+            accepted_at = NULL
+        WHERE id = $1
+      `, [req.ad_id]);
+
+      // --- НАЧИСЛЕНИЕ БАЛЛОВ ЗА ЗАВЕРШЁННУЮ СДЕЛКУ ---
+      try {
+        const dealRef = updatedReq.id;
+        const requesterId = req.requester_id;
+        const ownerId = req.ad_owner_id;
+
+        const alreadyAwarded = await Points.isAlreadyAwarded(requesterId, 'deal_completed', dealRef);
+        if (!alreadyAwarded) {
+          await Points.addPoints(requesterId, 5, 'deal_completed', dealRef);
+          await Points.addPoints(ownerId, 5, 'deal_completed', dealRef);
+        }
+      } catch (err) {
+        console.error('Ошибка начисления баллов за сделку:', err);
+      }
+      // --- КОНЕЦ НАЧИСЛЕНИЯ БАЛЛОВ ---
     } else {
-      // Только один подтвердил → уведомляем другую сторону о первом подтверждении
       const otherUserId = (userId === updatedReq.requester_id) ? req.ad_owner_id : updatedReq.requester_id;
       await Notification.createNotification(
         otherUserId,
         'request_pending_completion',
         `Партнёр подтвердил выполнение. Пожалуйста, подтвердите и вы, чтобы завершить сделку.`,
         null,
-        requestId,          // related_id
-        'request'           // related_type
+        requestId,
+        'request'
       );
     }
 
@@ -1019,6 +1027,21 @@ const acceptReturn = async (requestId, userId) => {
     await Notification.createNotification(req.ad_owner_id, 'review_reminder', `Сделка по объявлению "${req.title}" завершена. Оцените результат.`, null, requestId, 'request');
 
     await pool.query(`UPDATE ads SET acceptance_status = 'open', accepted_by = NULL, accepted_at = NULL WHERE id = $1`, [req.ad_id]);
+
+    // Начисление баллов за завершённую сделку (по 5 каждому)
+    try {
+      const dealRef = requestId;
+      const requesterId = req.requester_id;
+      const ownerId = req.ad_owner_id;
+
+      const alreadyAwarded = await Points.isAlreadyAwarded(requesterId, 'deal_completed', dealRef);
+      if (!alreadyAwarded) {
+        await Points.addPoints(requesterId, 5, 'deal_completed', dealRef);
+        await Points.addPoints(ownerId, 5, 'deal_completed', dealRef);
+      }
+    } catch (err) {
+      console.error('Ошибка начисления баллов за сделку:', err);
+    }
 
     await pool.query(`INSERT INTO request_messages (request_id, sender_id, text) VALUES ($1, $2, 'Возврат подтверждён. Сделка завершена.')`, [requestId, userId]);
 

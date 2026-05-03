@@ -3,6 +3,7 @@ const router = express.Router();
 const { verifyToken } = require('../middleware/auth');
 const Review = require('../models/Review');
 const pool = require('../database');
+const Points = require('../models/Points');
 
 // POST /api/reviews – оставить отзыв
 router.post('/reviews', verifyToken, async (req, res) => {
@@ -24,7 +25,7 @@ router.post('/reviews', verifyToken, async (req, res) => {
     if (reqData.status === 'disputed') {
       return res.status(400).json({ message: 'Cannot review disputed request' });
     }
-    
+
     if (reqData.status !== 'completed') return res.status(400).json({ message: 'Deal not completed' });
     if (reqData.review_phase_closed) return res.status(400).json({ message: 'Review phase closed' });
 
@@ -43,6 +44,17 @@ router.post('/reviews', verifyToken, async (req, res) => {
     await Review.createReview(requestId, userId, reviewedUserId, result, reason, comment);
     await Review.markReviewDone(requestId, userId, isCreator);
     await Review.closeReviewPhaseIfBothDone(requestId);
+
+    if (result === 'success') {
+      try {
+        // Начислить +5 тому, кого оценивают (reviewedUserId)
+        await Points.addPoints(reviewedUserId, 5, 'review_received_positive', requestId);
+        // Начислить +2 автору отзыва (reviewerId)
+        await Points.addPoints(userId, 2, 'review_given_positive', requestId);
+      } catch (err) {
+        console.error('Ошибка начисления баллов за отзыв:', err);
+      }
+    }
 
     res.json({ message: 'Review saved' });
   } catch (err) {

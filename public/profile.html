@@ -489,6 +489,10 @@
             <button class="menu-item active" onclick="showProfileTab('dashboard')">Dashboard</button>
           </div>
           <div class="menu-group">
+            <div class="menu-group-title">⭐ Баллы</div>
+            <button class="menu-item" onclick="showProfileTab('points')">Баллы</button>
+          </div>
+          <div class="menu-group">
             <div class="menu-group-title">📋 Мой контент</div>
             <button class="menu-item" onclick="showProfileTab('myads')">Мои объявления</button>
           </div>
@@ -594,6 +598,24 @@
             <h2>Активные взаимодействия</h2>
             <p style="color: #666; margin-bottom: 15px;">Принятые запросы, требующие выполнения</p>
             <div id="active-list"></div>
+          </div>
+
+          <div id="points-tab" class="profile-tab">
+            <h2>Мои баллы</h2>
+
+            <div
+              style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+              <h3>Баланс</h3>
+              <div style="font-size: 36px; font-weight: bold; color: #667eea;" id="points-balance">0</div>
+              <p>баллов</p>
+            </div>
+
+            <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
+              <h3>История операций</h3>
+              <div id="points-history">
+                Загрузка...
+              </div>
+            </div>
           </div>
 
           <!-- Favorites Tab -->
@@ -778,6 +800,7 @@
         case 'favorites': loadFavorites(); break;
         case 'deals': loadDeals(); break;
         case 'friends': loadFriends(); break;
+        case 'points': loadPoints(); break;
       }
     }
 
@@ -2345,6 +2368,65 @@
       } catch (error) {
         alert('Ошибка сети');
       }
+    }
+
+    async function loadPoints() {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch('/api/points', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Ошибка загрузки');
+        const data = await response.json();
+
+        // Отображаем баланс
+        document.getElementById('points-balance').textContent = data.balance || 0;
+
+        // Отображаем историю
+        const historyDiv = document.getElementById('points-history');
+        if (!data.history || data.history.length === 0) {
+          historyDiv.innerHTML = '<p>У вас пока нет операций с баллами</p>';
+          return;
+        }
+
+        // Сортируем по дате (уже отсортированы на сервере)
+        historyDiv.innerHTML = `
+      <table class="profile-table">
+        <thead>
+          <tr>
+            <th>Дата</th>
+            <th>Действие</th>
+            <th>Баллы</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.history.map(op => `
+            <tr>
+              <td>${new Date(op.created_at).toLocaleString()}</td>
+              <td>${getActionDescription(op.action_type)}</td>
+              <td style="color: ${op.amount > 0 ? '#27ae60' : '#e74c3c'};">${op.amount > 0 ? '+' + op.amount : op.amount}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+      } catch (err) {
+        document.getElementById('points-history').innerHTML = `<p>Ошибка загрузки: ${err.message}</p>`;
+      }
+    }
+
+    // Вспомогательная функция для читаемого описания действия
+    function getActionDescription(actionType) {
+      const descriptions = {
+        'deal_completed': 'Завершение сделки',
+        'review_received_positive': 'Получен положительный отзыв',
+        'review_given_positive': 'Оставлен положительный отзыв',
+        'profile_fill': 'Заполнение профиля',
+        'ad_create': 'Создание объявления',
+        'boost_ad': 'Поднятие объявления',
+        'remove_limit': 'Снятие лимита'
+      };
+      return descriptions[actionType] || actionType;
     }
   </script>
 
