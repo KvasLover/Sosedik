@@ -1,4 +1,5 @@
 const pool = require('../database');
+const Notification = require('./Notification');
 
 module.exports = {
     // Проверить, может ли пользователь создать новое голосование
@@ -135,12 +136,15 @@ module.exports = {
             const no = votes.rows.filter(v => v.vote === false).length;
 
             let newStatus;
-            if (yes >= 3 && yes > no) {
-                // Повысить до уровня 3
+            let candidateId;
+            if (yes >= 1 && yes > no) {
                 const election = await pool.query('SELECT candidate_id FROM moderator_elections WHERE id = $1', [row.id]);
-                await pool.query('UPDATE users SET level = 3 WHERE id = $1', [election.rows[0].candidate_id]);
+                candidateId = election.rows[0].candidate_id;
+                await pool.query('UPDATE users SET level = 3 WHERE id = $1', [candidateId]);
                 newStatus = 'approved';
             } else {
+                const election = await pool.query('SELECT candidate_id FROM moderator_elections WHERE id = $1', [row.id]);
+                candidateId = election.rows[0].candidate_id;
                 newStatus = 'rejected';
             }
 
@@ -149,8 +153,37 @@ module.exports = {
                 [newStatus, row.id]
             );
 
+            // Отправляем уведомление кандидату о результате голосования
+            const message = newStatus === 'approved'
+                ? 'Поздравляем! Вы избраны модератором сообщества.'
+                : 'Ваше голосование на роль модератора завершилось. Условия не выполнены.';
+
+            await Notification.createNotification(
+                candidateId,
+                'election_finished',
+                message,
+                null,
+                row.id,          // related_id – ID выборов
+                'election'       // related_type – чтобы можно было связать
+            ).catch(err => console.error('Ошибка создания уведомления о завершении голосования:', err));
+
             // Отправка уведомления кандидату (реализуй позже или используй Notification.createNotification)
         }
         return expired.rows.length;
-    }
+    },
+
+    getCompletedElections: async (limit = 20) => {
+        const result = await pool.query(`
+      SELECT e.id, e.candidate_id, u.name AS candidate_name,
+             e.status, e.start_time, e.end_time,
+             (SELECT COUNT(*) FROM moderator_votes WHERE election_id = e.id AND vote = true) AS yes_votes,
+             (SELECT COUNT(*) FROM moderator_votes WHERE election_id = e.id AND vote = false) AS no_votes
+      FROM moderator_elections e
+      JOIN users u ON e.candidate_id = u.id
+      WHERE e.status = 'approved'
+      ORDER BY e.end_time DESC
+      LIMIT $1
+    `, [limit]);
+        return result.rows;
+    },
 };
