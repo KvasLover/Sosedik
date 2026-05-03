@@ -235,15 +235,7 @@
               statusSpan.textContent = 'Принято другим пользователем';
               statusSpan.style.cssText = 'color: #95a5a6; display: inline-block; padding: 10px 16px; border-radius: 6px; background: #f1f5f9;';
               actionsDiv.appendChild(statusSpan);
-            }
-
-            const contactBtn = document.createElement('button');
-            contactBtn.className = 'btn-success';
-            contactBtn.textContent = 'Связаться с автором';
-            contactBtn.onclick = () => {
-              window.location.href = `/chat.html?with=${ad.user_id}`;
-            };
-            actionsDiv.appendChild(contactBtn);
+            }            
           } else {
             // Кнопка "Удалить" для владельца
             const deleteBtn = document.createElement('button');

@@ -132,6 +132,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       const token = localStorage.getItem('sosedik_token');
 
+      // Скрыть кнопку создания и фильтр "Только мои" для гостя
       const createBtn = document.getElementById('create-rental-btn');
       if (createBtn && !token) {
         createBtn.style.display = 'none';
@@ -141,11 +142,11 @@
         myFilter.style.display = 'none';
       }
 
-      if (!token) {
-        document.getElementById('auth-check').classList.remove('hidden');
-        document.getElementById('rentals-content').classList.add('hidden');
-      } else {
-        loadRentals();
+      // Всегда загружаем аренду (гость тоже увидит)
+      loadRentals();
+
+      // Только авторизованным нужен обработчик фото
+      if (token) {
         setupPhotoInputListener();
       }
     });
@@ -288,7 +289,7 @@
         const contentDiv = document.createElement('div');
         contentDiv.className = 'rental-content';
         contentDiv.innerHTML = `
-      <p><strong>Владелец:</strong> <a href="/user-profile.html?userId=${ad.user_id}">${escapeHtml(ad.author_name || 'Пользователь')}</a></p>      <p><strong>Категория:</strong> ${escapeHtml(ad.category)}</p>
+      ${currentUserId ? `<p><strong>Владелец:</strong> <a href="/user-profile.html?userId=${ad.user_id}">${escapeHtml(ad.author_name || 'Пользователь')}</a></p>` : ''}
       <p><strong>Ценность вещи:</strong> ${getValueLabel(ad.value_category) || 'не указана'}</p>
       <p><strong>Залог:</strong> ${ad.deposit ? ad.deposit + ' руб.' : 'не нужен'}</p>
       <p><strong>Описание:</strong> ${ad.description ? escapeHtml(ad.description.substring(0, 100)) + (ad.description.length > 100 ? '...' : '') : 'Не указано'}</p>

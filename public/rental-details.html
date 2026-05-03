@@ -101,20 +101,23 @@
         return;
       }
 
+      const token = localStorage.getItem('sosedik_token');
+
       try {
-        // Получаем текущего пользователя
-        const userResponse = await fetch('/api/users/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (userResponse.ok) {
-          const user = await userResponse.json();
-          currentUserId = user.id;
+        // Получаем текущего пользователя только если есть токен
+        if (token) {
+          const userResponse = await fetch('/api/users/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (userResponse.ok) {
+            const user = await userResponse.json();
+            currentUserId = user.id;
+          }
         }
 
-        // Загружаем объявление
-        const response = await fetch(`/api/ads/${adId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        // Загружаем объявление (публичный маршрут, токен не обязателен)
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const response = await fetch(`/api/ads/${adId}`, { headers });
 
         if (response.ok) {
           currentRental = await response.json();
@@ -171,8 +174,14 @@
         photosDiv.appendChild(photoImg);
       }
 
-      // Загрузка информации о владельце
-      loadOwnerInfo(ad.user_id, ad.contact);
+      // Загрузка информации о владельце – только для авторизованных
+      if (currentUserId) {
+        loadOwnerInfo(ad.user_id, ad.contact);
+      } else {
+        // Скрываем весь блок владельца для гостя
+        const authorSection = document.querySelector('.detail-author-section');
+        if (authorSection) authorSection.style.display = 'none';
+      }
 
       // Кнопки действий
       displayRentalActions(ad, isOwner);
@@ -257,16 +266,7 @@
           requestBtn.textContent = 'Запросить аренду';
           requestBtn.onclick = () => requestRental(ad.id, requestBtn);
           actionsDiv.appendChild(requestBtn);
-          checkIfAlreadyRequested(ad.id, requestBtn);
-
-          // Кнопка "Связаться с владельцем"
-          const contactBtn = document.createElement('button');
-          contactBtn.className = 'btn-success';
-          contactBtn.textContent = 'Связаться с владельцем';
-          contactBtn.onclick = () => {
-            window.location.href = `/chat.html?with=${ad.user_id}`;
-          };
-          actionsDiv.appendChild(contactBtn);
+          checkIfAlreadyRequested(ad.id, requestBtn);          
         }
       }
     }
