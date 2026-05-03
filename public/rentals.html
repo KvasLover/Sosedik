@@ -221,10 +221,38 @@
 
     // Request rental
     async function requestRental(adId, buttonElement) {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) return;
+
+      // Проверка уровня: для уровня 1 ограничения на ценность и категорию
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.level === 1) {
+          // Загружаем объявление, чтобы узнать ценность и категорию
+          const adResp = await fetch(`/api/ads/${adId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (adResp.ok) {
+            const ad = await adResp.json();
+            if (ad.value_category && ad.value_category !== 'low') {
+              alert('Для аренды предметов с ценностью выше низкой требуется уровень 2. Подайте заявку на верификацию в профиле.');
+              return;
+            }
+            if (ad.category === 'транспорт') {
+              alert('Аренда транспорта доступна только с уровня 2. Повысьте уровень в профиле.');
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Ошибка проверки уровня', e);
+        return;
+      }
+
+      // Если ограничения пройдены – запрашиваем сообщение
       const message = prompt('Введите сообщение владельцу (опционально):', '');
       if (message === null) return;
 
-      const token = localStorage.getItem('sosedik_token');
       try {
         const response = await fetch(`/api/ads/${adId}/request`, {
           method: 'POST',
@@ -464,6 +492,24 @@
       // ВОТ ЭТУ СТРОКУ НУЖНО ДОБАВИТЬ:
       if (hasError) {
         return;
+      }
+
+      // Проверка уровня: для уровня 1 ограничения на ценность и категорию
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const userLevel = payload.level;
+          if (userLevel === 1) {
+            if (valueCategory !== 'low') {
+              alert('Для аренды предметов с ценностью выше низкой требуется уровень 2. Подайте заявку на верификацию в профиле.');
+              return;
+            }
+            if (category === 'транспорт') {
+              alert('Аренда транспорта доступна только с уровня 2. Повысьте уровень в профиле.');
+              return;
+            }
+          }
+        } catch (e) { }
       }
 
       try {

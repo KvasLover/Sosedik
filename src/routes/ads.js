@@ -209,6 +209,16 @@ router.post('/:id/request', verifyToken, async (req, res) => {
       return res.status(429).json({ message: 'You can send a new request only after 30 seconds since the last cancellation' });
     }
 
+    // Для объявлений аренды проверяем ограничения уровня 1
+    if (ad.type === 'rental' && req.user.level === 1) {
+      if (ad.value_category && ad.value_category !== 'low') {
+        return res.status(403).json({ message: 'Для аренды предметов с ценностью выше низкой требуется уровень 2.' });
+      }
+      if (ad.category === 'транспорт') {
+        return res.status(403).json({ message: 'Аренда транспорта доступна только с уровня 2.' });
+      }
+    }
+
     const { message } = req.body;
     const request = await Ad.createAdRequest(adId, req.user.id, message);
 
