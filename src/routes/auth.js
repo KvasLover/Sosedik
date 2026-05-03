@@ -82,13 +82,21 @@ router.post('/send-code', async (req, res) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ message: 'Телефон обязателен' });
 
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  verificationCodes[phone] = code;
+  try {
+    // Проверяем, не зарегистрирован ли уже такой номер
+    const existingUser = await User.getUserByPhone(phone);
+    if (existingUser) {
+      return res.status(409).json({ message: 'Пользователь с таким номером уже зарегистрирован' });
+    }
 
-  console.log(`[SMS DEMO] Код для ${phone}: ${code}`);
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    verificationCodes[phone] = code;
 
-  // Возвращаем код в ответе (для демонстрации)
-  res.json({ message: 'Код отправлен (демо)', code });
+    console.log(`[SMS DEMO] Код для ${phone}: ${code}`);
+    res.json({ message: 'Код отправлен (демо)', code });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // 2) Подтвердить код и завершить регистрацию
