@@ -101,13 +101,6 @@
         return;
       }
 
-      const token = localStorage.getItem('sosedik_token');
-      if (!token) {
-        document.getElementById('auth-check').classList.remove('hidden');
-        document.getElementById('rental-details').classList.add('hidden');
-        return;
-      }
-
       try {
         // Получаем текущего пользователя
         const userResponse = await fetch('/api/users/me', {
@@ -207,6 +200,15 @@
     function displayRentalActions(ad, isOwner) {
       const actionsDiv = document.getElementById('rental-actions');
       actionsDiv.innerHTML = '';
+
+      // Гость – только сообщение
+      if (!currentUserId) {
+        const guestMsg = document.createElement('p');
+        guestMsg.className = 'u-text-muted';
+        guestMsg.textContent = 'Войдите, чтобы взять в аренду';
+        actionsDiv.appendChild(guestMsg);
+        return;
+      }
 
       if (isOwner && ad.accepted_by) {
         const acceptedInfo = document.createElement('p');

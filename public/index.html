@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Соседик - Главная</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
+
 <body>
   <!-- Header -->
   <div id="header-root"></div>
@@ -15,8 +17,11 @@
     <!-- Guest content -->
     <div id="guest-content">
       <h1>Добро пожаловать в Соседик</h1>
-      <p>Приложение для организации взаимодействия жителей многоквартирных домов.</p>
-      <button class="btn-primary btn-lg" onclick="window.location.href='/login.html'">Начать</button>
+      <p>Сообщество взаимопомощи жильцов.</p>
+      <div id="public-stats" style="max-width: 600px; margin: 20px auto;">
+        <p>Загрузка статистики...</p>
+      </div>
+      <button class="btn-primary btn-lg" onclick="window.location.href='/login.html'">Присоединиться</button>
     </div>
 
     <!-- Auth content -->
@@ -33,5 +38,26 @@
 
   <script src="js/header_new.js" defer></script>
   <script src="js/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('sosedik_token');
+      if (!token) {
+        fetch('/api/stats/public')
+          .then(res => res.json())
+          .then(data => {
+            document.getElementById('public-stats').innerHTML = `
+          <p>🏠 Жильцов в сообществе: ${data.usersCount}</p>
+          <p>🤝 Успешных сделок: ${data.completedDeals}</p>
+          <p>📦 Активных объявлений: ${data.activeAds}</p>
+          <p>🔧 Вещей в аренду: ${data.activeRentals}</p>
+        `;
+          })
+          .catch(() => {
+            document.getElementById('public-stats').innerHTML = '<p>Не удалось загрузить статистику</p>';
+          });
+      }
+    });
+  </script>
 </body>
+
 </html>

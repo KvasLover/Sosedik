@@ -21,9 +21,11 @@ const headerTemplate = `
     </div>
     <nav id="main-nav">
       <div id="nav-guest">
-        <a href="/">Главная</a>
-        <a href="/login.html">Войти</a>
-      </div>
+  <a href="/">Главная</a>
+  <a href="/ads.html">Объявления</a>
+  <a href="/rentals.html">Аренда</a>
+  <a href="/login.html">Войти</a>
+</div>
       <div id="nav-auth" class="hidden">
         <a href="/">Главная</a>
         <a href="/ads.html">Объявления</a>

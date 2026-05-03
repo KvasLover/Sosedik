@@ -1,6 +1,6 @@
 // check_admin.js
 const pool = require('./src/database');
-const PHONE = '+375000000000'; // ваш номер администратора
+const PHONE = '+37533'; // ваш номер администратора
 
 async function checkAdmin() {
   const res = await pool.query('SELECT id, phone, level FROM users WHERE phone = $1', [PHONE]);

@@ -23,7 +23,7 @@
     <div id="ads-content">
       <!-- Button to open create ad form -->
       <div style="margin-bottom: 20px;">
-        <button class="btn-success" onclick="toggleCreateForm()">+ Создать объявление</button>
+        <button id="create-ad-btn" class="btn-success" onclick="toggleCreateForm()">+ Создать объявление</button>
       </div>
 
       <!-- Form to create new ad (hidden by default) -->
@@ -128,6 +128,25 @@
   <script src="js/app.js"></script>
   <script>
     let allAds = []; // Store all ads for filtering
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('sosedik_token');
+      // Раньше скрывали контент — удаляем это
+      if (token) {
+        await getCurrentUserId();
+      } else {
+        // Гость: убираем кнопки, фильтр "Только мои"
+        const createBtn = document.getElementById('create-ad-btn');
+        if (createBtn) createBtn.style.display = 'none';
+        const myFilter = document.getElementById('filter-my-ads');
+        if (myFilter) myFilter.parentElement.style.display = 'none';
+      }
+      await loadAds();
+      if (token) {
+        await loadPendingRequestsState();
+      }
+    });
+
     let currentUserId = null; // Store current user ID
 
     // Get user ID from JWT token
@@ -145,13 +164,13 @@
     // Проверить авторизацию и загрузить объявления при загрузке страницы
     document.addEventListener('DOMContentLoaded', async () => {
       const token = localStorage.getItem('sosedik_token');
-      if (!token) {
-        document.getElementById('auth-check').classList.remove('hidden');
-        document.getElementById('ads-content').classList.add('hidden');
-      } else {
+      if (token) {
         await getCurrentUserId();
-        await loadAds();                // Ждём, пока объявления загрузятся и отрисуются
-        await loadPendingRequestsState(); // Теперь кнопки существуют, можно обновлять
+      }
+      // Загружаем объявления ВСЕГДА, независимо от авторизации
+      await loadAds();
+      if (token) {
+        await loadPendingRequestsState();
       }
     });
 
@@ -190,22 +209,16 @@
 
     // Загрузить объявления
     async function loadAds() {
-      const token = localStorage.getItem('sosedik_token');
-      if (!token) return;
-
       try {
-        const response = await fetch('/api/ads?type=service', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
+        const token = localStorage.getItem('sosedik_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const response = await fetch('/api/ads?type=service', { headers });
         if (response.ok) {
           allAds = await response.json();
           displayAds(allAds);
         }
       } catch (error) {
-        alert('Ошибка загрузки объявлений: ' + error.message);
+        console.error('Ошибка загрузки объявлений:', error);
       }
     }
 
@@ -219,7 +232,7 @@
         return;
       }
 
-      const currentUserId = getUserIdFromToken();
+      const currentUserId = getUserIdFromToken(); // может быть null
 
       ads.forEach(ad => {
         const adDiv = document.createElement('div');
@@ -238,7 +251,7 @@
         contentDiv.className = 'ad-content';
         contentDiv.onclick = () => window.location.href = `/ad-details.html?id=${ad.id}`;
         contentDiv.innerHTML =
-          '<p><strong>Автор:</strong> <a href="/user-profile.html?userId=' + ad.user_id + '">' + (ad.author_name || ('Пользователь #' + ad.user_id)) + '</a></p>' +
+          (currentUserId ? '<p><strong>Автор:</strong> <a href="/user-profile.html?userId=' + ad.user_id + '">' + (ad.author_name || ('Пользователь #' + ad.user_id)) + '</a></p>' : '') +
           '<p><strong>Категория:</strong> ' + ad.category + '</p>' +
           '<p><strong>Описание:</strong> ' + (ad.description || 'Не указано') + '</p>' +
           '<p><strong>Цена:</strong> ' + (ad.price ? ad.price + ' руб.' : 'Не указана') + '</p>' +
@@ -252,70 +265,78 @@
         const footerDiv = document.createElement('div');
         footerDiv.className = 'ad-footer';
 
-        // Кнопка действия (запрос или удаление)
-        if (currentUserId && parseInt(ad.user_id) === parseInt(currentUserId)) {
-          const deleteBtn = document.createElement('button');
-          deleteBtn.className = 'btn-sm btn-danger';
-          deleteBtn.textContent = 'Удалить';
-          deleteBtn.onclick = (e) => {
-            e.stopPropagation();
-            deleteAd(ad.id);
-          };
-          footerDiv.appendChild(deleteBtn);
-        } else if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
-          if (!ad.accepted_by) {
-            const requestBtn = document.createElement('button');
-            requestBtn.className = 'btn-sm btn-primary';
-            requestBtn.textContent = 'Отправить запрос';
-            requestBtn.setAttribute('data-ad-id', ad.id);           // <-- добавить эту строку
-            requestBtn.onclick = (e) => {
+        // --- ГОСТЬ: только сообщение ---
+        if (!currentUserId) {
+          const guestMsg = document.createElement('p');
+          guestMsg.className = 'u-text-muted u-font-sm';
+          guestMsg.textContent = 'Войдите, чтобы откликнуться';
+          footerDiv.appendChild(guestMsg);
+        } else {
+          // Кнопка "Удалить" (владелец)
+          if (parseInt(ad.user_id) === parseInt(currentUserId)) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-sm btn-danger';
+            deleteBtn.textContent = 'Удалить';
+            deleteBtn.onclick = (e) => {
               e.stopPropagation();
-              requestAd(ad.id, requestBtn);
+              deleteAd(ad.id);
             };
-            footerDiv.appendChild(requestBtn);
-          } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
-            const statusSpan = document.createElement('span');
-            statusSpan.style.color = '#27ae60';
-            statusSpan.textContent = '✓ Принято вами';
-            footerDiv.appendChild(statusSpan);
+            footerDiv.appendChild(deleteBtn);
           } else {
-            const statusSpan = document.createElement('span');
-            statusSpan.style.color = '#95a5a6';
-            statusSpan.textContent = 'Принято другим пользователем';
-            footerDiv.appendChild(statusSpan);
-          }
-        }
-
-        // Кнопка избранного (сердечко)
-        if (currentUserId && parseInt(ad.user_id) !== parseInt(currentUserId)) {
-          const favBtn = document.createElement('button');
-          favBtn.className = 'favorite-btn';
-          favBtn.textContent = '♡';
-          favBtn.onclick = (e) => {
-            e.stopPropagation();
-            toggleFavorite('ad', ad.id, favBtn);
-          };
-          footerDiv.appendChild(favBtn);
-
-          // Проверить статус избранного и обновить кнопку
-          checkFavoriteStatus('ad', ad.id).then(isFavorite => {
-            if (isFavorite) {
-              favBtn.classList.add('active');
-              favBtn.textContent = '♥';
+            // Кнопка "Отправить запрос" (не владелец)
+            if (!ad.accepted_by) {
+              const requestBtn = document.createElement('button');
+              requestBtn.className = 'btn-sm btn-primary';
+              requestBtn.textContent = 'Отправить запрос';
+              requestBtn.setAttribute('data-ad-id', ad.id);
+              requestBtn.onclick = (e) => {
+                e.stopPropagation();
+                requestAd(ad.id, requestBtn);
+              };
+              footerDiv.appendChild(requestBtn);
+            } else if (parseInt(ad.accepted_by) === parseInt(currentUserId)) {
+              const statusSpan = document.createElement('span');
+              statusSpan.style.color = '#27ae60';
+              statusSpan.textContent = '✓ Принято вами';
+              footerDiv.appendChild(statusSpan);
+            } else {
+              const statusSpan = document.createElement('span');
+              statusSpan.style.color = '#95a5a6';
+              statusSpan.textContent = 'Принято другим пользователем';
+              footerDiv.appendChild(statusSpan);
             }
-          });
+
+            // Избранное (только для чужих объявлений)
+            const favBtn = document.createElement('button');
+            favBtn.className = 'favorite-btn';
+            favBtn.textContent = '♡';
+            favBtn.onclick = (e) => {
+              e.stopPropagation();
+              toggleFavorite('ad', ad.id, favBtn);
+            };
+            footerDiv.appendChild(favBtn);
+
+            // Проверка статуса избранного (только при наличии токена)
+            if (currentUserId) {
+              checkFavoriteStatus('ad', ad.id).then(isFavorite => {
+                if (isFavorite) {
+                  favBtn.classList.add('active');
+                  favBtn.textContent = '♥';
+                }
+              });
+            }
+          }
         }
 
         // Собрать карточку
         adDiv.appendChild(headerDiv);
         adDiv.appendChild(contentDiv);
         adDiv.appendChild(footerDiv);
-
         adsList.appendChild(adDiv);
 
         // Если кнопка "Отправить запрос" была создана, проверим активный запрос
         const requestButton = adDiv.querySelector('button[onclick*="requestAd"]');
-        if (requestButton) {
+        if (requestButton && currentUserId) {
           checkActiveRequestForAd(ad.id, requestButton);
         }
       });

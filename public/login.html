@@ -62,6 +62,12 @@
   <script src="js/app.js"></script>
   <script>
     let registrationStep = 1;
+
+    function guestLogin() {
+      localStorage.removeItem('sosedik_token');
+      window.location.href = '/';
+    }
+
     // ---------- МАСКА ДЛЯ ТЕЛЕФОНА ----------
     function setupPhoneMask(inputElement, errorElement) {
       inputElement.addEventListener('input', function (e) {

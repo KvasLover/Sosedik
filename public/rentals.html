@@ -23,7 +23,7 @@
     <div id="rentals-content">
       <!-- Button to open create rental form -->
       <div style="margin-bottom: 20px;">
-        <button class="btn-success" onclick="toggleCreateForm()">+ Сдать в аренду</button>
+        <button id="create-rental-btn" class="btn-success" onclick="toggleCreateForm()">+ Сдать в аренду</button>
       </div>
 
       <!-- Form to create new rental (hidden by default) -->
@@ -101,11 +101,13 @@
       </div>
 
       <!-- My rentals filter -->
-      <div style="margin-bottom: 20px;">
-        <label>
-          <input type="checkbox" id="filter-my-rentals"> Только мои объявления об аренде
-        </label>
-      </div>
+      <span id="my-rentals-filter-container">
+        <div style="margin-bottom: 20px;">
+          <label>
+            <input type="checkbox" id="filter-my-rentals"> Только мои объявления об аренде
+          </label>
+        </div>
+      </span>
 
       <!-- Rentals list -->
       <div id="rentals-list">
@@ -129,6 +131,16 @@
     // Проверить авторизацию при загрузке
     document.addEventListener('DOMContentLoaded', () => {
       const token = localStorage.getItem('sosedik_token');
+
+      const createBtn = document.getElementById('create-rental-btn');
+      if (createBtn && !token) {
+        createBtn.style.display = 'none';
+      }
+      const myFilter = document.getElementById('my-rentals-filter-container');
+      if (myFilter && !token) {
+        myFilter.style.display = 'none';
+      }
+
       if (!token) {
         document.getElementById('auth-check').classList.remove('hidden');
         document.getElementById('rentals-content').classList.add('hidden');
@@ -180,32 +192,29 @@
 
     // Загрузить аренды
     async function loadRentals() {
-      const token = localStorage.getItem('sosedik_token');
-      if (!token) return;
-
       try {
-        // Получаем текущего пользователя
-        const userResponse = await fetch('/api/users/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (userResponse.ok) {
+        const token = localStorage.getItem('sosedik_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const userResponse = token
+          ? await fetch('/api/users/me', { headers })
+          : null;
+
+        if (userResponse && userResponse.ok) {
           const user = await userResponse.json();
           currentUserId = user.id;
+        } else {
+          // гость – оставляем currentUserId = null (он уже объявлен)
         }
 
-        // Загружаем объявления с типом 'rental'
-        const response = await fetch('/api/ads?type=rental', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await fetch('/api/ads?type=rental', { headers });
 
         if (response.ok) {
-          allRentals = await response.json(); // сохраняем как массив объявлений аренды
+          allRentals = await response.json();
           displayRentals(allRentals);
-        } else {
-          alert('Ошибка загрузки объявлений аренды');
         }
       } catch (error) {
-        alert('Ошибка загрузки: ' + error.message);
+        // ошибку гостю не показываем alert
+        console.error('Ошибка загрузки аренды:', error);
       }
     }
 
@@ -279,20 +288,26 @@
         const contentDiv = document.createElement('div');
         contentDiv.className = 'rental-content';
         contentDiv.innerHTML = `
-    <p><strong>Владелец:</strong> <a href="/user-profile.html?userId=${ad.user_id}">${escapeHtml(ad.author_name || 'Пользователь')}</a></p>
-<p><strong>Категория:</strong> ${escapeHtml(ad.category)}</p>
-  <p><strong>Ценность вещи:</strong> ${getValueLabel(ad.value_category) || 'не указана'}</p>
-  <p><strong>Залог:</strong> ${ad.deposit ? ad.deposit + ' руб.' : 'не нужен'}</p>
-  <p><strong>Описание:</strong> ${ad.description ? escapeHtml(ad.description.substring(0, 100)) + (ad.description.length > 100 ? '...' : '') : 'Не указано'}</p>  <p><small>Добавлено: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
-`;
+      <p><strong>Владелец:</strong> <a href="/user-profile.html?userId=${ad.user_id}">${escapeHtml(ad.author_name || 'Пользователь')}</a></p>      <p><strong>Категория:</strong> ${escapeHtml(ad.category)}</p>
+      <p><strong>Ценность вещи:</strong> ${getValueLabel(ad.value_category) || 'не указана'}</p>
+      <p><strong>Залог:</strong> ${ad.deposit ? ad.deposit + ' руб.' : 'не нужен'}</p>
+      <p><strong>Описание:</strong> ${ad.description ? escapeHtml(ad.description.substring(0, 100)) + (ad.description.length > 100 ? '...' : '') : 'Не указано'}</p>
+      <p><small>Добавлено: ${new Date(ad.created_at).toLocaleDateString()}</small></p>
+    `;
         rentalDiv.appendChild(contentDiv);
 
         // Кнопки
         const footerDiv = document.createElement('div');
         footerDiv.className = 'rental-footer';
 
-        if (isOwner) {
-          // Если объявление принято кем-то, показываем принявшего
+        // --- ГОСТЬ: только сообщение ---
+        if (!currentUserId) {
+          const guestMsg = document.createElement('p');
+          guestMsg.className = 'u-text-muted u-font-sm';
+          guestMsg.textContent = 'Войдите, чтобы взять в аренду';
+          footerDiv.appendChild(guestMsg);
+        } else if (isOwner) {
+          // Владелец
           if (ad.accepted_by) {
             const acceptedInfo = document.createElement('p');
             acceptedInfo.style.color = '#27ae60';
@@ -312,7 +327,7 @@
           footerDiv.appendChild(deleteBtn);
 
         } else {
-          // Проверяем, принято ли объявление текущим пользователем
+          // Не владелец (арендатор)
           if (ad.accepted_by && ad.accepted_by === currentUserId) {
             const statusSpan = document.createElement('span');
             statusSpan.style.color = '#27ae60';
@@ -330,12 +345,14 @@
               toggleFavorite('ad', ad.id, favBtn);
             };
             footerDiv.appendChild(favBtn);
-            checkFavoriteStatus('ad', ad.id).then(isFavorite => {
-              if (isFavorite) {
-                favBtn.classList.add('active');
-                favBtn.textContent = '♥';
-              }
-            });
+            if (currentUserId) {
+              checkFavoriteStatus('ad', ad.id).then(isFavorite => {
+                if (isFavorite) {
+                  favBtn.classList.add('active');
+                  favBtn.textContent = '♥';
+                }
+              });
+            }
 
             // Кнопка "Запросить аренду"
             const requestBtn = document.createElement('button');
@@ -346,7 +363,9 @@
               requestRental(ad.id, requestBtn);
             };
             footerDiv.appendChild(requestBtn);
-            checkIfAlreadyRequested(ad.id, requestBtn);
+            if (currentUserId) {
+              checkIfAlreadyRequested(ad.id, requestBtn);
+            }
           }
         }
 

@@ -140,7 +140,9 @@
           console.log('Ad user ID:', ad.user_id);
           console.log('Is owner:', isOwner);
 
-          document.getElementById('ad-title').innerHTML = ad.title + (isOwner ? ' <span style="color: #27ae60; font-size: 12px; font-weight: normal;">(Ваше)</span>' : ''); document.getElementById('ad-description').textContent = ad.description || 'Не указано';
+          document.getElementById('ad-title').innerHTML = ad.title + (isOwner ? ' <span style="color: #27ae60; font-size: 12px; font-weight: normal;">(Ваше)</span>' : '');
+          document.getElementById('ad-description').textContent = ad.description || 'Не указано';
+
           // Цена – показываем всегда
           document.getElementById('ad-price-section').style.display = 'block';
           document.getElementById('price-value').textContent = ad.price ? ad.price + ' руб.' : 'Не указана';
@@ -163,8 +165,17 @@
             document.getElementById('location-value').textContent = ad.location;
           }
 
-          document.getElementById('ad-author').textContent = ad.author_name || `Пользователь ${ad.user_id}`;
+          if (!currentUserId) {
+            document.getElementById('ad-author').parentNode.style.display = 'none'; // скрываем <p><strong>Автор:</strong>...</p>
+          } else {
+            document.getElementById('ad-author').textContent = ad.author_name || `Пользователь ${ad.user_id}`;
+          }
           document.getElementById('ad-contact').textContent = ad.contact || 'Не указан';
+          // Скрыть весь блок "Контакт с автором" для гостя
+          if (!currentUserId) {
+            const authorSection = document.querySelector('.detail-author-section');
+            if (authorSection) authorSection.style.display = 'none';
+          }
           document.getElementById('ad-created').textContent = new Date(ad.created_at).toLocaleDateString();
           currentAdOwnerId = ad.user_id;
 
@@ -179,10 +190,18 @@
 
           // Настроить кнопки действий
           const actionsDiv = document.getElementById('ad-actions');
-          actionsDiv.innerHTML = ''; // Очистить существующие кнопки
+          actionsDiv.innerHTML = '';
 
-          // Кнопки для чужих объявлений
-          // Кнопки для чужих объявлений
+          // Если пользователь не авторизован – показываем только сообщение
+          if (!currentUserId) {
+            const guestMsg = document.createElement('p');
+            guestMsg.className = 'u-text-muted';
+            guestMsg.textContent = 'Войдите, чтобы откликнуться на объявление';
+            actionsDiv.appendChild(guestMsg);
+            return;   // прерываем дальнейшее формирование кнопок
+          }
+
+          // Далее стандартная логика для авторизованных
           if (!isOwner) {
             // Кнопка "В избранное"
             const favoriteBtn = document.createElement('button');
@@ -477,15 +496,7 @@
       }
     }
 
-    // Проверить авторизацию
-    const token = localStorage.getItem('sosedik_token');
-    if (!token) {
-      document.getElementById('auth-check').classList.remove('hidden');
-      document.getElementById('ad-details').classList.add('hidden');
-    } else {
-      loadAdDetails();
-      //loadPendingRequestsState();
-    }
+    loadAdDetails();
 
     // Load pending requests and update button states
     async function loadPendingRequestsState() {
