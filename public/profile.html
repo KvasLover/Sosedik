@@ -459,7 +459,15 @@
         <div class="profile-info">
           <h2 id="user-display-name">Пользователь</h2>
           <p><strong>Телефон:</strong> <span id="user-phone"></span></p>
-          <p><strong>Уровень:</strong> <span id="user-level"></span></p>
+          <p>
+            <strong>Уровень:</strong> <span id="user-level"></span>
+            <button id="upgrade-level-btn" class="btn-sm btn-secondary" style="display: none; margin-left: 10px;">
+              Поднять уровень
+            </button>
+            <span id="upgrade-pending-text" style="display: none; margin-left: 10px; color: #f39c12;">
+              Заявка на рассмотрении
+            </span>
+          </p>
           <p><strong>Баллы репутации:</strong> <span id="user-points"></span></p>
           <p id="apartment-display"></p>
           <p id="user-created-display"></p>
@@ -803,6 +811,34 @@
           document.getElementById('user-avatar').innerHTML = `<img src="${user.verification_photo}" style="width:100%;height:100%;object-fit:cover;">`;
         }
 
+        // Проверка уровня и заявки на верификацию
+        const upgradeBtn = document.getElementById('upgrade-level-btn');
+        const pendingText = document.getElementById('upgrade-pending-text');
+        if (user.level === 1) {
+          // Проверим, нет ли уже активной заявки
+          try {
+            const statusRes = await fetch('/api/verification/status', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              if (statusData.hasPending) {
+                upgradeBtn.style.display = 'none';
+                pendingText.style.display = 'inline';
+              } else {
+                upgradeBtn.style.display = 'inline-block';
+                pendingText.style.display = 'none';
+              }
+            }
+          } catch (e) { }
+          // Привязываем открытие модального окна
+          upgradeBtn.onclick = openVerificationModal;
+        } else {
+          // Скрываем кнопку и текст, если уровень не 1
+          upgradeBtn.style.display = 'none';
+          pendingText.style.display = 'none';
+        }
+
         document.getElementById('user-name').value = user.name || '';
         document.getElementById('user-apartment').value = user.apartment || '';
         document.getElementById('show-apartment').checked = user.show_apartment || false;
@@ -820,6 +856,74 @@
         }
       } catch (error) {
         showResult('Ошибка загрузки профиля: ' + error.message, false);
+      }
+    }
+
+    let currentPhotoData = null; // для фото верификации
+
+    function openVerificationModal() {
+      document.getElementById('verification-modal').style.display = 'flex';
+    }
+
+    function closeVerificationModal() {
+      document.getElementById('verification-modal').style.display = 'none';
+      // Сброс фото
+      document.getElementById('verification-photo').value = '';
+      document.getElementById('verification-photo-preview').innerHTML = '';
+      document.getElementById('verification-error').style.display = 'none';
+      currentPhotoData = null;
+    }
+
+    document.addEventListener('change', function (e) {
+      if (e.target.id === 'verification-photo') {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (ev) {
+            currentPhotoData = ev.target.result; // base64
+            document.getElementById('verification-photo-preview').innerHTML =
+              `<img src="${currentPhotoData}" style="max-width:200px; max-height:200px; border-radius:4px;">`;
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    });
+
+    async function submitVerification() {
+      const errorEl = document.getElementById('verification-error');
+      errorEl.style.display = 'none';
+
+      if (!currentPhotoData) {
+        errorEl.textContent = 'Прикрепите фото квитанции';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch('/api/verification/request', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ photo: currentPhotoData })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          alert('Заявка отправлена. Ожидайте подтверждения модератора.');
+          closeVerificationModal();
+          // Показать, что заявка на рассмотрении
+          document.getElementById('upgrade-level-btn').style.display = 'none';
+          document.getElementById('upgrade-pending-text').style.display = 'inline';
+        } else {
+          errorEl.textContent = data.message || 'Ошибка отправки';
+          errorEl.style.display = 'block';
+        }
+      } catch (error) {
+        errorEl.textContent = 'Ошибка сети';
+        errorEl.style.display = 'block';
       }
     }
 
@@ -2264,6 +2368,29 @@
       <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
         <button class="btn-secondary" onclick="closeReturnModal()">Отмена</button>
         <button class="btn-primary" onclick="submitReturn()">Подтвердить возврат</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно верификации -->
+  <div id="verification-modal"
+    style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background: white; padding:1.5rem; border-radius:8px; max-width:500px; width:90%;">
+      <h3>Повышение уровня до «Верифицированный жилец»</h3>
+      <p style="color: #2d3748; font-size: 0.9rem; margin-bottom: 1rem;">
+        Для подтверждения проживания в доме загрузите фото квитанции ЖКУ.
+        Вы можете скрыть личные данные, но <strong>адрес должен быть виден</strong>.
+      </p>
+      <div class="form-group">
+        <label for="verification-photo">Фото квитанции:</label>
+        <input type="file" id="verification-photo" accept="image/*">
+        <div id="verification-photo-preview" style="margin-top: 10px;"></div>
+        <span class="error-hint" id="verification-error" style="display: none;"></span>
+      </div>
+      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <button class="btn-secondary" onclick="closeVerificationModal()">Отмена</button>
+        <button class="btn-primary" id="submit-verification-btn" onclick="submitVerification()">Отправить
+          заявку</button>
       </div>
     </div>
   </div>

@@ -15,6 +15,7 @@ const reputationRoutes = require('./routes/reputation');
 const adminRoutes = require('./routes/admin');
 const friendsRoutes = require('./routes/friends');
 const statsRoutes = require('./routes/stats');
+const verificationRoutes = require('./routes/verification');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -36,6 +37,7 @@ app.use('/api/friends', friendsRoutes);
 app.use('/api', reputationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/verification', verificationRoutes);
 
 // Test database connection
 app.get('/api/health', async (req, res) => {
