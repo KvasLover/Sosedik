@@ -62,6 +62,21 @@ router.post('/', verifyToken, checkLevel(1), async (req, res) => {
       return res.status(400).json({ message: 'Category and title are required' });
     }
 
+    // Ограничение для уровня 1: не более одного активного объявления каждого типа
+    if (req.user.level === 1) {
+      const adType = type || 'service';
+      const activeCount = await pool.query(
+        'SELECT COUNT(*)::int AS count FROM ads WHERE user_id = $1 AND active = true AND type = $2',
+        [req.user.id, adType]
+      );
+      if (activeCount.rows[0].count >= 1) {
+        const message = adType === 'rental'
+          ? 'Уровень 1 позволяет иметь только одно активное объявление аренды. Удалите предыдущее или повысьте уровень.'
+          : 'Уровень 1 позволяет иметь только одно активное объявление. Удалите предыдущее или повысьте уровень.';
+        return res.status(403).json({ message });
+      }
+    }
+
     const newAd = await Ad.createAd(
       req.user.id,
       category,

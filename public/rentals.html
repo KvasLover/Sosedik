@@ -513,6 +513,19 @@
       }
 
       try {
+        // Проверка лимита для уровня 1: не более одного активного объявления аренды
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            if (payload.level === 1) {
+              const myActiveRentals = allRentals.filter(ad => ad.user_id === currentUserId && ad.active === true);
+              if (myActiveRentals.length >= 1) {
+                alert('Уровень 1 позволяет иметь только одно активное объявление аренды. Удалите предыдущее или повысьте уровень.');
+                return;
+              }
+            }
+          } catch (e) { }
+        }
         const response = await fetch('/api/ads', {
           method: 'POST',
           headers: {
