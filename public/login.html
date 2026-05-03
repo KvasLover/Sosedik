@@ -41,8 +41,7 @@
           <p id="code-hint" style="color: #2d3748; margin-bottom: 8px;"></p>
           <label for="register-code">Код из SMS:</label>
           <input type="text" id="register-code" placeholder="6-значный код" maxlength="6">
-          <button type="button" id="send-code-btn" class="btn-secondary" style="display: none;">Отправить код
-            снова</button>
+          <a href="#" id="send-code-link" style="display: none; font-size: 0.9rem;">Отправить код снова</a>
           <span id="code-error" style="color: red; font-size: 0.8rem; display: none;"></span>
         </div>
         <button class="btn-secondary" onclick="register()">Зарегистрироваться</button>
@@ -81,7 +80,8 @@
       const codeSection = document.getElementById('code-section');
       const codeHint = document.getElementById('code-hint');
       const codeError = document.getElementById('code-error');
-      const sendCodeBtn = document.getElementById('send-code-btn');
+      const sendCodeLink = document.getElementById('send-code-link');
+      // Находим кнопку "Зарегистрироваться" — это вторая кнопка btn-secondary внутри формы
       const registerBtn = document.querySelector('#register-password').closest('.form-container').querySelector('button.btn-secondary');
 
       const phone = phoneInput.value.trim();
@@ -114,15 +114,15 @@
 
             // Показываем секцию с кодом и подсказку
             codeSection.style.display = 'block';
-            codeHint.textContent = 'На номер ' + phone + ' отправлен код подтверждения. Введите его в поле.';
+            codeHint.textContent = 'На указанный номер отправлен код подтверждения. Введите его в поле.';
             codeHint.style.display = 'block';
 
             // Блокируем телефон и пароль
             phoneInput.disabled = true;
             passwordInput.disabled = true;
 
-            // Прячем кнопку «Получить код снова» и ошибку
-            sendCodeBtn.style.display = 'none';
+            // Прячем ссылку «Отправить код снова» и ошибку
+            sendCodeLink.style.display = 'none';
             codeError.style.display = 'none';
 
             // Переходим на второй шаг
@@ -155,19 +155,19 @@
           localStorage.setItem('sosedik_token', data.token);
           window.location.href = '/';
         } else {
-          // Ошибка: показываем сообщение и кнопку «Отправить код снова»
+          // Ошибка: показываем сообщение и ссылку «Отправить код снова»
           codeError.textContent = data.message;
           codeError.style.display = 'block';
-          sendCodeBtn.style.display = 'inline-block';
-          sendCodeBtn.textContent = 'Отправить код снова';
+          sendCodeLink.style.display = 'inline';
         }
       } catch (error) {
         alert('Ошибка: ' + error.message);
       }
     }
 
-    // Кнопка «Отправить код снова» (появляется после ошибки)
-    document.getElementById('send-code-btn').addEventListener('click', async () => {
+    // Ссылка «Отправить код снова» (появляется после ошибки)
+    document.getElementById('send-code-link').addEventListener('click', async (e) => {
+      e.preventDefault();
       const phone = document.getElementById('register-phone').value;
       if (!validatePhone(phone)) {
         alert('Введите корректный номер телефона');
@@ -183,7 +183,7 @@
         if (resp.ok) {
           alert('Код отправлен (демо): ' + data.code);
           document.getElementById('code-error').style.display = 'none';
-          document.getElementById('send-code-btn').style.display = 'none';
+          document.getElementById('send-code-link').style.display = 'none';
         } else {
           document.getElementById('code-error').textContent = data.message;
           document.getElementById('code-error').style.display = 'block';
@@ -193,7 +193,6 @@
       }
     });
   </script>
-
 </body>
 
 </html>
