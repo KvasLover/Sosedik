@@ -38,7 +38,7 @@ function showLogin() {
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
   const authContent = document.getElementById('auth-content');
-  
+
   if (authContent) authContent.classList.remove('hidden-content');
   if (loginForm) loginForm.classList.remove('hidden');
   if (registerForm) registerForm.classList.add('hidden');
@@ -48,7 +48,7 @@ function showLogin() {
 function showRegister() {
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
-  
+
   if (loginForm) loginForm.classList.add('hidden');
   if (registerForm) registerForm.classList.remove('hidden');
 }
@@ -90,6 +90,11 @@ async function register() {
 // Login
 async function login() {
   const phone = document.getElementById('login-phone').value;
+  if (!validatePhone(phone)) {
+    alert('Введите номер в формате +375XXXXXXXXX');
+    return;
+  }
+  
   const password = document.getElementById('login-password').value;
 
   if (!phone || !password) {

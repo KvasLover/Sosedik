@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Вход - Соседик</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
+
 <body>
   <div id="header-root"></div>
 
@@ -34,7 +36,19 @@
           <label for="register-password">Пароль:</label>
           <input type="password" id="register-password" required>
         </div>
+        <!-- Блок для ввода кода (скрыт изначально) -->
+        <div class="form-group" id="code-section" style="display: none;">
+          <p id="code-hint" style="color: #2d3748; margin-bottom: 8px;"></p>
+          <label for="register-code">Код из SMS:</label>
+          <input type="text" id="register-code" placeholder="6-значный код" maxlength="6">
+          <button type="button" id="send-code-btn" class="btn-secondary" style="display: none;">Отправить код
+            снова</button>
+          <span id="code-error" style="color: red; font-size: 0.8rem; display: none;"></span>
+        </div>
         <button class="btn-secondary" onclick="register()">Зарегистрироваться</button>
+        <p style="margin-top: 12px;">
+          <a href="#" onclick="guestLogin(); return false;">Войти как гость</a>
+        </p>
       </div>
     </div>
   </main>
@@ -45,6 +59,141 @@
 
   <script src="js/header_new.js" defer></script>
   <script src="js/app.js"></script>
+  <script>
+    // Проверка формата телефона
+    function validatePhone(phone) {
+      return /^\+375\d{9}$/.test(phone.replace(/\s/g, ''));
+    }
+
+    // Гостевой вход
+    function guestLogin() {
+      localStorage.removeItem('sosedik_token');
+      window.location.href = '/';
+    }
+
+    // Регистрация с двухэтапным подтверждением
+    let registrationStep = 1;
+
+    async function register() {
+      const phoneInput = document.getElementById('register-phone');
+      const passwordInput = document.getElementById('register-password');
+      const codeInput = document.getElementById('register-code');
+      const codeSection = document.getElementById('code-section');
+      const codeHint = document.getElementById('code-hint');
+      const codeError = document.getElementById('code-error');
+      const sendCodeBtn = document.getElementById('send-code-btn');
+      const registerBtn = document.querySelector('#register-password').closest('.form-container').querySelector('button.btn-secondary');
+
+      const phone = phoneInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!phone || !password) {
+        alert('Заполните телефон и пароль');
+        return;
+      }
+      if (!validatePhone(phone)) {
+        alert('Некорректный номер телефона');
+        return;
+      }
+
+      // Первый шаг: отправка кода
+      if (registrationStep === 1) {
+        try {
+          const resp = await fetch('/api/auth/send-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone })
+          });
+          const data = await resp.json();
+          if (resp.ok) {
+            // Показываем демо-код
+            alert('Код отправлен (демо): ' + data.code);
+
+            // Меняем кнопку на "Подтвердить"
+            registerBtn.textContent = 'Подтвердить';
+
+            // Показываем секцию с кодом и подсказку
+            codeSection.style.display = 'block';
+            codeHint.textContent = 'На номер ' + phone + ' отправлен код подтверждения. Введите его в поле.';
+            codeHint.style.display = 'block';
+
+            // Блокируем телефон и пароль
+            phoneInput.disabled = true;
+            passwordInput.disabled = true;
+
+            // Прячем кнопку «Получить код снова» и ошибку
+            sendCodeBtn.style.display = 'none';
+            codeError.style.display = 'none';
+
+            // Переходим на второй шаг
+            registrationStep = 2;
+          } else {
+            codeError.textContent = data.message;
+            codeError.style.display = 'block';
+          }
+        } catch (e) {
+          alert('Ошибка сети при отправке кода');
+        }
+        return;
+      }
+
+      // Второй шаг: проверка кода
+      const code = codeInput.value.trim();
+      if (!code) {
+        alert('Введите код');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/verify-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, password, code })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          localStorage.setItem('sosedik_token', data.token);
+          window.location.href = '/';
+        } else {
+          // Ошибка: показываем сообщение и кнопку «Отправить код снова»
+          codeError.textContent = data.message;
+          codeError.style.display = 'block';
+          sendCodeBtn.style.display = 'inline-block';
+          sendCodeBtn.textContent = 'Отправить код снова';
+        }
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Кнопка «Отправить код снова» (появляется после ошибки)
+    document.getElementById('send-code-btn').addEventListener('click', async () => {
+      const phone = document.getElementById('register-phone').value;
+      if (!validatePhone(phone)) {
+        alert('Введите корректный номер телефона');
+        return;
+      }
+      try {
+        const resp = await fetch('/api/auth/send-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          alert('Код отправлен (демо): ' + data.code);
+          document.getElementById('code-error').style.display = 'none';
+          document.getElementById('send-code-btn').style.display = 'none';
+        } else {
+          document.getElementById('code-error').textContent = data.message;
+          document.getElementById('code-error').style.display = 'block';
+        }
+      } catch (e) {
+        alert('Ошибка сети');
+      }
+    });
+  </script>
 
 </body>
+
 </html>
