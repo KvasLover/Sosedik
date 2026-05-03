@@ -196,7 +196,7 @@ const createAdRequest = async (adId, requesterId, message = '') => {
 // Получить входящие запросы (для автора объявления)
 const getIncomingRequests = async (userId) => {
   const result = await pool.query(`
-    SELECT ar.*, ads.title, ads.category, u.name as requester_name, u.phone as requester_phone
+    SELECT ar.*, ads.title, ads.category, ads.type, u.name as requester_name, u.phone as requester_phone
     FROM ad_requests ar
     JOIN ads ON ar.ad_id = ads.id
     JOIN users u ON ar.requester_id = u.id
@@ -211,7 +211,7 @@ const getIncomingRequests = async (userId) => {
 // Получить исходящие запросы (для запрашивающего)
 const getOutgoingRequests = async (userId) => {
   const result = await pool.query(`
-    SELECT ar.*, ads.title, ads.category, ads.user_id, 
+    SELECT ar.*, ads.title, ads.category, ads.type, ads.user_id, 
            u.name as requester_name, u.phone as requester_phone,
            u2.name as creator_name, u2.phone as creator_phone
     FROM ad_requests ar
