@@ -609,7 +609,10 @@
               <div style="font-size: 36px; font-weight: bold; color: #667eea;" id="points-balance">0</div>
               <p>баллов</p>
             </div>
-
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+              <button id="boost-ad-btn" class="btn-primary" onclick="openBoostModal()">🚀 Поднять объявление (5
+                баллов)</button>
+            </div>
             <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
               <h3>История операций</h3>
               <div id="points-history">
@@ -1377,19 +1380,25 @@
               const somethingChanged = priceChanged || timeChanged || commentChanged || depositChanged || conditionChanged;
 
               if (!somethingChanged) {
-                proposalHtml = '<div style="margin-top: 8px; color: #27ae60;">Партнёр предлагает начать сотрудничество на изначальных условиях.</div>';
+                proposalHtml = `
+        <div style="margin-top: 8px; color: #27ae60;">
+            Партнёр предлагает начать сотрудничество на изначальных условиях.
+            <button onclick="acceptProposal(${req.id})" class="u-font-sm">Принять</button>
+            <button onclick="declineProposal(${req.id})" class="u-font-sm u-ml-auto">Отклонить</button>
+        </div>
+    `;
               } else {
                 proposalHtml = `
-      <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
-        <strong>Предложенные условия:</strong><br>
-        Цена: ${req.proposed_price ? req.proposed_price + ' руб.' : 'Не указана'}<br>
-        Время: ${req.proposed_time || 'Не указано'}<br>
-        Условия: ${req.proposed_comment || 'Не указаны'}<br>
-        ${req.proposed_deposit ? `Залог: ${req.proposed_deposit} руб.<br>` : ''}
-        ${req.proposed_condition ? `Состояние при передаче: ${req.proposed_condition}<br>` : ''}
-        <button onclick="acceptProposal(${req.id})" class="u-font-sm">Принять</button>
-        <button onclick="declineProposal(${req.id})" class="u-font-sm u-ml-auto">Отклонить</button>
-      </div>
+        <div style="margin-top: 8px; padding: 8px; background: #f0f7ff; border-radius: 6px;">
+            <strong>Предложенные условия:</strong><br>
+            Цена: ${req.proposed_price ? req.proposed_price + ' руб.' : 'Не указана'}<br>
+            Время: ${req.proposed_time || 'Не указано'}<br>
+            Условия: ${req.proposed_comment || 'Не указаны'}<br>
+            ${req.proposed_deposit ? `Залог: ${req.proposed_deposit} руб.<br>` : ''}
+            ${req.proposed_condition ? `Состояние при передаче: ${req.proposed_condition}<br>` : ''}
+            <button onclick="acceptProposal(${req.id})" class="u-font-sm">Принять</button>
+            <button onclick="declineProposal(${req.id})" class="u-font-sm u-ml-auto">Отклонить</button>
+        </div>
     `;
               }
             } else {
@@ -2428,6 +2437,76 @@
       };
       return descriptions[actionType] || actionType;
     }
+    // Открыть модалку буста
+    async function openBoostModal() {
+      document.getElementById('boost-modal').style.display = 'flex';
+      loadBoostableAds();
+    }
+
+    // Закрыть
+    function closeBoostModal() {
+      document.getElementById('boost-modal').style.display = 'none';
+    }
+
+    // Загрузить список моих активных объявлений для поднятия
+    async function loadBoostableAds() {
+      const token = localStorage.getItem('sosedik_token');
+      const container = document.getElementById('boost-ads-list');
+      try {
+        const response = await fetch('/api/ads/my', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Ошибка загрузки');
+        const ads = await response.json();
+        const activeAds = ads.filter(ad => ad.active);
+
+        if (activeAds.length === 0) {
+          container.innerHTML = '<p>Нет активных объявлений.</p>';
+          return;
+        }
+
+        // Для каждого объявления проверим, можно ли его поднять
+        const adsHtml = await Promise.all(activeAds.map(async (ad) => {
+          const canBoostRes = await fetch(`/api/ads/${ad.id}/can-boost`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const { allowed, reason } = await canBoostRes.json();
+          const buttonHtml = allowed
+            ? `<button class="btn-sm btn-primary" onclick="boostAd(${ad.id})">Поднять (5 баллов)</button>`
+            : `<span class="u-text-muted u-font-sm">${reason || 'Недоступно'}</span>`;
+          return `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;">
+          <span>${escapeHtml(ad.title)} (${ad.type === 'rental' ? 'Аренда' : 'Услуга'})</span>
+          ${buttonHtml}
+        </div>
+      `;
+        }));
+        container.innerHTML = adsHtml.join('');
+      } catch (err) {
+        container.innerHTML = `<p>Ошибка: ${err.message}</p>`;
+      }
+    }
+
+    // Отправить запрос на поднятие
+    async function boostAd(adId) {
+      const token = localStorage.getItem('sosedik_token');
+      try {
+        const response = await fetch(`/api/ads/${adId}/boost`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok) {
+          alert('Объявление поднято на 24 часа!');
+          closeBoostModal();
+          loadPoints(); // обновить баланс
+        } else {
+          alert('Ошибка: ' + data.message);
+        }
+      } catch (err) {
+        alert('Ошибка сети');
+      }
+    }
   </script>
 
   <!-- Модальное окно для уточнения условий -->
@@ -2529,6 +2608,19 @@
         <button class="btn-secondary" onclick="closeVerificationModal()">Отмена</button>
         <button class="btn-primary" id="submit-verification-btn" onclick="submitVerification()">Отправить
           заявку</button>
+      </div>
+    </div>
+  </div>
+  <!-- Модальное окно для поднятия объявления -->
+  <div id="boost-modal"
+    style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background: white; padding:1.5rem; border-radius:8px; max-width:500px; width:90%;">
+      <h3>Выберите объявление для поднятия</h3>
+      <div id="boost-ads-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 1rem;">
+        Загрузка...
+      </div>
+      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <button class="btn-secondary" onclick="closeBoostModal()">Отмена</button>
       </div>
     </div>
   </div>

@@ -8,7 +8,8 @@ const getAds = async (filters = {}) => {
                ads.price, ads.contact, ads.created_at, ads.active, ads.accepted_by, 
                users.name as acceptor_name, author.name as author_name, 
                ads.preferred_time, ads.terms,
-               ads.deposit, ads.value_category, ads.item_name, ads.condition_description
+               ads.deposit, ads.value_category, ads.item_name, ads.condition_description,
+               ads.boosted_until  /* ← добавлено */
             FROM ads
             LEFT JOIN users ON ads.accepted_by = users.id
             LEFT JOIN users as author ON ads.user_id = author.id
@@ -25,7 +26,7 @@ const getAds = async (filters = {}) => {
     values.push(filters.type);
   }
 
-  query += ' ORDER BY ads.created_at DESC';
+  query += ' ORDER BY ads.boosted_until DESC NULLS LAST, ads.created_at DESC';
 
   try {
     const result = await pool.query(query, values);
@@ -1114,5 +1115,31 @@ module.exports = {
   resolveDispute,
   confirmReturn,
   acceptReturn,
-  declineReturn
+  declineReturn,
+  boostAd: async (adId, userId) => {
+    const ad = await getAdById(adId);
+    if (!ad) throw new Error('Объявление не найдено');
+    if (ad.user_id !== userId) throw new Error('Вы не владелец');
+    if (ad.boosted_until && new Date(ad.boosted_until) > new Date()) {
+      throw new Error('Объявление уже поднято');
+    }
+    await Points.spendPoints(userId, 5, 'boost_ad', adId);
+    await pool.query(
+      `UPDATE ads SET boosted_until = NOW() + INTERVAL '24 hours' WHERE id = $1`,
+      [adId]
+    );
+    return { boosted_until: new Date(Date.now() + 24*60*60*1000) };
+  },
+
+  canBoostAd: async (adId, userId) => {
+    const ad = await getAdById(adId);
+    if (!ad) return { allowed: false, reason: 'Объявление не найдено' };
+    if (ad.user_id !== userId) return { allowed: false, reason: 'Не владелец' };
+    if (ad.boosted_until && new Date(ad.boosted_until) > new Date()) {
+      return { allowed: false, reason: 'Уже поднято' };
+    }
+    const balance = await Points.getBalance(userId);
+    if (balance < 5) return { allowed: false, reason: 'Недостаточно баллов' };
+    return { allowed: true };
+  }
 };
