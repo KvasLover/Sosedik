@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="logo.png">
   <title>Соседик - Главная</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
@@ -125,15 +126,31 @@
         fetch('/api/stats/public')
           .then(res => res.json())
           .then(data => {
-            document.getElementById('public-stats').innerHTML = `
-          <p>🏠 Жильцов в сообществе: ${data.usersCount}</p>
-          <p>🤝 Успешных сделок: ${data.completedDeals}</p>
-          <p>📦 Активных объявлений: ${data.activeAds}</p>
-          <p>🔧 Вещей в аренду: ${data.activeRentals}</p>
-        `;
+            const stats = document.getElementById('public-stats');
+            if (stats) {
+              stats.innerHTML = `
+            <div class="stat-item">
+              <div class="stat-number">${data.usersCount}</div>
+              <div class="stat-label">жильцов</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">${data.completedDeals}</div>
+              <div class="stat-label">сделок</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">${data.activeAds}</div>
+              <div class="stat-label">объявлений</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">${data.activeRentals}</div>
+              <div class="stat-label">вещей в аренду</div>
+            </div>
+          `;
+            }
           })
           .catch(() => {
-            document.getElementById('public-stats').innerHTML = '<p>Не удалось загрузить статистику</p>';
+            const stats = document.getElementById('public-stats');
+            if (stats) stats.innerHTML = '<p>Не удалось загрузить статистику</p>';
           });
       }
     });

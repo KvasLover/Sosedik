@@ -1252,6 +1252,137 @@ span[style*="3498db"] {
   font-style: italic;
 }
 
+/* ----- гостевая главная ----- */
+.guest-hero {
+  max-width: 1000px;
+  margin: 0 auto 3rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 24px;
+  padding: 3rem 2.5rem;
+  color: #fff;
+  flex-wrap: wrap;
+}
+.guest-hero-text h1 {
+  color: #fff;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+.hero-subtitle {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  margin-bottom: 2rem;
+  max-width: 500px;
+}
+.hero-btn {
+  background: #fff !important;
+  color: #667eea !important;
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+.hero-btn:hover {
+  background: #f0f0ff !important;
+}
+.guest-hero-visual .hero-icon {
+  font-size: 8rem;
+  opacity: 0.3;
+  user-select: none;
+}
+
+/* карточки преимуществ */
+.guest-features {
+  max-width: 1000px;
+  margin: 0 auto 3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+.feature-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(102,126,234,0.12);
+}
+.feature-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.8rem;
+}
+.feature-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.3rem;
+}
+.feature-card p {
+  color: #4a5568;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* панель статистики */
+.guest-stats-panel {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
+}
+.stat-item {
+  text-align: center;
+  min-width: 100px;
+}
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #667eea;
+}
+.stat-label {
+  font-size: 0.9rem;
+  color: #4a5568;
+  margin-top: 0.2rem;
+}
+
+.welcome-header .quick-stats .stat-number {
+  color: #fff;
+}
+.welcome-header {
+  background: linear-gradient(135deg, #7e8ff0 0%, #8d61b0 100%);
+}
+
+@media (max-width: 600px) {
+  .guest-hero {
+    flex-direction: column;
+    text-align: center;
+    padding: 2rem 1.5rem;
+  }
+  .guest-hero-text h1 {
+    font-size: 2.2rem;
+  }
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+  .guest-hero-visual .hero-icon {
+    font-size: 5rem;
+  }
+  .guest-stats-panel {
+    gap: 1rem;
+  }
+}
+
 @media (max-width: 768px) {
   .profile-header {
     flex-direction: column;
