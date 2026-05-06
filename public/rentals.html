@@ -332,7 +332,10 @@
         titleDiv.className = 'rental-title-section';
         const titleH3 = document.createElement('h3');
         titleH3.innerHTML = (ad.item_name || ad.title) + (isOwner ? ' <span style="color: #27ae60; font-size: 12px;">(Ваше)</span>' : '');
-        titleDiv.appendChild(titleH3);
+        titleH3.style.whiteSpace = 'nowrap';
+        titleH3.style.overflow = 'hidden';
+        titleH3.style.textOverflow = 'ellipsis';
+        titleH3.title = ad.item_name || ad.title; titleDiv.appendChild(titleH3);
         rentalDiv.appendChild(titleDiv);
 
         // Информация

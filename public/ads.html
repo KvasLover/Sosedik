@@ -245,8 +245,7 @@
         headerDiv.className = 'ad-header';
         const isOwner = currentUserId && ad.user_id === currentUserId;
         const titleWithBadge = isOwner ? `${ad.title} <span style="color: #27ae60; font-size: 12px;">(Ваше)</span>` : ad.title;
-        headerDiv.innerHTML = `<h3>${titleWithBadge}</h3>`;
-
+        headerDiv.innerHTML = `<h3 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${ad.title.replace(/"/g, '&quot;')}">${titleWithBadge}</h3>`;
         // Content с информацией
         const contentDiv = document.createElement('div');
         contentDiv.className = 'ad-content';
